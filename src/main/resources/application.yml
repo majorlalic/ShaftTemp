@@ -3,4 +3,38 @@ server:
   port: 8080
 spring:
   application:
-    name: demo
+    name: shaft-temp
+  datasource:
+    url: jdbc:mysql://localhost:3306/shaft?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+  data:
+    redis:
+      repositories:
+        enabled: false
+  redis:
+    host: localhost
+    port: 6379
+  task:
+    scheduling:
+      pool:
+        size: 2
+logging:
+  level:
+    com.example.demo: INFO
+shaft:
+  alarm:
+    temperature-threshold: 70.0
+    offline-threshold-seconds: 30
+    window-size: 20
+  inspection:
+    enabled: true
+    fixed-delay-ms: 30000
