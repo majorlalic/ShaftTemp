@@ -7,6 +7,6 @@ import org.springframework.data.jpa.repository.Query;
 
 public interface AlarmRepository extends JpaRepository<AlarmEntity, Long> {
 
-    @Query("select a from AlarmEntity a where a.monitorId = ?1 and a.alarmType = ?2 and a.status = 'ACTIVE' and (a.deleted is null or a.deleted = 0)")
-    Optional<AlarmEntity> findActiveAlarm(Long monitorId, String alarmType);
+    @Query("select a from AlarmEntity a where a.monitorId = ?1 and a.alarmType = ?2 and a.status in ('ACTIVE', 'CONFIRMED') and (a.deleted is null or a.deleted = 0)")
+    Optional<AlarmEntity> findOpenAlarm(Long monitorId, String alarmType);
 }

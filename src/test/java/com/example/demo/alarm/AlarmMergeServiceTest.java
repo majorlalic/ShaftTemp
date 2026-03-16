@@ -43,7 +43,7 @@ class AlarmMergeServiceTest {
     @Test
     void shouldCreateNewAlarmWhenNoActiveAlarmExists() {
         when(realtimeStateService.getActiveAlarmId("TEMP_THRESHOLD", 10L)).thenReturn(Optional.empty());
-        when(alarmRepository.findActiveAlarm(10L, "TEMP_THRESHOLD")).thenReturn(Optional.empty());
+        when(alarmRepository.findOpenAlarm(10L, "TEMP_THRESHOLD")).thenReturn(Optional.empty());
         when(idGenerator.nextId()).thenReturn(1001L, 1002L);
         when(alarmRepository.save(any(AlarmEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -94,5 +94,45 @@ class AlarmMergeServiceTest {
         ArgumentCaptor<AlarmEntity> captor = ArgumentCaptor.forClass(AlarmEntity.class);
         verify(alarmRepository).save(captor.capture());
         assertEquals(3, captor.getValue().getMergeCount().intValue());
+    }
+
+    @Test
+    void shouldConfirmAlarm() {
+        AlarmEntity existing = new AlarmEntity();
+        existing.setId(500L);
+        existing.setAlarmType("TEMP_THRESHOLD");
+        existing.setMonitorId(10L);
+        existing.setDeviceId(1L);
+        existing.setMergeCount(1);
+        existing.setAlarmLevel(2);
+        when(alarmRepository.findById(500L)).thenReturn(Optional.of(existing));
+        when(alarmRepository.save(any(AlarmEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(idGenerator.nextId()).thenReturn(1004L);
+
+        AlarmEntity alarm = alarmMergeService.confirm(500L, 99L, "checked");
+
+        assertEquals("CONFIRMED", alarm.getStatus());
+        assertEquals(99L, alarm.getConfirmUserId().longValue());
+        verify(eventRepository).save(any());
+    }
+
+    @Test
+    void shouldCloseAlarm() {
+        AlarmEntity existing = new AlarmEntity();
+        existing.setId(500L);
+        existing.setAlarmType("TEMP_THRESHOLD");
+        existing.setMonitorId(10L);
+        existing.setDeviceId(1L);
+        existing.setMergeCount(1);
+        existing.setAlarmLevel(2);
+        when(alarmRepository.findById(500L)).thenReturn(Optional.of(existing));
+        when(alarmRepository.save(any(AlarmEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(idGenerator.nextId()).thenReturn(1005L);
+
+        AlarmEntity alarm = alarmMergeService.close(500L, "done");
+
+        assertEquals("CLOSED", alarm.getStatus());
+        verify(realtimeStateService).clearActiveAlarmId("TEMP_THRESHOLD", 10L);
+        verify(eventRepository).save(any());
     }
 }

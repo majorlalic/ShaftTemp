@@ -11,7 +11,9 @@ import com.example.demo.persistence.entity.RawDataEntity;
 import com.example.demo.persistence.repository.DeviceOnlineLogRepository;
 import com.example.demo.persistence.repository.DeviceRepository;
 import com.example.demo.persistence.repository.RawDataRepository;
+import com.example.demo.persistence.service.TempStatMinuteService;
 import com.example.demo.realtime.RealtimeStateService;
+import com.example.demo.realtime.RealtimeStateService.RealtimeSummary;
 import com.example.demo.support.IdGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -32,6 +34,7 @@ public class ReportIngestService {
     private final RealtimeStateService realtimeStateService;
     private final AlarmRuleEngine alarmRuleEngine;
     private final AlarmService alarmService;
+    private final TempStatMinuteService tempStatMinuteService;
     private final IdGenerator idGenerator;
     private final ObjectMapper objectMapper;
 
@@ -43,6 +46,7 @@ public class ReportIngestService {
         RealtimeStateService realtimeStateService,
         AlarmRuleEngine alarmRuleEngine,
         AlarmService alarmService,
+        TempStatMinuteService tempStatMinuteService,
         IdGenerator idGenerator,
         ObjectMapper objectMapper
     ) {
@@ -53,6 +57,7 @@ public class ReportIngestService {
         this.realtimeStateService = realtimeStateService;
         this.alarmRuleEngine = alarmRuleEngine;
         this.alarmService = alarmService;
+        this.tempStatMinuteService = tempStatMinuteService;
         this.idGenerator = idGenerator;
         this.objectMapper = objectMapper;
     }
@@ -63,8 +68,9 @@ public class ReportIngestService {
         DeviceEntity device = resolved.getDevice();
         MonitorEntity monitor = resolved.getMonitor();
         LocalDateTime collectTime = request.getCollectTime() == null ? LocalDateTime.now() : request.getCollectTime();
+        RealtimeSummary previousSummary = realtimeStateService.getLastSummary(device.getId()).orElse(null);
         ReportMetrics metrics = calculateMetrics(request.getValues());
-        List<RuleEvaluationResult> results = alarmRuleEngine.evaluateRealtime(monitor, request.getValues());
+        List<RuleEvaluationResult> results = alarmRuleEngine.evaluateRealtime(monitor, request.getValues(), previousSummary);
 
         RawDataEntity rawData = new RawDataEntity();
         rawData.setId(idGenerator.nextId());
@@ -84,6 +90,7 @@ public class ReportIngestService {
         rawData.setCreatedOn(LocalDateTime.now());
         rawDataRepository.save(rawData);
 
+        tempStatMinuteService.aggregate(device.getId(), monitor.getId(), collectTime, metrics, countAlarmPoints(results));
         realtimeStateService.updateRealtimeState(device.getId(), monitor.getId(), collectTime, request.getValues(), metrics);
         updateDeviceOnlineState(device, collectTime);
 
@@ -97,8 +104,46 @@ public class ReportIngestService {
                 toJson(result.getPointIndexes())
             );
         }
+        recoverInactiveRealtimeAlarms(device, monitor, results, collectTime);
 
         return new IngestResult(device.getId(), monitor.getId(), rawData.getId(), results.size(), metrics);
+    }
+
+    private void recoverInactiveRealtimeAlarms(
+        DeviceEntity device,
+        MonitorEntity monitor,
+        List<RuleEvaluationResult> results,
+        LocalDateTime collectTime
+    ) {
+        String[] realtimeAlarmTypes = new String[] {"TEMP_THRESHOLD", "TEMP_DIFFERENCE", "TEMP_RISE_RATE", "FIBER_BREAK"};
+        for (String alarmType : realtimeAlarmTypes) {
+            if (!containsAlarmType(results, alarmType)) {
+                alarmService.recover(
+                    device,
+                    monitor,
+                    alarmType,
+                    collectTime,
+                    toJson(java.util.Collections.singletonMap("message", "alarm recovered by latest report"))
+                );
+            }
+        }
+    }
+
+    private boolean containsAlarmType(List<RuleEvaluationResult> results, String alarmType) {
+        for (RuleEvaluationResult result : results) {
+            if (alarmType.equals(result.getAlarmType())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private int countAlarmPoints(List<RuleEvaluationResult> results) {
+        int total = 0;
+        for (RuleEvaluationResult result : results) {
+            total += result.getPointIndexes() == null ? 0 : result.getPointIndexes().size();
+        }
+        return total;
     }
 
     private void updateDeviceOnlineState(DeviceEntity device, LocalDateTime collectTime) {

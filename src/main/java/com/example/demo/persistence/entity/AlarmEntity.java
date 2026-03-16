@@ -44,6 +44,16 @@ public class AlarmEntity {
 
     private String title;
     private String content;
+
+    @Column(name = "confirm_user_id")
+    private Long confirmUserId;
+
+    @Column(name = "confirm_time")
+    private LocalDateTime confirmTime;
+
+    @Column(name = "handle_remark")
+    private String handleRemark;
+
     private Integer deleted;
 
     @Column(name = "created_on")
@@ -154,6 +164,30 @@ public class AlarmEntity {
 
     public void setContent(String content) {
         this.content = content;
+    }
+
+    public Long getConfirmUserId() {
+        return confirmUserId;
+    }
+
+    public void setConfirmUserId(Long confirmUserId) {
+        this.confirmUserId = confirmUserId;
+    }
+
+    public LocalDateTime getConfirmTime() {
+        return confirmTime;
+    }
+
+    public void setConfirmTime(LocalDateTime confirmTime) {
+        this.confirmTime = confirmTime;
+    }
+
+    public String getHandleRemark() {
+        return handleRemark;
+    }
+
+    public void setHandleRemark(String handleRemark) {
+        this.handleRemark = handleRemark;
     }
 
     public Integer getDeleted() {

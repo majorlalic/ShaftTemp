@@ -4,6 +4,12 @@ server:
 spring:
   application:
     name: shaft-temp
+  rabbitmq:
+    host: localhost
+    port: 5672
+    listener:
+      simple:
+        acknowledge-mode: auto
   datasource:
     url: jdbc:mysql://localhost:3306/shaft?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     username: root
@@ -31,8 +37,14 @@ logging:
   level:
     com.example.demo: INFO
 shaft:
+  mq:
+    enabled: false
+    queue: shaft.temp.report
   alarm:
     temperature-threshold: 70.0
+    temperature-diff-threshold: 20.0
+    rise-rate-threshold: 10.0
+    fiber-break-threshold: 0.0
     offline-threshold-seconds: 30
     window-size: 20
   inspection:

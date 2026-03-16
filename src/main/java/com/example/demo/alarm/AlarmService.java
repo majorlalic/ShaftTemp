@@ -16,4 +16,16 @@ public interface AlarmService {
         String detailJson,
         String pointListJson
     );
+
+    void recover(
+        DeviceEntity device,
+        MonitorEntity monitor,
+        String alarmType,
+        LocalDateTime eventTime,
+        String detailJson
+    );
+
+    AlarmEntity confirm(Long alarmId, Long userId, String remark);
+
+    AlarmEntity close(Long alarmId, String remark);
 }

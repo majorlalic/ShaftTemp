@@ -12,7 +12,7 @@ class ReportIngestServiceTest {
     @Test
     void shouldCalculateMetrics() {
         ReportIngestService.ReportMetrics metrics = new ReportIngestService(
-            null, null, null, null, null, null, null, null, null
+            null, null, null, null, null, null, null, null, null, null
         ).calculateMetrics(Arrays.asList(
             new BigDecimal("10"),
             new BigDecimal("20"),

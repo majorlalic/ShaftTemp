@@ -50,7 +50,7 @@ public class AlarmMergeService implements AlarmService {
         Optional<AlarmEntity> cachedAlarm = realtimeStateService.getActiveAlarmId(result.getAlarmType(), monitor.getId())
             .flatMap(alarmRepository::findById);
         AlarmEntity alarm = cachedAlarm.orElseGet(() ->
-            alarmRepository.findActiveAlarm(monitor.getId(), result.getAlarmType()).orElse(null)
+            alarmRepository.findOpenAlarm(monitor.getId(), result.getAlarmType()).orElse(null)
         );
 
         boolean merged = alarm != null;
@@ -79,23 +79,136 @@ public class AlarmMergeService implements AlarmService {
         AlarmEntity savedAlarm = alarmRepository.save(alarm);
         realtimeStateService.setActiveAlarmId(result.getAlarmType(), monitor.getId(), savedAlarm.getId());
 
+        createEvent(
+            savedAlarm,
+            monitor,
+            device,
+            result.getAlarmType(),
+            result.getSourceType(),
+            eventTime,
+            savedAlarm.getMergeCount(),
+            result.getAlarmLevel(),
+            pointListJson,
+            detailJson,
+            merged ? 1 : 0
+        );
+        return savedAlarm;
+    }
+
+    @Override
+    @Transactional
+    public void recover(
+        DeviceEntity device,
+        MonitorEntity monitor,
+        String alarmType,
+        LocalDateTime eventTime,
+        String detailJson
+    ) {
+        AlarmEntity alarm = realtimeStateService.getActiveAlarmId(alarmType, monitor.getId())
+            .flatMap(alarmRepository::findById)
+            .orElseGet(() -> alarmRepository.findOpenAlarm(monitor.getId(), alarmType).orElse(null));
+        if (alarm == null) {
+            return;
+        }
+        alarm.setStatus("RECOVERED");
+        alarm.setLastAlarmTime(eventTime);
+        alarm.setUpdatedOn(eventTime);
+        alarmRepository.save(alarm);
+        realtimeStateService.clearActiveAlarmId(alarmType, monitor.getId());
+
+        createEvent(
+            alarm,
+            monitor,
+            device,
+            alarmType,
+            "RECOVERY",
+            eventTime,
+            (alarm.getMergeCount() == null ? 0 : alarm.getMergeCount()) + 1,
+            alarm.getAlarmLevel(),
+            "[]",
+            detailJson,
+            0
+        );
+    }
+
+    @Override
+    @Transactional
+    public AlarmEntity confirm(Long alarmId, Long userId, String remark) {
+        AlarmEntity alarm = alarmRepository.findById(alarmId)
+            .orElseThrow(() -> new IllegalArgumentException("Alarm not found: " + alarmId));
+        alarm.setStatus("CONFIRMED");
+        alarm.setConfirmUserId(userId);
+        alarm.setConfirmTime(LocalDateTime.now());
+        alarm.setHandleRemark(remark);
+        alarm.setUpdatedOn(LocalDateTime.now());
+        AlarmEntity savedAlarm = alarmRepository.save(alarm);
+        createLifecycleEvent(savedAlarm, "MANUAL_CONFIRM", remark);
+        return savedAlarm;
+    }
+
+    @Override
+    @Transactional
+    public AlarmEntity close(Long alarmId, String remark) {
+        AlarmEntity alarm = alarmRepository.findById(alarmId)
+            .orElseThrow(() -> new IllegalArgumentException("Alarm not found: " + alarmId));
+        alarm.setStatus("CLOSED");
+        alarm.setHandleRemark(remark);
+        alarm.setUpdatedOn(LocalDateTime.now());
+        AlarmEntity savedAlarm = alarmRepository.save(alarm);
+        realtimeStateService.clearActiveAlarmId(savedAlarm.getAlarmType(), savedAlarm.getMonitorId());
+        createLifecycleEvent(savedAlarm, "MANUAL_CLOSE", remark);
+        return savedAlarm;
+    }
+
+    private void createLifecycleEvent(AlarmEntity alarm, String sourceType, String remark) {
+        MonitorEntity monitor = new MonitorEntity();
+        monitor.setId(alarm.getMonitorId());
+        DeviceEntity device = new DeviceEntity();
+        device.setId(alarm.getDeviceId());
+        createEvent(
+            alarm,
+            monitor,
+            device,
+            alarm.getAlarmType(),
+            sourceType,
+            LocalDateTime.now(),
+            (alarm.getMergeCount() == null ? 0 : alarm.getMergeCount()) + 1,
+            alarm.getAlarmLevel(),
+            "[]",
+            "{\"remark\":\"" + (remark == null ? "" : remark.replace("\"", "\\\"")) + "\"}",
+            0
+        );
+    }
+
+    private void createEvent(
+        AlarmEntity alarm,
+        MonitorEntity monitor,
+        DeviceEntity device,
+        String alarmType,
+        String sourceType,
+        LocalDateTime eventTime,
+        Integer eventNo,
+        Integer eventLevel,
+        String pointListJson,
+        String detailJson,
+        Integer mergedFlag
+    ) {
         EventEntity event = new EventEntity();
         event.setId(idGenerator.nextId());
-        event.setAlarmId(savedAlarm.getId());
-        event.setAlarmType(result.getAlarmType());
-        event.setSourceType(result.getSourceType());
+        event.setAlarmId(alarm.getId());
+        event.setAlarmType(alarmType);
+        event.setSourceType(sourceType);
         event.setMonitorId(monitor.getId());
         event.setDeviceId(device.getId());
         event.setEventTime(eventTime);
-        event.setEventNo(savedAlarm.getMergeCount());
-        event.setEventLevel(result.getAlarmLevel());
+        event.setEventNo(eventNo);
+        event.setEventLevel(eventLevel);
         event.setPointListJson(pointListJson);
         event.setDetailJson(detailJson);
-        event.setMergedFlag(merged ? 1 : 0);
+        event.setMergedFlag(mergedFlag);
         event.setDeleted(0);
         event.setCreatedOn(eventTime);
         event.setUpdatedOn(eventTime);
         eventRepository.save(event);
-        return savedAlarm;
     }
 }

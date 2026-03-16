@@ -5,7 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.example.demo.AppProperties;
 import com.example.demo.alarm.rule.AlarmRuleEngine;
+import com.example.demo.alarm.rule.FiberBreakRule;
 import com.example.demo.alarm.rule.RuleEvaluationResult;
+import com.example.demo.alarm.rule.TemperatureDifferenceRule;
+import com.example.demo.alarm.rule.TemperatureRiseRateRule;
 import com.example.demo.alarm.rule.TemperatureThresholdRule;
 import com.example.demo.persistence.entity.MonitorEntity;
 import java.math.BigDecimal;
@@ -19,13 +22,20 @@ class AlarmRuleEngineTest {
     void shouldMatchTemperatureThreshold() {
         AppProperties properties = new AppProperties();
         properties.getAlarm().setTemperatureThreshold(new BigDecimal("70"));
-        AlarmRuleEngine engine = new AlarmRuleEngine(new TemperatureThresholdRule(), properties);
+        AlarmRuleEngine engine = new AlarmRuleEngine(
+            new TemperatureThresholdRule(),
+            new TemperatureDifferenceRule(),
+            new TemperatureRiseRateRule(),
+            new FiberBreakRule(),
+            properties
+        );
         MonitorEntity monitor = new MonitorEntity();
         monitor.setName("1号竖井");
 
         List<RuleEvaluationResult> results = engine.evaluateRealtime(
             monitor,
-            Arrays.asList(new BigDecimal("65"), new BigDecimal("72.5"), new BigDecimal("68"))
+            Arrays.asList(new BigDecimal("65"), new BigDecimal("72.5"), new BigDecimal("68")),
+            null
         );
 
         assertEquals(1, results.size());
