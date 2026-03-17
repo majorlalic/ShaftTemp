@@ -6,6 +6,7 @@ import com.example.demo.persistence.entity.DeviceEntity;
 import com.example.demo.persistence.entity.EventEntity;
 import com.example.demo.persistence.repository.AlarmRepository;
 import com.example.demo.persistence.repository.EventRepository;
+import com.example.demo.persistence.repository.EventJdbcRepository;
 import com.example.demo.realtime.RealtimeStateService;
 import com.example.demo.ingest.service.DeviceResolverService;
 import com.example.demo.support.IdGenerator;
@@ -22,17 +23,20 @@ public class AlarmMergeService implements AlarmService {
 
     private final AlarmRepository alarmRepository;
     private final EventRepository eventRepository;
+    private final EventJdbcRepository eventJdbcRepository;
     private final RealtimeStateService realtimeStateService;
     private final IdGenerator idGenerator;
 
     public AlarmMergeService(
         AlarmRepository alarmRepository,
         EventRepository eventRepository,
+        EventJdbcRepository eventJdbcRepository,
         RealtimeStateService realtimeStateService,
         IdGenerator idGenerator
     ) {
         this.alarmRepository = alarmRepository;
         this.eventRepository = eventRepository;
+        this.eventJdbcRepository = eventJdbcRepository;
         this.realtimeStateService = realtimeStateService;
         this.idGenerator = idGenerator;
     }
@@ -230,7 +234,7 @@ public class AlarmMergeService implements AlarmService {
         event.setDeleted(0);
         event.setCreatedOn(eventTime);
         event.setUpdatedOn(eventTime);
-        eventRepository.save(event);
+        eventJdbcRepository.insert(event);
         realtimeStateService.markEventWritten(alarmType, resolved.getPartitionCode(), eventTime);
     }
 }

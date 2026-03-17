@@ -10,6 +10,7 @@ import com.example.demo.persistence.entity.DeviceOnlineLogEntity;
 import com.example.demo.persistence.entity.RawDataEntity;
 import com.example.demo.persistence.repository.DeviceOnlineLogRepository;
 import com.example.demo.persistence.repository.DeviceRepository;
+import com.example.demo.persistence.repository.RawDataJdbcRepository;
 import com.example.demo.persistence.repository.RawDataRepository;
 import com.example.demo.persistence.service.TempStatMinuteService;
 import com.example.demo.realtime.RealtimeStateService;
@@ -35,6 +36,7 @@ public class ReportIngestService {
     private final AlarmRuleEngine alarmRuleEngine;
     private final AlarmService alarmService;
     private final TempStatMinuteService tempStatMinuteService;
+    private final RawDataJdbcRepository rawDataJdbcRepository;
     private final IdGenerator idGenerator;
     private final ObjectMapper objectMapper;
 
@@ -47,6 +49,7 @@ public class ReportIngestService {
         AlarmRuleEngine alarmRuleEngine,
         AlarmService alarmService,
         TempStatMinuteService tempStatMinuteService,
+        RawDataJdbcRepository rawDataJdbcRepository,
         IdGenerator idGenerator,
         ObjectMapper objectMapper
     ) {
@@ -58,6 +61,7 @@ public class ReportIngestService {
         this.alarmRuleEngine = alarmRuleEngine;
         this.alarmService = alarmService;
         this.tempStatMinuteService = tempStatMinuteService;
+        this.rawDataJdbcRepository = rawDataJdbcRepository;
         this.idGenerator = idGenerator;
         this.objectMapper = objectMapper;
     }
@@ -100,7 +104,7 @@ public class ReportIngestService {
         rawData.setAbnormalFlag(results.isEmpty() ? 0 : 1);
         rawData.setDeleted(0);
         rawData.setCreatedOn(LocalDateTime.now());
-        rawDataRepository.save(rawData);
+        rawDataJdbcRepository.insert(rawData);
 
         tempStatMinuteService.aggregate(resolved, collectTime, metrics, results.size());
         realtimeStateService.updateMeasureState(resolved, collectTime, request, metrics);

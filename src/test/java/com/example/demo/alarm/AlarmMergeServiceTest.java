@@ -14,6 +14,7 @@ import com.example.demo.persistence.entity.DeviceEntity;
 import com.example.demo.persistence.entity.MonitorEntity;
 import com.example.demo.persistence.repository.AlarmRepository;
 import com.example.demo.persistence.repository.EventRepository;
+import com.example.demo.persistence.repository.EventJdbcRepository;
 import com.example.demo.realtime.RealtimeStateService;
 import com.example.demo.support.IdGenerator;
 import java.math.BigDecimal;
@@ -34,6 +35,8 @@ class AlarmMergeServiceTest {
     private AlarmRepository alarmRepository;
     @Mock
     private EventRepository eventRepository;
+    @Mock
+    private EventJdbcRepository eventJdbcRepository;
     @Mock
     private RealtimeStateService realtimeStateService;
     @Mock
@@ -76,7 +79,7 @@ class AlarmMergeServiceTest {
         assertNotNull(alarm);
         assertEquals(1, alarm.getMergeCount().intValue());
         assertEquals("dev_TMP_th01", alarm.getPartitionCode());
-        verify(eventRepository).save(any());
+        verify(eventJdbcRepository).insert(any());
     }
 
     @Test
@@ -120,6 +123,7 @@ class AlarmMergeServiceTest {
         ArgumentCaptor<AlarmEntity> captor = ArgumentCaptor.forClass(AlarmEntity.class);
         verify(alarmRepository).save(captor.capture());
         assertEquals(3, captor.getValue().getMergeCount().intValue());
+        verify(eventJdbcRepository).insert(any());
     }
 
     @Test
@@ -156,7 +160,7 @@ class AlarmMergeServiceTest {
 
         alarmMergeService.createOrMerge(resolved, result, LocalDateTime.of(2026, 3, 13, 10, 0), "{}", "[3]");
 
-        verify(eventRepository, never()).save(any());
+        verify(eventJdbcRepository, never()).insert(any());
     }
 
     @Test
@@ -176,7 +180,7 @@ class AlarmMergeServiceTest {
 
         assertEquals("CONFIRMED", alarm.getStatus());
         assertEquals(99L, alarm.getConfirmUserId().longValue());
-        verify(eventRepository).save(any());
+        verify(eventJdbcRepository).insert(any());
     }
 
     @Test
@@ -196,6 +200,6 @@ class AlarmMergeServiceTest {
 
         assertEquals("CLOSED", alarm.getStatus());
         verify(realtimeStateService).clearActiveAlarmId("TEMP_THRESHOLD", null);
-        verify(eventRepository).save(any());
+        verify(eventJdbcRepository).insert(any());
     }
 }
