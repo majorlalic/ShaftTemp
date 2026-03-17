@@ -47,6 +47,11 @@ shaft:
     fiber-break-threshold: 0.0
     offline-threshold-seconds: 30
     window-size: 20
+    event-throttle-seconds: 300
+  cache:
+    partition-binding-refresh-ms: 300000
+  stat:
+    flush-delay-ms: 15000
   inspection:
     enabled: true
     fixed-delay-ms: 30000

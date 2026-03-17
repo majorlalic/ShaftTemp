@@ -1,5 +1,6 @@
 package com.example.demo.ingest.service;
 
+import com.example.demo.AppProperties;
 import com.example.demo.persistence.entity.DeviceEntity;
 import com.example.demo.persistence.entity.MonitorPartitionBindEntity;
 import com.example.demo.persistence.entity.MonitorEntity;
@@ -8,7 +9,11 @@ import com.example.demo.persistence.repository.DeviceRepository;
 import com.example.demo.persistence.repository.MonitorPartitionBindRepository;
 import com.example.demo.persistence.repository.MonitorRepository;
 import com.example.demo.persistence.repository.ShaftFloorRepository;
+import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import javax.annotation.PostConstruct;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -18,30 +23,40 @@ public class DeviceResolverService {
     private final MonitorRepository monitorRepository;
     private final MonitorPartitionBindRepository monitorPartitionBindRepository;
     private final ShaftFloorRepository shaftFloorRepository;
+    private final AppProperties appProperties;
+    private final ConcurrentHashMap<String, ResolvedTarget> dataReferenceCache = new ConcurrentHashMap<String, ResolvedTarget>();
+    private final ConcurrentHashMap<String, ResolvedTarget> partitionCodeCache = new ConcurrentHashMap<String, ResolvedTarget>();
 
     public DeviceResolverService(
         DeviceRepository deviceRepository,
         MonitorRepository monitorRepository,
         MonitorPartitionBindRepository monitorPartitionBindRepository,
-        ShaftFloorRepository shaftFloorRepository
+        ShaftFloorRepository shaftFloorRepository,
+        AppProperties appProperties
     ) {
         this.deviceRepository = deviceRepository;
         this.monitorRepository = monitorRepository;
         this.monitorPartitionBindRepository = monitorPartitionBindRepository;
         this.shaftFloorRepository = shaftFloorRepository;
+        this.appProperties = appProperties;
     }
 
     public ResolvedTarget resolve(String dataReference, String partitionCode) {
-        MonitorPartitionBindEntity binding = resolveBinding(dataReference, partitionCode);
-        DeviceEntity device = deviceRepository.findActiveById(binding.getDeviceId())
-            .orElseThrow(() -> new IllegalArgumentException("Device not found for binding deviceId=" + binding.getDeviceId()));
-        MonitorEntity monitor = monitorRepository.findById(binding.getMonitorId())
-            .orElseThrow(() -> new IllegalArgumentException("Monitor not found for binding monitorId=" + binding.getMonitorId()));
-        ShaftFloorEntity shaftFloor = null;
-        if (binding.getShaftFloorId() != null) {
-            shaftFloor = shaftFloorRepository.findActiveById(binding.getShaftFloorId()).orElse(null);
+        if (dataReference != null && !dataReference.trim().isEmpty()) {
+            ResolvedTarget cachedByReference = dataReferenceCache.get(dataReference);
+            if (cachedByReference != null) {
+                return cachedByReference;
+            }
         }
-        return ResolvedTarget.fromBinding(device, monitor, shaftFloor, binding);
+        if (partitionCode != null && !partitionCode.trim().isEmpty()) {
+            ResolvedTarget cachedByPartition = partitionCodeCache.get(partitionCode);
+            if (cachedByPartition != null) {
+                return cachedByPartition;
+            }
+        }
+        ResolvedTarget resolved = buildResolvedTarget(resolveBinding(dataReference, partitionCode));
+        cacheResolvedTarget(resolved);
+        return resolved;
     }
 
     private MonitorPartitionBindEntity resolveBinding(String dataReference, String partitionCode) {
@@ -57,6 +72,52 @@ public class DeviceResolverService {
                 .orElseThrow(() -> new IllegalArgumentException("Partition binding not found for partitionCode=" + partitionCode));
         }
         throw new IllegalArgumentException("Partition binding not found");
+    }
+
+    private ResolvedTarget buildResolvedTarget(MonitorPartitionBindEntity binding) {
+        DeviceEntity device = deviceRepository.findActiveById(binding.getDeviceId())
+            .orElseThrow(() -> new IllegalArgumentException("Device not found for binding deviceId=" + binding.getDeviceId()));
+        MonitorEntity monitor = monitorRepository.findActiveById(binding.getMonitorId())
+            .orElseThrow(() -> new IllegalArgumentException("Monitor not found for binding monitorId=" + binding.getMonitorId()));
+        ShaftFloorEntity shaftFloor = null;
+        if (binding.getShaftFloorId() != null) {
+            shaftFloor = shaftFloorRepository.findActiveById(binding.getShaftFloorId()).orElse(null);
+        }
+        return ResolvedTarget.fromBinding(device, monitor, shaftFloor, binding);
+    }
+
+    private void cacheResolvedTarget(ResolvedTarget resolved) {
+        if (resolved.getDataReference() != null && !resolved.getDataReference().trim().isEmpty()) {
+            dataReferenceCache.put(resolved.getDataReference(), resolved);
+        }
+        if (resolved.getPartitionCode() != null && !resolved.getPartitionCode().trim().isEmpty()) {
+            partitionCodeCache.put(resolved.getPartitionCode(), resolved);
+        }
+    }
+
+    @PostConstruct
+    public void warmupBindingCache() {
+        refreshBindingCache();
+    }
+
+    @Scheduled(fixedDelayString = "${shaft.cache.partition-binding-refresh-ms:300000}")
+    public void refreshBindingCache() {
+        List<MonitorPartitionBindEntity> bindings = monitorPartitionBindRepository.findAllActive();
+        ConcurrentHashMap<String, ResolvedTarget> nextByReference = new ConcurrentHashMap<String, ResolvedTarget>();
+        ConcurrentHashMap<String, ResolvedTarget> nextByPartition = new ConcurrentHashMap<String, ResolvedTarget>();
+        for (MonitorPartitionBindEntity binding : bindings) {
+            ResolvedTarget resolved = buildResolvedTarget(binding);
+            if (resolved.getDataReference() != null && !resolved.getDataReference().trim().isEmpty()) {
+                nextByReference.put(resolved.getDataReference(), resolved);
+            }
+            if (resolved.getPartitionCode() != null && !resolved.getPartitionCode().trim().isEmpty()) {
+                nextByPartition.put(resolved.getPartitionCode(), resolved);
+            }
+        }
+        dataReferenceCache.clear();
+        dataReferenceCache.putAll(nextByReference);
+        partitionCodeCache.clear();
+        partitionCodeCache.putAll(nextByPartition);
     }
 
     public static class ResolvedTarget {

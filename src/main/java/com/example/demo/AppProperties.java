@@ -9,6 +9,8 @@ public class AppProperties {
     private final Mq mq = new Mq();
     private final Alarm alarm = new Alarm();
     private final Inspection inspection = new Inspection();
+    private final Cache cache = new Cache();
+    private final Stat stat = new Stat();
 
     public Mq getMq() {
         return mq;
@@ -20,6 +22,14 @@ public class AppProperties {
 
     public Inspection getInspection() {
         return inspection;
+    }
+
+    public Cache getCache() {
+        return cache;
+    }
+
+    public Stat getStat() {
+        return stat;
     }
 
     public static class Mq {
@@ -50,6 +60,7 @@ public class AppProperties {
         private BigDecimal fiberBreakThreshold = BigDecimal.ZERO;
         private long offlineThresholdSeconds = 30L;
         private int windowSize = 20;
+        private long eventThrottleSeconds = 300L;
 
         public BigDecimal getTemperatureThreshold() {
             return temperatureThreshold;
@@ -98,6 +109,14 @@ public class AppProperties {
         public void setWindowSize(int windowSize) {
             this.windowSize = windowSize;
         }
+
+        public long getEventThrottleSeconds() {
+            return eventThrottleSeconds;
+        }
+
+        public void setEventThrottleSeconds(long eventThrottleSeconds) {
+            this.eventThrottleSeconds = eventThrottleSeconds;
+        }
     }
 
     public static class Inspection {
@@ -118,6 +137,30 @@ public class AppProperties {
 
         public void setFixedDelayMs(long fixedDelayMs) {
             this.fixedDelayMs = fixedDelayMs;
+        }
+    }
+
+    public static class Cache {
+        private long partitionBindingRefreshMs = 300000L;
+
+        public long getPartitionBindingRefreshMs() {
+            return partitionBindingRefreshMs;
+        }
+
+        public void setPartitionBindingRefreshMs(long partitionBindingRefreshMs) {
+            this.partitionBindingRefreshMs = partitionBindingRefreshMs;
+        }
+    }
+
+    public static class Stat {
+        private long flushDelayMs = 15000L;
+
+        public long getFlushDelayMs() {
+            return flushDelayMs;
+        }
+
+        public void setFlushDelayMs(long flushDelayMs) {
+            this.flushDelayMs = flushDelayMs;
         }
     }
 }

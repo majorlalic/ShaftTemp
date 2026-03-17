@@ -85,18 +85,20 @@ public class AlarmMergeService implements AlarmService {
         AlarmEntity savedAlarm = alarmRepository.save(alarm);
         realtimeStateService.setActiveAlarmId(result.getAlarmType(), resolved.getPartitionCode(), savedAlarm.getId());
 
-        createEvent(
-            savedAlarm,
-            resolved,
-            result.getAlarmType(),
-            result.getSourceType(),
-            eventTime,
-            savedAlarm.getMergeCount(),
-            result.getAlarmLevel(),
-            pointListJson,
-            detailJson,
-            merged ? 1 : 0
-        );
+        if (!merged || realtimeStateService.shouldWriteMergedEvent(result.getAlarmType(), resolved.getPartitionCode(), eventTime)) {
+            createEvent(
+                savedAlarm,
+                resolved,
+                result.getAlarmType(),
+                result.getSourceType(),
+                eventTime,
+                savedAlarm.getMergeCount(),
+                result.getAlarmLevel(),
+                pointListJson,
+                detailJson,
+                merged ? 1 : 0
+            );
+        }
         return savedAlarm;
     }
 
@@ -229,5 +231,6 @@ public class AlarmMergeService implements AlarmService {
         event.setCreatedOn(eventTime);
         event.setUpdatedOn(eventTime);
         eventRepository.save(event);
+        realtimeStateService.markEventWritten(alarmType, resolved.getPartitionCode(), eventTime);
     }
 }

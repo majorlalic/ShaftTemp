@@ -11,6 +11,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -129,6 +131,64 @@ public class RealtimeStateService {
 
     public void resetOfflineLevel(Long deviceId) {
         redisTemplate.opsForValue().set(keyBuilder.offlineLevelKey(deviceId), "0");
+    }
+
+    public void updateMinuteAggregate(
+        DeviceResolverService.ResolvedTarget resolved,
+        LocalDateTime collectTime,
+        ReportMetrics metrics,
+        int alarmCount
+    ) {
+        LocalDateTime statTime = collectTime.withSecond(0).withNano(0);
+        String key = keyBuilder.minuteStatKey(resolved.getPartitionCode(), statTime);
+        MinuteStatAggregate aggregate = getMinuteAggregate(key).orElseGet(() -> MinuteStatAggregate.newAggregate(resolved, statTime, metrics, alarmCount));
+        if (aggregate.getCount() != null && aggregate.getCount().intValue() > 0) {
+            aggregate.merge(metrics, alarmCount);
+        }
+        redisTemplate.opsForValue().set(key, toJson(aggregate.toMap()));
+        redisTemplate.opsForSet().add(keyBuilder.minuteStatPendingSetKey(), key);
+    }
+
+    public List<String> getPendingMinuteStatKeys() {
+        return redisTemplate.opsForSet().members(keyBuilder.minuteStatPendingSetKey()) == null
+            ? java.util.Collections.<String>emptyList()
+            : new java.util.ArrayList<String>(redisTemplate.opsForSet().members(keyBuilder.minuteStatPendingSetKey()));
+    }
+
+    public Optional<MinuteStatAggregate> getMinuteAggregate(String key) {
+        String value = redisTemplate.opsForValue().get(key);
+        if (value == null || value.trim().isEmpty()) {
+            return Optional.empty();
+        }
+        try {
+            Map<String, Object> payload = objectMapper.readValue(value, new TypeReference<Map<String, Object>>() {});
+            return Optional.of(MinuteStatAggregate.from(payload));
+        } catch (JsonProcessingException ex) {
+            throw new IllegalStateException("Failed to parse minute aggregate", ex);
+        }
+    }
+
+    public void removePendingMinuteStat(String key) {
+        redisTemplate.opsForSet().remove(keyBuilder.minuteStatPendingSetKey(), key);
+        redisTemplate.delete(key);
+    }
+
+    public boolean shouldWriteMergedEvent(String alarmType, String partitionCode, LocalDateTime eventTime) {
+        long throttleSeconds = appProperties.getAlarm().getEventThrottleSeconds();
+        if (throttleSeconds <= 0L) {
+            return true;
+        }
+        String key = keyBuilder.lastEventTimeKey(alarmType, partitionCode);
+        String lastEventTimeValue = redisTemplate.opsForValue().get(key);
+        if (lastEventTimeValue == null || lastEventTimeValue.trim().isEmpty()) {
+            return true;
+        }
+        LocalDateTime lastEventTime = LocalDateTime.parse(lastEventTimeValue, FORMATTER);
+        return java.time.Duration.between(lastEventTime, eventTime).getSeconds() >= throttleSeconds;
+    }
+
+    public void markEventWritten(String alarmType, String partitionCode, LocalDateTime eventTime) {
+        redisTemplate.opsForValue().set(keyBuilder.lastEventTimeKey(alarmType, partitionCode), FORMATTER.format(eventTime));
     }
 
     public Map<String, Object> buildAlarmDetail(
@@ -375,5 +435,140 @@ public class RealtimeStateService {
         public void setMinTempChannel(Integer minTempChannel) {
             this.minTempChannel = minTempChannel;
         }
+    }
+
+    public static class MinuteStatAggregate {
+        private Long deviceId;
+        private Long monitorId;
+        private Long shaftFloorId;
+        private String partitionCode;
+        private String partitionName;
+        private String dataReference;
+        private String deviceToken;
+        private Integer partitionNo;
+        private String sourceFormat;
+        private LocalDateTime statTime;
+        private BigDecimal maxTemp;
+        private BigDecimal minTemp;
+        private BigDecimal avgTempSum;
+        private Integer count;
+        private Integer alarmCount;
+
+        public static MinuteStatAggregate newAggregate(
+            DeviceResolverService.ResolvedTarget resolved,
+            LocalDateTime statTime,
+            ReportMetrics metrics,
+            int alarmCount
+        ) {
+            MinuteStatAggregate aggregate = new MinuteStatAggregate();
+            aggregate.setDeviceId(resolved.getDevice().getId());
+            aggregate.setMonitorId(resolved.getMonitor().getId());
+            aggregate.setShaftFloorId(resolved.getShaftFloorId());
+            aggregate.setPartitionCode(resolved.getPartitionCode());
+            aggregate.setPartitionName(resolved.getPartitionName());
+            aggregate.setDataReference(resolved.getDataReference());
+            aggregate.setDeviceToken(resolved.getDeviceToken());
+            aggregate.setPartitionNo(resolved.getPartitionNo());
+            aggregate.setSourceFormat(resolved.getSourceFormat());
+            aggregate.setStatTime(statTime);
+            aggregate.setMaxTemp(metrics.getMaxTemp());
+            aggregate.setMinTemp(metrics.getMinTemp());
+            aggregate.setAvgTempSum(metrics.getAvgTemp());
+            aggregate.setCount(1);
+            aggregate.setAlarmCount(alarmCount);
+            return aggregate;
+        }
+
+        public static MinuteStatAggregate from(Map<String, Object> payload) {
+            MinuteStatAggregate aggregate = new MinuteStatAggregate();
+            aggregate.setDeviceId(Long.valueOf(String.valueOf(payload.get("deviceId"))));
+            aggregate.setMonitorId(Long.valueOf(String.valueOf(payload.get("monitorId"))));
+            Object shaftFloorIdValue = payload.get("shaftFloorId");
+            if (shaftFloorIdValue != null && !"null".equals(String.valueOf(shaftFloorIdValue))) {
+                aggregate.setShaftFloorId(Long.valueOf(String.valueOf(shaftFloorIdValue)));
+            }
+            aggregate.setPartitionCode(String.valueOf(payload.get("partitionCode")));
+            aggregate.setPartitionName(payload.get("partitionName") == null ? null : String.valueOf(payload.get("partitionName")));
+            aggregate.setDataReference(payload.get("dataReference") == null ? null : String.valueOf(payload.get("dataReference")));
+            aggregate.setDeviceToken(payload.get("deviceToken") == null ? null : String.valueOf(payload.get("deviceToken")));
+            Object partitionNoValue = payload.get("partitionNo");
+            if (partitionNoValue != null && !"null".equals(String.valueOf(partitionNoValue))) {
+                aggregate.setPartitionNo(Integer.valueOf(String.valueOf(partitionNoValue)));
+            }
+            aggregate.setSourceFormat(payload.get("sourceFormat") == null ? null : String.valueOf(payload.get("sourceFormat")));
+            aggregate.setStatTime(LocalDateTime.parse(String.valueOf(payload.get("statTime")), FORMATTER));
+            aggregate.setMaxTemp(new BigDecimal(String.valueOf(payload.get("maxTemp"))));
+            aggregate.setMinTemp(new BigDecimal(String.valueOf(payload.get("minTemp"))));
+            aggregate.setAvgTempSum(new BigDecimal(String.valueOf(payload.get("avgTempSum"))));
+            aggregate.setCount(Integer.valueOf(String.valueOf(payload.get("count"))));
+            aggregate.setAlarmCount(Integer.valueOf(String.valueOf(payload.get("alarmCount"))));
+            return aggregate;
+        }
+
+        public void merge(ReportMetrics metrics, int alarmCount) {
+            setMaxTemp(getMaxTemp().max(metrics.getMaxTemp()));
+            setMinTemp(getMinTemp().min(metrics.getMinTemp()));
+            setAvgTempSum(getAvgTempSum().add(metrics.getAvgTemp()));
+            setCount(getCount() + 1);
+            setAlarmCount((getAlarmCount() == null ? 0 : getAlarmCount()) + alarmCount);
+        }
+
+        public BigDecimal getAvgTemp() {
+            if (count == null || count.intValue() == 0) {
+                return BigDecimal.ZERO;
+            }
+            return avgTempSum.divide(new BigDecimal(String.valueOf(count)), 2, java.math.RoundingMode.HALF_UP);
+        }
+
+        public Map<String, Object> toMap() {
+            Map<String, Object> payload = new LinkedHashMap<String, Object>();
+            payload.put("deviceId", deviceId);
+            payload.put("monitorId", monitorId);
+            payload.put("shaftFloorId", shaftFloorId);
+            payload.put("partitionCode", partitionCode);
+            payload.put("partitionName", partitionName);
+            payload.put("dataReference", dataReference);
+            payload.put("deviceToken", deviceToken);
+            payload.put("partitionNo", partitionNo);
+            payload.put("sourceFormat", sourceFormat);
+            payload.put("statTime", FORMATTER.format(statTime));
+            payload.put("maxTemp", maxTemp);
+            payload.put("minTemp", minTemp);
+            payload.put("avgTempSum", avgTempSum);
+            payload.put("count", count);
+            payload.put("alarmCount", alarmCount);
+            return payload;
+        }
+
+        public Long getDeviceId() { return deviceId; }
+        public void setDeviceId(Long deviceId) { this.deviceId = deviceId; }
+        public Long getMonitorId() { return monitorId; }
+        public void setMonitorId(Long monitorId) { this.monitorId = monitorId; }
+        public Long getShaftFloorId() { return shaftFloorId; }
+        public void setShaftFloorId(Long shaftFloorId) { this.shaftFloorId = shaftFloorId; }
+        public String getPartitionCode() { return partitionCode; }
+        public void setPartitionCode(String partitionCode) { this.partitionCode = partitionCode; }
+        public String getPartitionName() { return partitionName; }
+        public void setPartitionName(String partitionName) { this.partitionName = partitionName; }
+        public String getDataReference() { return dataReference; }
+        public void setDataReference(String dataReference) { this.dataReference = dataReference; }
+        public String getDeviceToken() { return deviceToken; }
+        public void setDeviceToken(String deviceToken) { this.deviceToken = deviceToken; }
+        public Integer getPartitionNo() { return partitionNo; }
+        public void setPartitionNo(Integer partitionNo) { this.partitionNo = partitionNo; }
+        public String getSourceFormat() { return sourceFormat; }
+        public void setSourceFormat(String sourceFormat) { this.sourceFormat = sourceFormat; }
+        public LocalDateTime getStatTime() { return statTime; }
+        public void setStatTime(LocalDateTime statTime) { this.statTime = statTime; }
+        public BigDecimal getMaxTemp() { return maxTemp; }
+        public void setMaxTemp(BigDecimal maxTemp) { this.maxTemp = maxTemp; }
+        public BigDecimal getMinTemp() { return minTemp; }
+        public void setMinTemp(BigDecimal minTemp) { this.minTemp = minTemp; }
+        public BigDecimal getAvgTempSum() { return avgTempSum; }
+        public void setAvgTempSum(BigDecimal avgTempSum) { this.avgTempSum = avgTempSum; }
+        public Integer getCount() { return count; }
+        public void setCount(Integer count) { this.count = count; }
+        public Integer getAlarmCount() { return alarmCount; }
+        public void setAlarmCount(Integer alarmCount) { this.alarmCount = alarmCount; }
     }
 }

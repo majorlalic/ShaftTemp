@@ -3,6 +3,7 @@ package com.example.demo.alarm;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -86,6 +87,7 @@ class AlarmMergeServiceTest {
         existing.setStatus("ACTIVE");
 
         when(realtimeStateService.getActiveAlarmId("TEMP_THRESHOLD", "dev_TMP_th01")).thenReturn(Optional.of(500L));
+        when(realtimeStateService.shouldWriteMergedEvent("TEMP_THRESHOLD", "dev_TMP_th01", LocalDateTime.of(2026, 3, 13, 10, 0))).thenReturn(true);
         when(alarmRepository.findById(500L)).thenReturn(Optional.of(existing));
         when(alarmRepository.save(any(AlarmEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(idGenerator.nextId()).thenReturn(1003L);
@@ -118,6 +120,43 @@ class AlarmMergeServiceTest {
         ArgumentCaptor<AlarmEntity> captor = ArgumentCaptor.forClass(AlarmEntity.class);
         verify(alarmRepository).save(captor.capture());
         assertEquals(3, captor.getValue().getMergeCount().intValue());
+    }
+
+    @Test
+    void shouldSkipMergedEventWhenThrottled() {
+        AlarmEntity existing = new AlarmEntity();
+        existing.setId(500L);
+        existing.setMergeCount(2);
+        existing.setStatus("ACTIVE");
+
+        when(realtimeStateService.getActiveAlarmId("TEMP_THRESHOLD", "dev_TMP_th01")).thenReturn(Optional.of(500L));
+        when(realtimeStateService.shouldWriteMergedEvent("TEMP_THRESHOLD", "dev_TMP_th01", LocalDateTime.of(2026, 3, 13, 10, 0))).thenReturn(false);
+        when(alarmRepository.findById(500L)).thenReturn(Optional.of(existing));
+        when(alarmRepository.save(any(AlarmEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        DeviceEntity device = new DeviceEntity();
+        device.setId(1L);
+        MonitorEntity monitor = new MonitorEntity();
+        monitor.setId(10L);
+        DeviceResolverService.ResolvedTarget resolved = new DeviceResolverService.ResolvedTarget(
+            device,
+            monitor,
+            null,
+            "dev_TMP_th01",
+            "一区",
+            "/TMP/dev_TMP_th01",
+            "dev",
+            1,
+            "MQ_PARTITION"
+        );
+        RuleEvaluationResult result = new RuleEvaluationResult(
+            "TEMP_THRESHOLD", "REALTIME", 2, "温度超限", "超过阈值",
+            Collections.singletonList(3), new BigDecimal("90.0"), new BigDecimal("70.0")
+        );
+
+        alarmMergeService.createOrMerge(resolved, result, LocalDateTime.of(2026, 3, 13, 10, 0), "{}", "[3]");
+
+        verify(eventRepository, never()).save(any());
     }
 
     @Test
