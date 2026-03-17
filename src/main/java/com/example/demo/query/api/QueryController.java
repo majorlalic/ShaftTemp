@@ -23,28 +23,36 @@ public class QueryController {
     }
 
     @GetMapping("/events")
-    public ResponseEntity<List<Map<String, Object>>> listEvents(@RequestParam(required = false) Long alarmId) {
-        return ResponseEntity.ok(queryService.listEvents(alarmId));
+    public ResponseEntity<List<Map<String, Object>>> listEvents(
+        @RequestParam(required = false) Long alarmId,
+        @RequestParam(required = false) Long shaftFloorId,
+        @RequestParam(required = false) String partitionCode
+    ) {
+        return ResponseEntity.ok(queryService.listEvents(alarmId, shaftFloorId, partitionCode));
     }
 
     @GetMapping("/raw-data")
     public ResponseEntity<List<Map<String, Object>>> listRawData(
         @RequestParam(required = false) Long monitorId,
         @RequestParam(required = false) Long deviceId,
+        @RequestParam(required = false) Long shaftFloorId,
+        @RequestParam(required = false) String partitionCode,
         @RequestParam(required = false) Integer limit
     ) {
-        return ResponseEntity.ok(queryService.listRawData(monitorId, deviceId, limit));
+        return ResponseEntity.ok(queryService.listRawData(monitorId, deviceId, shaftFloorId, partitionCode, limit));
     }
 
     @GetMapping("/temp-stats/minute")
     public ResponseEntity<List<Map<String, Object>>> listTempStats(
         @RequestParam(required = false) Long monitorId,
         @RequestParam(required = false) Long deviceId,
+        @RequestParam(required = false) Long shaftFloorId,
+        @RequestParam(required = false) String partitionCode,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
         @RequestParam(required = false) Integer limit
     ) {
-        return ResponseEntity.ok(queryService.listTempStats(monitorId, deviceId, from, to, limit));
+        return ResponseEntity.ok(queryService.listTempStats(monitorId, deviceId, shaftFloorId, partitionCode, from, to, limit));
     }
 
     @GetMapping("/devices/{deviceId}/realtime")

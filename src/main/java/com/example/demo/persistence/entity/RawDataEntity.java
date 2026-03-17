@@ -23,6 +23,27 @@ public class RawDataEntity {
     @Column(name = "monitor_id")
     private Long monitorId;
 
+    @Column(name = "shaft_floor_id")
+    private Long shaftFloorId;
+
+    @Column(name = "partition_code")
+    private String partitionCode;
+
+    @Column(name = "partition_name")
+    private String partitionName;
+
+    @Column(name = "data_reference")
+    private String dataReference;
+
+    @Column(name = "device_token")
+    private String deviceToken;
+
+    @Column(name = "partition_no")
+    private Integer partitionNo;
+
+    @Column(name = "source_format")
+    private String sourceFormat;
+
     @Column(name = "collect_time")
     private LocalDateTime collectTime;
 
@@ -85,6 +106,62 @@ public class RawDataEntity {
 
     public void setMonitorId(Long monitorId) {
         this.monitorId = monitorId;
+    }
+
+    public Long getShaftFloorId() {
+        return shaftFloorId;
+    }
+
+    public void setShaftFloorId(Long shaftFloorId) {
+        this.shaftFloorId = shaftFloorId;
+    }
+
+    public String getPartitionCode() {
+        return partitionCode;
+    }
+
+    public void setPartitionCode(String partitionCode) {
+        this.partitionCode = partitionCode;
+    }
+
+    public String getPartitionName() {
+        return partitionName;
+    }
+
+    public void setPartitionName(String partitionName) {
+        this.partitionName = partitionName;
+    }
+
+    public String getDataReference() {
+        return dataReference;
+    }
+
+    public void setDataReference(String dataReference) {
+        this.dataReference = dataReference;
+    }
+
+    public String getDeviceToken() {
+        return deviceToken;
+    }
+
+    public void setDeviceToken(String deviceToken) {
+        this.deviceToken = deviceToken;
+    }
+
+    public Integer getPartitionNo() {
+        return partitionNo;
+    }
+
+    public void setPartitionNo(Integer partitionNo) {
+        this.partitionNo = partitionNo;
+    }
+
+    public String getSourceFormat() {
+        return sourceFormat;
+    }
+
+    public void setSourceFormat(String sourceFormat) {
+        this.sourceFormat = sourceFormat;
     }
 
     public LocalDateTime getCollectTime() {

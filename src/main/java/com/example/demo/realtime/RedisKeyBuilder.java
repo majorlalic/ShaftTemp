@@ -13,12 +13,21 @@ public class RedisKeyBuilder {
         return "device:last_data:" + deviceId;
     }
 
-    public String windowKey(Long deviceId) {
-        return "device:window:" + deviceId;
+    public String partitionMeasureKey(String partitionCode) {
+        return "partition:last_measure:" + partitionCode;
     }
 
-    public String activeAlarmKey(String alarmType, Long monitorId) {
-        return "alarm:active:" + alarmType + ":" + monitorId;
+    public String partitionWindowKey(String partitionCode) {
+        return "partition:window:" + partitionCode;
+    }
+
+    public String partitionAlarmStateKey(String partitionCode) {
+        return "partition:last_alarm:" + partitionCode;
+    }
+
+    public String activeAlarmKey(String alarmType, String partitionCode) {
+        String scope = partitionCode == null || partitionCode.trim().isEmpty() ? "device" : partitionCode;
+        return "alarm:active:" + alarmType + ":" + scope;
     }
 
     public String offlineLevelKey(Long deviceId) {

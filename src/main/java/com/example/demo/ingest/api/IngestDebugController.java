@@ -1,6 +1,7 @@
 package com.example.demo.ingest.api;
 
-import com.example.demo.ingest.dto.TemperatureReportRequest;
+import com.example.demo.ingest.dto.PartitionAlarmRequest;
+import com.example.demo.ingest.dto.PartitionMeasureRequest;
 import com.example.demo.ingest.service.ReportIngestService;
 import javax.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -19,8 +20,13 @@ public class IngestDebugController {
         this.reportIngestService = reportIngestService;
     }
 
-    @PostMapping
-    public ResponseEntity<ReportIngestService.IngestResult> ingest(@Valid @RequestBody TemperatureReportRequest request) {
-        return ResponseEntity.ok(reportIngestService.ingest(request));
+    @PostMapping("/measure")
+    public ResponseEntity<ReportIngestService.IngestResult> ingestMeasure(@Valid @RequestBody PartitionMeasureRequest request) {
+        return ResponseEntity.ok(reportIngestService.ingestMeasure(request));
+    }
+
+    @PostMapping("/alarm")
+    public ResponseEntity<ReportIngestService.IngestResult> ingestAlarm(@Valid @RequestBody PartitionAlarmRequest request) {
+        return ResponseEntity.ok(reportIngestService.ingestAlarm(request));
     }
 }

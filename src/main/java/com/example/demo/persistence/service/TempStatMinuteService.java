@@ -1,5 +1,6 @@
 package com.example.demo.persistence.service;
 
+import com.example.demo.ingest.service.DeviceResolverService;
 import com.example.demo.ingest.service.ReportIngestService.ReportMetrics;
 import com.example.demo.persistence.entity.TempStatMinuteEntity;
 import com.example.demo.persistence.repository.TempStatMinuteRepository;
@@ -23,19 +24,30 @@ public class TempStatMinuteService {
 
     @Transactional
     public TempStatMinuteEntity aggregate(
-        Long deviceId,
-        Long monitorId,
+        DeviceResolverService.ResolvedTarget resolved,
         LocalDateTime collectTime,
         ReportMetrics metrics,
         int alarmPointCount
     ) {
         LocalDateTime statTime = collectTime.withSecond(0).withNano(0);
-        TempStatMinuteEntity entity = tempStatMinuteRepository.findActiveByStatTime(deviceId, monitorId, statTime).orElse(null);
+        TempStatMinuteEntity entity = tempStatMinuteRepository.findActiveByStatTime(
+            resolved.getDevice().getId(),
+            resolved.getMonitor().getId(),
+            resolved.getPartitionCode(),
+            statTime
+        ).orElse(null);
         if (entity == null) {
             entity = new TempStatMinuteEntity();
             entity.setId(idGenerator.nextId());
-            entity.setDeviceId(deviceId);
-            entity.setMonitorId(monitorId);
+            entity.setDeviceId(resolved.getDevice().getId());
+            entity.setMonitorId(resolved.getMonitor().getId());
+            entity.setShaftFloorId(resolved.getShaftFloorId());
+            entity.setPartitionCode(resolved.getPartitionCode());
+            entity.setPartitionName(resolved.getPartitionName());
+            entity.setDataReference(resolved.getDataReference());
+            entity.setDeviceToken(resolved.getDeviceToken());
+            entity.setPartitionNo(resolved.getPartitionNo());
+            entity.setSourceFormat(resolved.getSourceFormat());
             entity.setStatTime(statTime);
             entity.setMaxTemp(metrics.getMaxTemp());
             entity.setMinTemp(metrics.getMinTemp());

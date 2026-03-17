@@ -1,16 +1,14 @@
 package com.example.demo.alarm;
 
-import com.example.demo.persistence.entity.AlarmEntity;
-import com.example.demo.persistence.entity.DeviceEntity;
-import com.example.demo.persistence.entity.MonitorEntity;
 import com.example.demo.alarm.rule.RuleEvaluationResult;
+import com.example.demo.ingest.service.DeviceResolverService;
+import com.example.demo.persistence.entity.AlarmEntity;
 import java.time.LocalDateTime;
 
 public interface AlarmService {
 
     AlarmEntity createOrMerge(
-        DeviceEntity device,
-        MonitorEntity monitor,
+        DeviceResolverService.ResolvedTarget resolved,
         RuleEvaluationResult result,
         LocalDateTime eventTime,
         String detailJson,
@@ -18,8 +16,7 @@ public interface AlarmService {
     );
 
     void recover(
-        DeviceEntity device,
-        MonitorEntity monitor,
+        DeviceResolverService.ResolvedTarget resolved,
         String alarmType,
         LocalDateTime eventTime,
         String detailJson

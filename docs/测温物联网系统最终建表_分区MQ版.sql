@@ -1,5 +1,27 @@
--- 测温物联网系统最终建表语句（无主键、无索引、无外键、无唯一约束）
--- 说明：按当前确认版本输出。
+-- 测温物联网系统最终建库脚本（分区MQ版）
+-- 说明：
+-- 1. 面向当前代码实现，按“设备 + 分区 + 楼层 + MQ Measure/Alarm”模型整理
+-- 2. 保持与历史约定一致：不加主键、索引、外键、唯一约束
+-- 3. 用于本地快速建库与联调，库名固定为 shaft
+
+CREATE DATABASE IF NOT EXISTS shaft
+DEFAULT CHARACTER SET utf8mb4
+DEFAULT COLLATE utf8mb4_general_ci;
+
+USE shaft;
+
+DROP TABLE IF EXISTS device_online_log;
+DROP TABLE IF EXISTS temp_stat_minute;
+DROP TABLE IF EXISTS raw_data;
+DROP TABLE IF EXISTS event;
+DROP TABLE IF EXISTS alarm;
+DROP TABLE IF EXISTS monitor_partition_bind;
+DROP TABLE IF EXISTS monitor_device_bind;
+DROP TABLE IF EXISTS shaft_floor;
+DROP TABLE IF EXISTS monitor;
+DROP TABLE IF EXISTS device;
+DROP TABLE IF EXISTS org;
+DROP TABLE IF EXISTS area;
 
 CREATE TABLE area (
     id bigint unsigned COMMENT '主键ID',
@@ -119,16 +141,17 @@ CREATE TABLE monitor_device_bind (
     deleted_on datetime COMMENT '删除时间'
 ) COMMENT='monitor_device_bind表';
 
-CREATE TABLE alarm_rule (
+CREATE TABLE monitor_partition_bind (
     id bigint unsigned COMMENT '主键ID',
-    rule_code varchar(50) COMMENT '规则编码',
-    rule_name varchar(100) COMMENT '规则名称',
-    alarm_scope varchar(20) COMMENT '告警范围',
-    enabled tinyint COMMENT '是否启用',
-    scope_type varchar(20) COMMENT '作用范围类型',
-    scope_id bigint unsigned COMMENT '作用对象ID',
-    priority int COMMENT '优先级',
-    remark varchar(500) COMMENT '备注',
+    monitor_id bigint unsigned COMMENT '监测对象ID',
+    device_id bigint unsigned COMMENT '终端ID',
+    shaft_floor_id bigint unsigned COMMENT '楼层ID',
+    partition_code varchar(100) COMMENT '分区编码',
+    partition_name varchar(100) COMMENT '分区名称',
+    data_reference varchar(200) COMMENT 'MQ数据引用',
+    device_token varchar(100) COMMENT '设备编码片段',
+    partition_no int COMMENT '分区序号',
+    bind_status tinyint COMMENT '绑定状态',
     deleted tinyint COMMENT '是否删除',
     creator bigint unsigned COMMENT '创建人',
     updator bigint unsigned COMMENT '更新人',
@@ -136,22 +159,7 @@ CREATE TABLE alarm_rule (
     created_on datetime COMMENT '创建时间',
     updated_on datetime COMMENT '更新时间',
     deleted_on datetime COMMENT '删除时间'
-) COMMENT='alarm_rule表';
-
-CREATE TABLE alarm_rule_param (
-    id bigint unsigned COMMENT '主键ID',
-    rule_id bigint unsigned COMMENT '规则ID',
-    param_key varchar(50) COMMENT '参数名',
-    param_value varchar(100) COMMENT '参数值',
-    param_unit varchar(20) COMMENT '参数单位',
-    deleted tinyint COMMENT '是否删除',
-    creator bigint unsigned COMMENT '创建人',
-    updator bigint unsigned COMMENT '更新人',
-    deletor bigint unsigned COMMENT '删除人',
-    created_on datetime COMMENT '创建时间',
-    updated_on datetime COMMENT '更新时间',
-    deleted_on datetime COMMENT '删除时间'
-) COMMENT='alarm_rule_param表';
+) COMMENT='monitor_partition_bind表';
 
 CREATE TABLE alarm (
     id bigint unsigned COMMENT '主键ID',
@@ -160,6 +168,13 @@ CREATE TABLE alarm (
     source_type varchar(20) COMMENT '来源类型',
     monitor_id bigint unsigned COMMENT '监测对象ID',
     device_id bigint unsigned COMMENT '终端ID',
+    shaft_floor_id bigint unsigned COMMENT '楼层ID',
+    partition_code varchar(100) COMMENT '分区编码',
+    partition_name varchar(100) COMMENT '分区名称',
+    data_reference varchar(200) COMMENT 'MQ数据引用',
+    device_token varchar(100) COMMENT '设备编码片段',
+    partition_no int COMMENT '分区序号',
+    source_format varchar(30) COMMENT '数据来源格式',
     status varchar(20) COMMENT '告警状态',
     first_alarm_time datetime COMMENT '首次告警时间',
     last_alarm_time datetime COMMENT '最近告警时间',
@@ -182,6 +197,13 @@ CREATE TABLE event (
     source_type varchar(20) COMMENT '来源类型',
     monitor_id bigint unsigned COMMENT '监测对象ID',
     device_id bigint unsigned COMMENT '终端ID',
+    shaft_floor_id bigint unsigned COMMENT '楼层ID',
+    partition_code varchar(100) COMMENT '分区编码',
+    partition_name varchar(100) COMMENT '分区名称',
+    data_reference varchar(200) COMMENT 'MQ数据引用',
+    device_token varchar(100) COMMENT '设备编码片段',
+    partition_no int COMMENT '分区序号',
+    source_format varchar(30) COMMENT '数据来源格式',
     event_time datetime COMMENT '事件时间',
     event_no int unsigned COMMENT '事件序号',
     event_level tinyint unsigned COMMENT '事件等级',
@@ -198,11 +220,18 @@ CREATE TABLE raw_data (
     device_id bigint unsigned COMMENT '终端ID',
     iot_code varchar(100) COMMENT '物联编码',
     monitor_id bigint unsigned COMMENT '监测对象ID',
+    shaft_floor_id bigint unsigned COMMENT '楼层ID',
+    partition_code varchar(100) COMMENT '分区编码',
+    partition_name varchar(100) COMMENT '分区名称',
+    data_reference varchar(200) COMMENT 'MQ数据引用',
+    device_token varchar(100) COMMENT '设备编码片段',
+    partition_no int COMMENT '分区序号',
+    source_format varchar(30) COMMENT '数据来源格式',
     collect_time datetime COMMENT '采集时间',
     point_count int unsigned COMMENT '点位数量',
     valid_start_point int unsigned COMMENT '有效开始点位',
     valid_end_point int unsigned COMMENT '有效结束点位',
-    values_json json COMMENT '原始温度数组',
+    values_json json COMMENT '分区测量快照JSON',
     max_temp decimal(8,2) COMMENT '最大温度',
     min_temp decimal(8,2) COMMENT '最小温度',
     avg_temp decimal(8,2) COMMENT '平均温度',
@@ -215,11 +244,18 @@ CREATE TABLE temp_stat_minute (
     id bigint unsigned COMMENT '主键ID',
     device_id bigint unsigned COMMENT '终端ID',
     monitor_id bigint unsigned COMMENT '监测对象ID',
+    shaft_floor_id bigint unsigned COMMENT '楼层ID',
+    partition_code varchar(100) COMMENT '分区编码',
+    partition_name varchar(100) COMMENT '分区名称',
+    data_reference varchar(200) COMMENT 'MQ数据引用',
+    device_token varchar(100) COMMENT '设备编码片段',
+    partition_no int COMMENT '分区序号',
+    source_format varchar(30) COMMENT '数据来源格式',
     stat_time datetime COMMENT '统计时间',
     max_temp decimal(8,2) COMMENT '最大温度',
     min_temp decimal(8,2) COMMENT '最小温度',
     avg_temp decimal(8,2) COMMENT '平均温度',
-    alarm_point_count int unsigned COMMENT '异常点数量',
+    alarm_point_count int unsigned COMMENT '异常数量',
     deleted tinyint COMMENT '是否删除',
     created_on datetime COMMENT '创建时间'
 ) COMMENT='temp_stat_minute表';

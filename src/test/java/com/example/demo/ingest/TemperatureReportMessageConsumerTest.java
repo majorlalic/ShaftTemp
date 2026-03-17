@@ -3,6 +3,7 @@ package com.example.demo.ingest;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 
+import com.example.demo.ingest.mq.PartitionTopicParser;
 import com.example.demo.ingest.mq.TemperatureReportMessageConsumer;
 import com.example.demo.ingest.service.ReportIngestService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -18,12 +19,15 @@ class TemperatureReportMessageConsumerTest {
     private ReportIngestService reportIngestService;
 
     @Test
-    void shouldParseMqPayloadAndDelegate() {
+    void shouldParseMeasurePayloadAndDelegate() {
         TemperatureReportMessageConsumer consumer =
-            new TemperatureReportMessageConsumer(reportIngestService, new ObjectMapper());
+            new TemperatureReportMessageConsumer(reportIngestService, new ObjectMapper(), new PartitionTopicParser());
 
-        consumer.consume("{\"iotCode\":\"dev-1\",\"values\":[12,13,14]}");
+        consumer.consume(
+            "{\"IedFullPath\":\"shaft/a\",\"dataReference\":\"/TMP/dev_TMP_th01\",\"MaxTemp\":82.5,\"MinTemp\":70.1,\"AvgTemp\":75.2}",
+            "/TMP/dev_TMP_th01/Measure"
+        );
 
-        verify(reportIngestService).ingest(any());
+        verify(reportIngestService).ingestMeasure(any());
     }
 }

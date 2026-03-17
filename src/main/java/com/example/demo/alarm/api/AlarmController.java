@@ -29,9 +29,11 @@ public class AlarmController {
     public ResponseEntity<List<Map<String, Object>>> list(
         @RequestParam(required = false) String status,
         @RequestParam(required = false) Long monitorId,
-        @RequestParam(required = false) Long deviceId
+        @RequestParam(required = false) Long deviceId,
+        @RequestParam(required = false) Long shaftFloorId,
+        @RequestParam(required = false) String partitionCode
     ) {
-        return ResponseEntity.ok(queryService.listAlarms(status, monitorId, deviceId));
+        return ResponseEntity.ok(queryService.listAlarms(status, monitorId, deviceId, shaftFloorId, partitionCode));
     }
 
     @GetMapping("/{alarmId}")

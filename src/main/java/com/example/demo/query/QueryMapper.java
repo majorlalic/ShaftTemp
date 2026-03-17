@@ -20,6 +20,10 @@ public class QueryMapper {
         payload.put("sourceType", alarm.getSourceType());
         payload.put("monitorId", alarm.getMonitorId());
         payload.put("deviceId", alarm.getDeviceId());
+        payload.put("shaftFloorId", alarm.getShaftFloorId());
+        payload.put("partitionCode", alarm.getPartitionCode());
+        payload.put("partitionName", alarm.getPartitionName());
+        payload.put("dataReference", alarm.getDataReference());
         payload.put("status", alarm.getStatus());
         payload.put("firstAlarmTime", alarm.getFirstAlarmTime());
         payload.put("lastAlarmTime", alarm.getLastAlarmTime());
@@ -42,6 +46,10 @@ public class QueryMapper {
         payload.put("sourceType", event.getSourceType());
         payload.put("monitorId", event.getMonitorId());
         payload.put("deviceId", event.getDeviceId());
+        payload.put("shaftFloorId", event.getShaftFloorId());
+        payload.put("partitionCode", event.getPartitionCode());
+        payload.put("partitionName", event.getPartitionName());
+        payload.put("dataReference", event.getDataReference());
         payload.put("eventTime", event.getEventTime());
         payload.put("eventNo", event.getEventNo());
         payload.put("eventLevel", event.getEventLevel());
@@ -57,6 +65,10 @@ public class QueryMapper {
         payload.put("deviceId", rawData.getDeviceId());
         payload.put("iotCode", rawData.getIotCode());
         payload.put("monitorId", rawData.getMonitorId());
+        payload.put("shaftFloorId", rawData.getShaftFloorId());
+        payload.put("partitionCode", rawData.getPartitionCode());
+        payload.put("partitionName", rawData.getPartitionName());
+        payload.put("dataReference", rawData.getDataReference());
         payload.put("collectTime", rawData.getCollectTime());
         payload.put("pointCount", rawData.getPointCount());
         payload.put("valuesJson", rawData.getValuesJson());
@@ -72,6 +84,10 @@ public class QueryMapper {
         payload.put("id", stat.getId());
         payload.put("deviceId", stat.getDeviceId());
         payload.put("monitorId", stat.getMonitorId());
+        payload.put("shaftFloorId", stat.getShaftFloorId());
+        payload.put("partitionCode", stat.getPartitionCode());
+        payload.put("partitionName", stat.getPartitionName());
+        payload.put("dataReference", stat.getDataReference());
         payload.put("statTime", stat.getStatTime());
         payload.put("maxTemp", stat.getMaxTemp());
         payload.put("minTemp", stat.getMinTemp());
@@ -84,11 +100,18 @@ public class QueryMapper {
         Map<String, Object> payload = new LinkedHashMap<String, Object>();
         payload.put("deviceId", deviceId);
         payload.put("monitorId", summary.getMonitorId());
+        payload.put("shaftFloorId", summary.getShaftFloorId());
+        payload.put("partitionCode", summary.getPartitionCode());
+        payload.put("partitionName", summary.getPartitionName());
+        payload.put("dataReference", summary.getDataReference());
         payload.put("collectTime", summary.getCollectTime());
-        payload.put("values", summary.getValues());
         payload.put("maxTemp", summary.getMaxTemp());
         payload.put("minTemp", summary.getMinTemp());
         payload.put("avgTemp", summary.getAvgTemp());
+        payload.put("maxTempPosition", summary.getMaxTempPosition());
+        payload.put("minTempPosition", summary.getMinTempPosition());
+        payload.put("maxTempChannel", summary.getMaxTempChannel());
+        payload.put("minTempChannel", summary.getMinTempChannel());
         return payload;
     }
 }

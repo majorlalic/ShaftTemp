@@ -1,6 +1,7 @@
 package com.example.demo.alarm.rule;
 
 import com.example.demo.AppProperties;
+import com.example.demo.ingest.service.ReportIngestService.ReportMetrics;
 import com.example.demo.persistence.entity.MonitorEntity;
 import com.example.demo.realtime.RealtimeStateService.RealtimeSummary;
 import java.math.BigDecimal;
@@ -12,43 +13,82 @@ import org.springframework.stereotype.Service;
 @Service
 public class AlarmRuleEngine {
 
-    private final TemperatureThresholdRule temperatureThresholdRule;
-    private final TemperatureDifferenceRule temperatureDifferenceRule;
-    private final TemperatureRiseRateRule temperatureRiseRateRule;
-    private final FiberBreakRule fiberBreakRule;
     private final AppProperties appProperties;
 
-    public AlarmRuleEngine(
-        TemperatureThresholdRule temperatureThresholdRule,
-        TemperatureDifferenceRule temperatureDifferenceRule,
-        TemperatureRiseRateRule temperatureRiseRateRule,
-        FiberBreakRule fiberBreakRule,
-        AppProperties appProperties
-    ) {
-        this.temperatureThresholdRule = temperatureThresholdRule;
-        this.temperatureDifferenceRule = temperatureDifferenceRule;
-        this.temperatureRiseRateRule = temperatureRiseRateRule;
-        this.fiberBreakRule = fiberBreakRule;
+    public AlarmRuleEngine(AppProperties appProperties) {
         this.appProperties = appProperties;
     }
 
-    public List<RuleEvaluationResult> evaluateRealtime(MonitorEntity monitor, List<BigDecimal> values, RealtimeSummary previousSummary) {
-        if (values == null || values.isEmpty()) {
+    public List<RuleEvaluationResult> evaluateMeasure(
+        MonitorEntity monitor,
+        String partitionName,
+        ReportMetrics metrics,
+        RealtimeSummary previousSummary
+    ) {
+        if (metrics == null) {
             return Collections.emptyList();
         }
         String monitorName = monitor.getName() == null ? "监测对象" : monitor.getName();
-        BigDecimal currentMaxTemp = values.get(0);
-        for (BigDecimal value : values) {
-            if (value.compareTo(currentMaxTemp) > 0) {
-                currentMaxTemp = value;
+        String displayName = partitionName == null ? monitorName : monitorName + "-" + partitionName;
+        List<RuleEvaluationResult> results = new ArrayList<RuleEvaluationResult>();
+        if (metrics.getMaxTemp().compareTo(appProperties.getAlarm().getTemperatureThreshold()) > 0) {
+            results.add(new RuleEvaluationResult(
+                "TEMP_THRESHOLD",
+                "REALTIME",
+                2,
+                displayName + "温度超限",
+                "最大温度" + metrics.getMaxTemp() + "超过阈值" + appProperties.getAlarm().getTemperatureThreshold(),
+                Collections.<Integer>emptyList(),
+                metrics.getMaxTemp(),
+                appProperties.getAlarm().getTemperatureThreshold()
+            ));
+        }
+        BigDecimal diff = metrics.getMaxTemp().subtract(metrics.getMinTemp());
+        if (diff.compareTo(appProperties.getAlarm().getTemperatureDiffThreshold()) > 0) {
+            results.add(new RuleEvaluationResult(
+                "TEMP_DIFFERENCE",
+                "REALTIME",
+                2,
+                displayName + "差温异常",
+                "分区差温" + diff + "超过阈值" + appProperties.getAlarm().getTemperatureDiffThreshold(),
+                Collections.<Integer>emptyList(),
+                diff,
+                appProperties.getAlarm().getTemperatureDiffThreshold()
+            ));
+        }
+        if (previousSummary != null && previousSummary.getMaxTemp() != null) {
+            BigDecimal riseValue = metrics.getMaxTemp().subtract(previousSummary.getMaxTemp());
+            if (riseValue.compareTo(appProperties.getAlarm().getRiseRateThreshold()) > 0) {
+                results.add(new RuleEvaluationResult(
+                    "TEMP_RISE_RATE",
+                    "REALTIME",
+                    2,
+                    displayName + "升温过快",
+                    "最大温度较上次上升" + riseValue,
+                    Collections.<Integer>emptyList(),
+                    riseValue,
+                    appProperties.getAlarm().getRiseRateThreshold()
+                ));
             }
         }
-        List<RuleEvaluationResult> results = new ArrayList<RuleEvaluationResult>();
-        results.addAll(temperatureThresholdRule.evaluate(monitorName, values, appProperties.getAlarm().getTemperatureThreshold()));
-        results.addAll(temperatureDifferenceRule.evaluate(monitorName, values, appProperties.getAlarm().getTemperatureDiffThreshold()));
-        results.addAll(temperatureRiseRateRule.evaluate(monitorName, currentMaxTemp, previousSummary, appProperties.getAlarm().getRiseRateThreshold()));
-        results.addAll(fiberBreakRule.evaluate(monitorName, values, appProperties.getAlarm().getFiberBreakThreshold()));
         return results;
+    }
+
+    public RuleEvaluationResult buildUpstreamAlarmResult(String alarmType, String monitorName, String partitionName, String message) {
+        String prefix = monitorName == null ? "监测对象" : monitorName;
+        if (partitionName != null && !partitionName.trim().isEmpty()) {
+            prefix = prefix + "-" + partitionName;
+        }
+        return new RuleEvaluationResult(
+            alarmType,
+            "MQ_STATUS",
+            2,
+            prefix + "状态告警",
+            message,
+            Collections.<Integer>emptyList(),
+            BigDecimal.ONE,
+            BigDecimal.ONE
+        );
     }
 
     public RuleEvaluationResult buildOfflineResult(String monitorName, long offlineSeconds) {

@@ -4,6 +4,7 @@ import com.example.demo.AppProperties;
 import com.example.demo.alarm.AlarmService;
 import com.example.demo.alarm.rule.AlarmRuleEngine;
 import com.example.demo.alarm.rule.RuleEvaluationResult;
+import com.example.demo.ingest.service.DeviceResolverService;
 import com.example.demo.persistence.entity.DeviceEntity;
 import com.example.demo.persistence.entity.DeviceOnlineLogEntity;
 import com.example.demo.persistence.entity.MonitorEntity;
@@ -108,7 +109,13 @@ public class OfflineInspectionTask {
             monitor.getName() == null ? "监测对象" : monitor.getName(),
             offlineSeconds
         );
-        alarmService.createOrMerge(device, monitor, result, now, toJson(Collections.singletonMap("offlineSeconds", offlineSeconds)), "[]");
+        alarmService.createOrMerge(
+            DeviceResolverService.ResolvedTarget.forDevice(device, monitor),
+            result,
+            now,
+            toJson(Collections.singletonMap("offlineSeconds", offlineSeconds)),
+            "[]"
+        );
     }
 
     private String toJson(Object value) {

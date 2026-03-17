@@ -46,12 +46,14 @@ public class QueryService {
         this.queryMapper = queryMapper;
     }
 
-    public List<Map<String, Object>> listAlarms(String status, Long monitorId, Long deviceId) {
+    public List<Map<String, Object>> listAlarms(String status, Long monitorId, Long deviceId, Long shaftFloorId, String partitionCode) {
         return alarmRepository.findAll().stream()
             .filter(this::notDeleted)
             .filter(alarm -> status == null || status.equalsIgnoreCase(alarm.getStatus()))
             .filter(alarm -> monitorId == null || monitorId.equals(alarm.getMonitorId()))
             .filter(alarm -> deviceId == null || deviceId.equals(alarm.getDeviceId()))
+            .filter(alarm -> shaftFloorId == null || shaftFloorId.equals(alarm.getShaftFloorId()))
+            .filter(alarm -> partitionCode == null || partitionCode.equals(alarm.getPartitionCode()))
             .sorted(Comparator.comparing(AlarmEntity::getUpdatedOn, Comparator.nullsLast(Comparator.reverseOrder())))
             .map(queryMapper::toAlarmMap)
             .collect(Collectors.toList());
@@ -68,19 +70,23 @@ public class QueryService {
         return payload;
     }
 
-    public List<Map<String, Object>> listEvents(Long alarmId) {
+    public List<Map<String, Object>> listEvents(Long alarmId, Long shaftFloorId, String partitionCode) {
         List<EventEntity> events = alarmId == null ? eventRepository.findAll() : eventRepository.findByAlarmIdOrderByEventTimeDesc(alarmId);
         return events.stream()
             .filter(this::notDeleted)
+            .filter(event -> shaftFloorId == null || shaftFloorId.equals(event.getShaftFloorId()))
+            .filter(event -> partitionCode == null || partitionCode.equals(event.getPartitionCode()))
             .sorted(Comparator.comparing(EventEntity::getEventTime, Comparator.nullsLast(Comparator.reverseOrder())))
             .map(queryMapper::toEventMap)
             .collect(Collectors.toList());
     }
 
-    public List<Map<String, Object>> listRawData(Long monitorId, Long deviceId, Integer limit) {
+    public List<Map<String, Object>> listRawData(Long monitorId, Long deviceId, Long shaftFloorId, String partitionCode, Integer limit) {
         List<RawDataEntity> results = rawDataRepository.findRecentAll().stream()
             .filter(rawData -> monitorId == null || monitorId.equals(rawData.getMonitorId()))
             .filter(rawData -> deviceId == null || deviceId.equals(rawData.getDeviceId()))
+            .filter(rawData -> shaftFloorId == null || shaftFloorId.equals(rawData.getShaftFloorId()))
+            .filter(rawData -> partitionCode == null || partitionCode.equals(rawData.getPartitionCode()))
             .collect(Collectors.toList());
         int safeLimit = limit == null ? 50 : Math.max(1, limit.intValue());
         List<Map<String, Object>> payload = new ArrayList<Map<String, Object>>();
@@ -90,10 +96,20 @@ public class QueryService {
         return payload;
     }
 
-    public List<Map<String, Object>> listTempStats(Long monitorId, Long deviceId, LocalDateTime from, LocalDateTime to, Integer limit) {
+    public List<Map<String, Object>> listTempStats(
+        Long monitorId,
+        Long deviceId,
+        Long shaftFloorId,
+        String partitionCode,
+        LocalDateTime from,
+        LocalDateTime to,
+        Integer limit
+    ) {
         List<TempStatMinuteEntity> results = tempStatMinuteRepository.findRecentAll().stream()
             .filter(stat -> monitorId == null || monitorId.equals(stat.getMonitorId()))
             .filter(stat -> deviceId == null || deviceId.equals(stat.getDeviceId()))
+            .filter(stat -> shaftFloorId == null || shaftFloorId.equals(stat.getShaftFloorId()))
+            .filter(stat -> partitionCode == null || partitionCode.equals(stat.getPartitionCode()))
             .filter(stat -> from == null || !stat.getStatTime().isBefore(from))
             .filter(stat -> to == null || !stat.getStatTime().isAfter(to))
             .collect(Collectors.toList());

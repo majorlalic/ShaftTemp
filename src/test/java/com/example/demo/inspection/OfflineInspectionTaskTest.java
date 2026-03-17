@@ -65,8 +65,12 @@ class OfflineInspectionTaskTest {
 
         task.inspect();
 
-        verify(alarmService, never()).createOrMerge(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
-            org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
-            org.mockito.ArgumentMatchers.any());
+        verify(alarmService, never()).createOrMerge(
+            org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.any()
+        );
     }
 }
