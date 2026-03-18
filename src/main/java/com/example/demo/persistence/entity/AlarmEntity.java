@@ -49,7 +49,10 @@ public class AlarmEntity {
     @Column(name = "source_format")
     private String sourceFormat;
 
-    private String status;
+    @Column(name = "merge_key")
+    private String mergeKey;
+
+    private Integer status;
 
     @Column(name = "first_alarm_time")
     private LocalDateTime firstAlarmTime;
@@ -59,6 +62,9 @@ public class AlarmEntity {
 
     @Column(name = "merge_count")
     private Integer mergeCount;
+
+    @Column(name = "event_count")
+    private Integer eventCount;
 
     @Column(name = "alarm_level")
     private Integer alarmLevel;
@@ -187,12 +193,20 @@ public class AlarmEntity {
         this.sourceFormat = sourceFormat;
     }
 
-    public String getStatus() {
+    public Integer getStatus() {
         return status;
     }
 
-    public void setStatus(String status) {
+    public void setStatus(Integer status) {
         this.status = status;
+    }
+
+    public String getMergeKey() {
+        return mergeKey;
+    }
+
+    public void setMergeKey(String mergeKey) {
+        this.mergeKey = mergeKey;
     }
 
     public LocalDateTime getFirstAlarmTime() {
@@ -217,6 +231,14 @@ public class AlarmEntity {
 
     public void setMergeCount(Integer mergeCount) {
         this.mergeCount = mergeCount;
+    }
+
+    public Integer getEventCount() {
+        return eventCount;
+    }
+
+    public void setEventCount(Integer eventCount) {
+        this.eventCount = eventCount;
     }
 
     public Integer getAlarmLevel() {

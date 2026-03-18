@@ -18,12 +18,12 @@ public class EventJdbcRepository {
         String sql =
             "insert into event (" +
             "id, alarm_id, alarm_type, source_type, monitor_id, device_id, shaft_floor_id, partition_code, partition_name, " +
-            "data_reference, device_token, partition_no, source_format, event_time, event_no, event_level, " +
-            "point_list_json, detail_json, merged_flag, deleted, created_on, updated_on" +
+            "data_reference, device_token, partition_no, source_format, event_type, event_time, event_no, event_level, " +
+            "point_list_json, detail_json, content, merged_flag, deleted, created_on, updated_on" +
             ") values (" +
             ":id, :alarmId, :alarmType, :sourceType, :monitorId, :deviceId, :shaftFloorId, :partitionCode, :partitionName, " +
-            ":dataReference, :deviceToken, :partitionNo, :sourceFormat, :eventTime, :eventNo, :eventLevel, " +
-            ":pointListJson, :detailJson, :mergedFlag, :deleted, :createdOn, :updatedOn" +
+            ":dataReference, :deviceToken, :partitionNo, :sourceFormat, :eventType, :eventTime, :eventNo, :eventLevel, " +
+            ":pointListJson, :detailJson, :content, :mergedFlag, :deleted, :createdOn, :updatedOn" +
             ")";
         MapSqlParameterSource params = new MapSqlParameterSource()
             .addValue("id", entity.getId())
@@ -39,11 +39,13 @@ public class EventJdbcRepository {
             .addValue("deviceToken", entity.getDeviceToken())
             .addValue("partitionNo", entity.getPartitionNo())
             .addValue("sourceFormat", entity.getSourceFormat())
+            .addValue("eventType", entity.getEventType())
             .addValue("eventTime", entity.getEventTime())
             .addValue("eventNo", entity.getEventNo())
             .addValue("eventLevel", entity.getEventLevel())
             .addValue("pointListJson", entity.getPointListJson())
             .addValue("detailJson", entity.getDetailJson())
+            .addValue("content", entity.getContent())
             .addValue("mergedFlag", entity.getMergedFlag())
             .addValue("deleted", entity.getDeleted())
             .addValue("createdOn", entity.getCreatedOn())

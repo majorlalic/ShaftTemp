@@ -1,5 +1,7 @@
 package com.example.demo.query;
 
+import com.example.demo.alarm.AlarmEventType;
+import com.example.demo.alarm.AlarmStatus;
 import com.example.demo.persistence.entity.AlarmEntity;
 import com.example.demo.persistence.entity.EventEntity;
 import com.example.demo.persistence.entity.RawDataEntity;
@@ -24,10 +26,12 @@ public class QueryMapper {
         payload.put("partitionCode", alarm.getPartitionCode());
         payload.put("partitionName", alarm.getPartitionName());
         payload.put("dataReference", alarm.getDataReference());
-        payload.put("status", alarm.getStatus());
+        payload.put("statusCode", alarm.getStatus());
+        payload.put("statusName", AlarmStatus.nameOf(alarm.getStatus()));
         payload.put("firstAlarmTime", alarm.getFirstAlarmTime());
         payload.put("lastAlarmTime", alarm.getLastAlarmTime());
         payload.put("mergeCount", alarm.getMergeCount());
+        payload.put("eventCount", alarm.getEventCount());
         payload.put("alarmLevel", alarm.getAlarmLevel());
         payload.put("title", alarm.getTitle());
         payload.put("content", alarm.getContent());
@@ -50,11 +54,14 @@ public class QueryMapper {
         payload.put("partitionCode", event.getPartitionCode());
         payload.put("partitionName", event.getPartitionName());
         payload.put("dataReference", event.getDataReference());
+        payload.put("eventType", event.getEventType());
+        payload.put("eventTypeName", AlarmEventType.nameOf(event.getEventType()));
         payload.put("eventTime", event.getEventTime());
         payload.put("eventNo", event.getEventNo());
         payload.put("eventLevel", event.getEventLevel());
         payload.put("pointListJson", event.getPointListJson());
         payload.put("detailJson", event.getDetailJson());
+        payload.put("content", event.getContent());
         payload.put("mergedFlag", event.getMergedFlag());
         return payload;
     }

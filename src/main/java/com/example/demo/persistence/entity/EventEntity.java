@@ -49,6 +49,9 @@ public class EventEntity {
     @Column(name = "source_format")
     private String sourceFormat;
 
+    @Column(name = "event_type")
+    private Integer eventType;
+
     @Column(name = "event_time")
     private LocalDateTime eventTime;
 
@@ -63,6 +66,8 @@ public class EventEntity {
 
     @Column(name = "detail_json", columnDefinition = "json")
     private String detailJson;
+
+    private String content;
 
     @Column(name = "merged_flag")
     private Integer mergedFlag;
@@ -187,6 +192,14 @@ public class EventEntity {
         this.eventTime = eventTime;
     }
 
+    public Integer getEventType() {
+        return eventType;
+    }
+
+    public void setEventType(Integer eventType) {
+        this.eventType = eventType;
+    }
+
     public Integer getEventNo() {
         return eventNo;
     }
@@ -217,6 +230,14 @@ public class EventEntity {
 
     public void setDetailJson(String detailJson) {
         this.detailJson = detailJson;
+    }
+
+    public String getContent() {
+        return content;
+    }
+
+    public void setContent(String content) {
+        this.content = content;
     }
 
     public Integer getMergedFlag() {

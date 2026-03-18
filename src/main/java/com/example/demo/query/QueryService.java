@@ -47,13 +47,12 @@ public class QueryService {
     }
 
     public List<Map<String, Object>> listAlarms(String status, Long monitorId, Long deviceId, Long shaftFloorId, String partitionCode) {
+        Integer statusCode = parseStatus(status);
         return alarmRepository.findAll().stream()
             .filter(this::notDeleted)
-            .filter(alarm -> status == null || status.equalsIgnoreCase(alarm.getStatus()))
+            .filter(alarm -> statusCode == null || statusCode.equals(alarm.getStatus()))
             .filter(alarm -> monitorId == null || monitorId.equals(alarm.getMonitorId()))
             .filter(alarm -> deviceId == null || deviceId.equals(alarm.getDeviceId()))
-            .filter(alarm -> shaftFloorId == null || shaftFloorId.equals(alarm.getShaftFloorId()))
-            .filter(alarm -> partitionCode == null || partitionCode.equals(alarm.getPartitionCode()))
             .sorted(Comparator.comparing(AlarmEntity::getUpdatedOn, Comparator.nullsLast(Comparator.reverseOrder())))
             .map(queryMapper::toAlarmMap)
             .collect(Collectors.toList());
@@ -135,5 +134,12 @@ public class QueryService {
 
     private boolean notDeleted(EventEntity event) {
         return event.getDeleted() == null || event.getDeleted().intValue() == 0;
+    }
+
+    private Integer parseStatus(String status) {
+        if (status == null || status.trim().isEmpty()) {
+            return null;
+        }
+        return Integer.valueOf(status);
     }
 }

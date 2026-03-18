@@ -48,6 +48,20 @@ public class AlarmController {
         return ResponseEntity.ok(queryService.getAlarmDetail(alarmId));
     }
 
+    @PostMapping("/{alarmId}/observe")
+    public ResponseEntity<Map<String, Object>> observe(@PathVariable Long alarmId, @RequestBody(required = false) AlarmActionRequest request) {
+        AlarmActionRequest payload = request == null ? new AlarmActionRequest() : request;
+        alarmService.observe(alarmId, payload.getRemark());
+        return ResponseEntity.ok(queryService.getAlarmDetail(alarmId));
+    }
+
+    @PostMapping("/{alarmId}/false-positive")
+    public ResponseEntity<Map<String, Object>> falsePositive(@PathVariable Long alarmId, @RequestBody(required = false) AlarmActionRequest request) {
+        AlarmActionRequest payload = request == null ? new AlarmActionRequest() : request;
+        alarmService.markFalsePositive(alarmId, payload.getRemark());
+        return ResponseEntity.ok(queryService.getAlarmDetail(alarmId));
+    }
+
     @PostMapping("/{alarmId}/close")
     public ResponseEntity<Map<String, Object>> close(@PathVariable Long alarmId, @RequestBody(required = false) AlarmActionRequest request) {
         AlarmActionRequest payload = request == null ? new AlarmActionRequest() : request;

@@ -111,17 +111,17 @@ public class RealtimeStateService {
         }
     }
 
-    public Optional<Long> getActiveAlarmId(String alarmType, String partitionCode) {
-        String value = redisTemplate.opsForValue().get(keyBuilder.activeAlarmKey(alarmType, partitionCode));
+    public Optional<Long> getActiveAlarmId(String alarmType, String scope) {
+        String value = redisTemplate.opsForValue().get(keyBuilder.activeAlarmKey(alarmType, scope));
         return value == null ? Optional.empty() : Optional.of(Long.valueOf(value));
     }
 
-    public void setActiveAlarmId(String alarmType, String partitionCode, Long alarmId) {
-        redisTemplate.opsForValue().set(keyBuilder.activeAlarmKey(alarmType, partitionCode), String.valueOf(alarmId));
+    public void setActiveAlarmId(String alarmType, String scope, Long alarmId) {
+        redisTemplate.opsForValue().set(keyBuilder.activeAlarmKey(alarmType, scope), String.valueOf(alarmId));
     }
 
-    public void clearActiveAlarmId(String alarmType, String partitionCode) {
-        redisTemplate.delete(keyBuilder.activeAlarmKey(alarmType, partitionCode));
+    public void clearActiveAlarmId(String alarmType, String scope) {
+        redisTemplate.delete(keyBuilder.activeAlarmKey(alarmType, scope));
     }
 
     public int incrementOfflineLevel(Long deviceId) {

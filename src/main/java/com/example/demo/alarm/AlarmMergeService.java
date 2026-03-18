@@ -13,6 +13,7 @@ import com.example.demo.support.IdGenerator;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Optional;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,11 +51,14 @@ public class AlarmMergeService implements AlarmService {
         String detailJson,
         String pointListJson
     ) {
-        Optional<AlarmEntity> cachedAlarm = realtimeStateService.getActiveAlarmId(result.getAlarmType(), resolved.getPartitionCode())
+        String mergeKey = buildMergeKey(resolved.getMonitor().getId(), result.getAlarmType());
+        Optional<AlarmEntity> cachedAlarm = realtimeStateService
+            .getActiveAlarmId(result.getAlarmType(), String.valueOf(resolved.getMonitor().getId()))
             .flatMap(alarmRepository::findById);
-        AlarmEntity alarm = cachedAlarm.orElseGet(() ->
-            alarmRepository.findOpenAlarm(resolved.getMonitor().getId(), resolved.getPartitionCode(), result.getAlarmType()).orElse(null)
-        );
+        AlarmEntity alarm = cachedAlarm
+            .filter(this::isPendingMergeable)
+            .filter(candidate -> mergeKey.equals(candidate.getMergeKey()))
+            .orElseGet(() -> alarmRepository.findByMergeKey(mergeKey).orElse(null));
 
         boolean merged = alarm != null;
         if (!merged) {
@@ -72,9 +76,11 @@ public class AlarmMergeService implements AlarmService {
             alarm.setDeviceToken(resolved.getDeviceToken());
             alarm.setPartitionNo(resolved.getPartitionNo());
             alarm.setSourceFormat(resolved.getSourceFormat());
-            alarm.setStatus("ACTIVE");
+            alarm.setMergeKey(mergeKey);
+            alarm.setStatus(AlarmStatus.PENDING_CONFIRM);
             alarm.setFirstAlarmTime(eventTime);
             alarm.setMergeCount(1);
+            alarm.setEventCount(0);
             alarm.setAlarmLevel(result.getAlarmLevel());
             alarm.setTitle(result.getTitle());
             alarm.setContent(result.getContent());
@@ -83,18 +89,47 @@ public class AlarmMergeService implements AlarmService {
         } else {
             alarm.setMergeCount(alarm.getMergeCount() == null ? 1 : alarm.getMergeCount() + 1);
             alarm.setContent(result.getContent());
+            alarm.setShaftFloorId(resolved.getShaftFloorId());
+            alarm.setPartitionCode(resolved.getPartitionCode());
+            alarm.setPartitionName(resolved.getPartitionName());
+            alarm.setDataReference(resolved.getDataReference());
+            alarm.setDeviceToken(resolved.getDeviceToken());
+            alarm.setPartitionNo(resolved.getPartitionNo());
+            alarm.setMergeKey(mergeKey);
         }
         alarm.setLastAlarmTime(eventTime);
         alarm.setUpdatedOn(eventTime);
-        AlarmEntity savedAlarm = alarmRepository.save(alarm);
-        realtimeStateService.setActiveAlarmId(result.getAlarmType(), resolved.getPartitionCode(), savedAlarm.getId());
+        AlarmEntity savedAlarm;
+        try {
+            savedAlarm = alarmRepository.saveAndFlush(alarm);
+        } catch (DataIntegrityViolationException ex) {
+            if (merged) {
+                throw ex;
+            }
+            AlarmEntity existing = alarmRepository.findByMergeKey(mergeKey).orElseThrow(() -> ex);
+            existing.setMergeCount(existing.getMergeCount() == null ? 1 : existing.getMergeCount() + 1);
+            existing.setContent(result.getContent());
+            existing.setShaftFloorId(resolved.getShaftFloorId());
+            existing.setPartitionCode(resolved.getPartitionCode());
+            existing.setPartitionName(resolved.getPartitionName());
+            existing.setDataReference(resolved.getDataReference());
+            existing.setDeviceToken(resolved.getDeviceToken());
+            existing.setPartitionNo(resolved.getPartitionNo());
+            existing.setLastAlarmTime(eventTime);
+            existing.setUpdatedOn(eventTime);
+            savedAlarm = alarmRepository.saveAndFlush(existing);
+            merged = true;
+        }
+        realtimeStateService.setActiveAlarmId(result.getAlarmType(), String.valueOf(resolved.getMonitor().getId()), savedAlarm.getId());
 
-        if (!merged || realtimeStateService.shouldWriteMergedEvent(result.getAlarmType(), resolved.getPartitionCode(), eventTime)) {
+        if (!merged || realtimeStateService.shouldWriteMergedEvent(result.getAlarmType(), String.valueOf(resolved.getMonitor().getId()), eventTime)) {
             createEvent(
                 savedAlarm,
                 resolved,
                 result.getAlarmType(),
                 result.getSourceType(),
+                merged ? AlarmEventType.MERGE : AlarmEventType.TRIGGER,
+                result.getContent(),
                 eventTime,
                 savedAlarm.getMergeCount(),
                 result.getAlarmLevel(),
@@ -114,23 +149,26 @@ public class AlarmMergeService implements AlarmService {
         LocalDateTime eventTime,
         String detailJson
     ) {
-        AlarmEntity alarm = realtimeStateService.getActiveAlarmId(alarmType, resolved.getPartitionCode())
+        AlarmEntity alarm = realtimeStateService.getActiveAlarmId(alarmType, String.valueOf(resolved.getMonitor().getId()))
             .flatMap(alarmRepository::findById)
-            .orElseGet(() -> alarmRepository.findOpenAlarm(resolved.getMonitor().getId(), resolved.getPartitionCode(), alarmType).orElse(null));
+            .orElseGet(() -> alarmRepository.findByMergeKey(buildMergeKey(resolved.getMonitor().getId(), alarmType)).orElse(null));
         if (alarm == null) {
             return;
         }
-        alarm.setStatus("RECOVERED");
+        alarm.setMergeKey(null);
+        alarm.setStatus(AlarmStatus.AUTO_RECOVERED);
         alarm.setLastAlarmTime(eventTime);
         alarm.setUpdatedOn(eventTime);
-        alarmRepository.save(alarm);
-        realtimeStateService.clearActiveAlarmId(alarmType, resolved.getPartitionCode());
+        alarmRepository.saveAndFlush(alarm);
+        realtimeStateService.clearActiveAlarmId(alarmType, String.valueOf(resolved.getMonitor().getId()));
 
         createEvent(
             alarm,
             resolved,
             alarmType,
             "RECOVERY",
+            AlarmEventType.RECOVER,
+            "告警已恢复",
             eventTime,
             (alarm.getMergeCount() == null ? 0 : alarm.getMergeCount()) + 1,
             alarm.getAlarmLevel(),
@@ -145,13 +183,45 @@ public class AlarmMergeService implements AlarmService {
     public AlarmEntity confirm(Long alarmId, Long userId, String remark) {
         AlarmEntity alarm = alarmRepository.findById(alarmId)
             .orElseThrow(() -> new IllegalArgumentException("Alarm not found: " + alarmId));
-        alarm.setStatus("CONFIRMED");
+        alarm.setMergeKey(null);
+        alarm.setStatus(AlarmStatus.CONFIRMED);
         alarm.setConfirmUserId(userId);
         alarm.setConfirmTime(LocalDateTime.now());
         alarm.setHandleRemark(remark);
         alarm.setUpdatedOn(LocalDateTime.now());
-        AlarmEntity savedAlarm = alarmRepository.save(alarm);
-        createLifecycleEvent(savedAlarm, "MANUAL_CONFIRM", remark);
+        AlarmEntity savedAlarm = alarmRepository.saveAndFlush(alarm);
+        realtimeStateService.clearActiveAlarmId(savedAlarm.getAlarmType(), String.valueOf(savedAlarm.getMonitorId()));
+        createLifecycleEvent(savedAlarm, "MANUAL_CONFIRM", AlarmEventType.CONFIRM, remark);
+        return savedAlarm;
+    }
+
+    @Override
+    @Transactional
+    public AlarmEntity observe(Long alarmId, String remark) {
+        AlarmEntity alarm = alarmRepository.findById(alarmId)
+            .orElseThrow(() -> new IllegalArgumentException("Alarm not found: " + alarmId));
+        alarm.setMergeKey(null);
+        alarm.setStatus(AlarmStatus.OBSERVING);
+        alarm.setHandleRemark(remark);
+        alarm.setUpdatedOn(LocalDateTime.now());
+        AlarmEntity savedAlarm = alarmRepository.saveAndFlush(alarm);
+        realtimeStateService.clearActiveAlarmId(savedAlarm.getAlarmType(), String.valueOf(savedAlarm.getMonitorId()));
+        createLifecycleEvent(savedAlarm, "MANUAL_OBSERVE", AlarmEventType.OBSERVE, remark);
+        return savedAlarm;
+    }
+
+    @Override
+    @Transactional
+    public AlarmEntity markFalsePositive(Long alarmId, String remark) {
+        AlarmEntity alarm = alarmRepository.findById(alarmId)
+            .orElseThrow(() -> new IllegalArgumentException("Alarm not found: " + alarmId));
+        alarm.setMergeKey(null);
+        alarm.setStatus(AlarmStatus.FALSE_POSITIVE);
+        alarm.setHandleRemark(remark);
+        alarm.setUpdatedOn(LocalDateTime.now());
+        AlarmEntity savedAlarm = alarmRepository.saveAndFlush(alarm);
+        realtimeStateService.clearActiveAlarmId(savedAlarm.getAlarmType(), String.valueOf(savedAlarm.getMonitorId()));
+        createLifecycleEvent(savedAlarm, "MANUAL_FALSE", AlarmEventType.FALSE_POSITIVE, remark);
         return savedAlarm;
     }
 
@@ -160,16 +230,17 @@ public class AlarmMergeService implements AlarmService {
     public AlarmEntity close(Long alarmId, String remark) {
         AlarmEntity alarm = alarmRepository.findById(alarmId)
             .orElseThrow(() -> new IllegalArgumentException("Alarm not found: " + alarmId));
-        alarm.setStatus("CLOSED");
+        alarm.setMergeKey(null);
+        alarm.setStatus(AlarmStatus.CLOSED);
         alarm.setHandleRemark(remark);
         alarm.setUpdatedOn(LocalDateTime.now());
-        AlarmEntity savedAlarm = alarmRepository.save(alarm);
-        realtimeStateService.clearActiveAlarmId(savedAlarm.getAlarmType(), savedAlarm.getPartitionCode());
-        createLifecycleEvent(savedAlarm, "MANUAL_CLOSE", remark);
+        AlarmEntity savedAlarm = alarmRepository.saveAndFlush(alarm);
+        realtimeStateService.clearActiveAlarmId(savedAlarm.getAlarmType(), String.valueOf(savedAlarm.getMonitorId()));
+        createLifecycleEvent(savedAlarm, "MANUAL_CLOSE", AlarmEventType.CLOSE, remark);
         return savedAlarm;
     }
 
-    private void createLifecycleEvent(AlarmEntity alarm, String sourceType, String remark) {
+    private void createLifecycleEvent(AlarmEntity alarm, String sourceType, Integer eventType, String remark) {
         DeviceEntity device = new DeviceEntity();
         device.setId(alarm.getDeviceId());
         com.example.demo.persistence.entity.MonitorEntity monitor = new com.example.demo.persistence.entity.MonitorEntity();
@@ -190,6 +261,8 @@ public class AlarmMergeService implements AlarmService {
             resolved,
             alarm.getAlarmType(),
             sourceType,
+            eventType,
+            remark == null || remark.trim().isEmpty() ? alarm.getContent() : remark,
             LocalDateTime.now(),
             (alarm.getMergeCount() == null ? 0 : alarm.getMergeCount()) + 1,
             alarm.getAlarmLevel(),
@@ -204,6 +277,8 @@ public class AlarmMergeService implements AlarmService {
         DeviceResolverService.ResolvedTarget resolved,
         String alarmType,
         String sourceType,
+        Integer eventType,
+        String content,
         LocalDateTime eventTime,
         Integer eventNo,
         Integer eventLevel,
@@ -225,16 +300,30 @@ public class AlarmMergeService implements AlarmService {
         event.setDeviceToken(resolved.getDeviceToken());
         event.setPartitionNo(resolved.getPartitionNo());
         event.setSourceFormat(resolved.getSourceFormat());
+        event.setEventType(eventType);
         event.setEventTime(eventTime);
         event.setEventNo(eventNo);
         event.setEventLevel(eventLevel);
         event.setPointListJson(pointListJson);
         event.setDetailJson(detailJson);
+        event.setContent(content);
         event.setMergedFlag(mergedFlag);
         event.setDeleted(0);
         event.setCreatedOn(eventTime);
         event.setUpdatedOn(eventTime);
         eventJdbcRepository.insert(event);
-        realtimeStateService.markEventWritten(alarmType, resolved.getPartitionCode(), eventTime);
+        alarm.setEventCount(alarm.getEventCount() == null ? 1 : alarm.getEventCount() + 1);
+        alarmRepository.saveAndFlush(alarm);
+        realtimeStateService.markEventWritten(alarmType, String.valueOf(resolved.getMonitor().getId()), eventTime);
+    }
+
+    private boolean isPendingMergeable(AlarmEntity alarm) {
+        return alarm != null
+            && alarm.getStatus() != null
+            && alarm.getStatus().intValue() == AlarmStatus.PENDING_CONFIRM;
+    }
+
+    private String buildMergeKey(Long monitorId, String alarmType) {
+        return monitorId + ":" + alarmType;
     }
 }

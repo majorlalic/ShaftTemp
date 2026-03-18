@@ -24,5 +24,9 @@ public interface AlarmService {
 
     AlarmEntity confirm(Long alarmId, Long userId, String remark);
 
+    AlarmEntity observe(Long alarmId, String remark);
+
+    AlarmEntity markFalsePositive(Long alarmId, String remark);
+
     AlarmEntity close(Long alarmId, String remark);
 }
