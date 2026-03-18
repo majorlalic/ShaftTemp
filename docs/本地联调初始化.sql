@@ -1,6 +1,5 @@
 -- 本地联调初始化数据
--- 适用于 MQ 分区模型
--- 执行前请先运行：测温物联网系统最终建表_分区MQ版.sql
+-- 执行前请先运行：数据库建库.sql
 
 USE shaft;
 
@@ -38,7 +37,7 @@ INSERT INTO monitor (
     remark, deleted, created_on, updated_on
 ) VALUES (
     4001, '1号竖井', 1001, '测试竖井', 2, 'POWER', 'RUNNING', '测试单位', 3001,
-    '本地联调监控对象', 0, NOW(), NOW()
+    '本地联调监测对象', 0, NOW(), NOW()
 );
 
 INSERT INTO shaft_floor (

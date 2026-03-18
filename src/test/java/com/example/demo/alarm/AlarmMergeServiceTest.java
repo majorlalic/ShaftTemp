@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -14,6 +15,7 @@ import com.example.demo.ingest.service.DeviceResolverService;
 import com.example.demo.persistence.entity.AlarmEntity;
 import com.example.demo.persistence.entity.DeviceEntity;
 import com.example.demo.persistence.entity.MonitorEntity;
+import com.example.demo.persistence.repository.AlarmJdbcRepository;
 import com.example.demo.persistence.repository.AlarmRepository;
 import com.example.demo.persistence.repository.EventRepository;
 import com.example.demo.persistence.repository.EventJdbcRepository;
@@ -34,6 +36,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class AlarmMergeServiceTest {
 
     @Mock
+    private AlarmJdbcRepository alarmJdbcRepository;
+    @Mock
     private AlarmRepository alarmRepository;
     @Mock
     private EventRepository eventRepository;
@@ -49,10 +53,16 @@ class AlarmMergeServiceTest {
 
     @Test
     void shouldCreateNewAlarmWhenNoActiveAlarmExists() {
-        when(realtimeStateService.getActiveAlarmId("TEMP_THRESHOLD", "10")).thenReturn(Optional.empty());
-        when(alarmRepository.findByMergeKey("10:TEMP_THRESHOLD")).thenReturn(Optional.empty());
+        when(alarmJdbcRepository.upsertPendingAlarm(any(AlarmEntity.class))).thenReturn(true);
+        AlarmEntity persisted = new AlarmEntity();
+        persisted.setId(1001L);
+        persisted.setMergeCount(1);
+        persisted.setEventCount(0);
+        persisted.setStatus(AlarmStatus.PENDING_CONFIRM);
+        persisted.setMergeKey("10:TEMP_THRESHOLD");
+        when(alarmRepository.findByMergeKey("10:TEMP_THRESHOLD")).thenReturn(Optional.of(persisted));
         when(idGenerator.nextId()).thenReturn(1001L, 1002L);
-        when(alarmRepository.saveAndFlush(any(AlarmEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(alarmRepository.save(any(AlarmEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         DeviceEntity device = new DeviceEntity();
         device.setId(1L);
@@ -89,15 +99,15 @@ class AlarmMergeServiceTest {
     void shouldMergeIntoExistingAlarm() {
         AlarmEntity existing = new AlarmEntity();
         existing.setId(500L);
-        existing.setMergeCount(2);
+        existing.setMergeCount(3);
         existing.setEventCount(2);
         existing.setMergeKey("10:TEMP_THRESHOLD");
         existing.setStatus(AlarmStatus.PENDING_CONFIRM);
 
-        when(realtimeStateService.getActiveAlarmId("TEMP_THRESHOLD", "10")).thenReturn(Optional.of(500L));
         when(realtimeStateService.shouldWriteMergedEvent("TEMP_THRESHOLD", "10", LocalDateTime.of(2026, 3, 13, 10, 0))).thenReturn(true);
-        when(alarmRepository.findById(500L)).thenReturn(Optional.of(existing));
-        when(alarmRepository.saveAndFlush(any(AlarmEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(alarmJdbcRepository.upsertPendingAlarm(any(AlarmEntity.class))).thenReturn(false);
+        when(alarmRepository.findByMergeKey("10:TEMP_THRESHOLD")).thenReturn(Optional.of(existing));
+        when(alarmRepository.save(any(AlarmEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(idGenerator.nextId()).thenReturn(1003L);
 
         DeviceEntity device = new DeviceEntity();
@@ -127,7 +137,7 @@ class AlarmMergeServiceTest {
         assertEquals(3, alarm.getMergeCount().intValue());
         assertEquals(3, alarm.getEventCount().intValue());
         ArgumentCaptor<AlarmEntity> captor = ArgumentCaptor.forClass(AlarmEntity.class);
-        verify(alarmRepository, atLeastOnce()).saveAndFlush(captor.capture());
+        verify(alarmRepository, atLeastOnce()).save(captor.capture());
         AlarmEntity lastSaved = captor.getAllValues().get(captor.getAllValues().size() - 1);
         assertEquals(3, lastSaved.getMergeCount().intValue());
         assertEquals(3, lastSaved.getEventCount().intValue());
@@ -143,10 +153,9 @@ class AlarmMergeServiceTest {
         existing.setMergeKey("10:TEMP_THRESHOLD");
         existing.setStatus(AlarmStatus.PENDING_CONFIRM);
 
-        when(realtimeStateService.getActiveAlarmId("TEMP_THRESHOLD", "10")).thenReturn(Optional.of(500L));
         when(realtimeStateService.shouldWriteMergedEvent("TEMP_THRESHOLD", "10", LocalDateTime.of(2026, 3, 13, 10, 0))).thenReturn(false);
-        when(alarmRepository.findById(500L)).thenReturn(Optional.of(existing));
-        when(alarmRepository.saveAndFlush(any(AlarmEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(alarmJdbcRepository.upsertPendingAlarm(any(AlarmEntity.class))).thenReturn(false);
+        when(alarmRepository.findByMergeKey("10:TEMP_THRESHOLD")).thenReturn(Optional.of(existing));
 
         DeviceEntity device = new DeviceEntity();
         device.setId(1L);
@@ -171,7 +180,75 @@ class AlarmMergeServiceTest {
         alarmMergeService.createOrMerge(resolved, result, LocalDateTime.of(2026, 3, 13, 10, 0), "{}", "[3]");
 
         verify(eventJdbcRepository, never()).insert(any());
-        verify(alarmRepository).saveAndFlush(any(AlarmEntity.class));
+        verify(alarmJdbcRepository).upsertPendingAlarm(any(AlarmEntity.class));
+    }
+
+    @Test
+    void shouldCreateSinglePendingAlarmUnderConcurrentUpserts() throws InterruptedException {
+        AlarmEntity stored = new AlarmEntity();
+        stored.setId(500L);
+        stored.setMergeKey("10:TEMP_THRESHOLD");
+        stored.setStatus(AlarmStatus.PENDING_CONFIRM);
+        stored.setMergeCount(0);
+        stored.setEventCount(0);
+
+        when(realtimeStateService.shouldWriteMergedEvent("TEMP_THRESHOLD", "10", LocalDateTime.of(2026, 3, 13, 10, 0))).thenReturn(false);
+        when(idGenerator.nextId()).thenReturn(1001L, 1002L, 1003L, 1004L);
+        when(alarmRepository.findByMergeKey("10:TEMP_THRESHOLD")).thenAnswer(invocation -> Optional.of(stored));
+        when(alarmRepository.save(any(AlarmEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        java.util.concurrent.atomic.AtomicBoolean inserted = new java.util.concurrent.atomic.AtomicBoolean(false);
+        doAnswer(invocation -> {
+            AlarmEntity candidate = invocation.getArgument(0);
+            if (inserted.compareAndSet(false, true)) {
+                stored.setId(candidate.getId());
+                stored.setAlarmCode(candidate.getAlarmCode());
+                stored.setAlarmType(candidate.getAlarmType());
+                stored.setMergeKey(candidate.getMergeKey());
+                stored.setStatus(candidate.getStatus());
+                stored.setMonitorId(candidate.getMonitorId());
+                stored.setDeviceId(candidate.getDeviceId());
+                stored.setMergeCount(1);
+                stored.setEventCount(0);
+                return true;
+            }
+            stored.setMergeCount(stored.getMergeCount() + 1);
+            return false;
+        }).when(alarmJdbcRepository).upsertPendingAlarm(any(AlarmEntity.class));
+
+        DeviceEntity device = new DeviceEntity();
+        device.setId(1L);
+        MonitorEntity monitor = new MonitorEntity();
+        monitor.setId(10L);
+        DeviceResolverService.ResolvedTarget resolved = new DeviceResolverService.ResolvedTarget(
+            device,
+            monitor,
+            null,
+            "dev_TMP_th01",
+            "一区",
+            "/TMP/dev_TMP_th01",
+            "dev",
+            1,
+            "MQ_PARTITION"
+        );
+        RuleEvaluationResult result = new RuleEvaluationResult(
+            "TEMP_THRESHOLD", "REALTIME", 2, "温度超限", "超过阈值",
+            Collections.singletonList(3), new BigDecimal("90.0"), new BigDecimal("70.0")
+        );
+
+        Thread first = new Thread(() -> alarmMergeService.createOrMerge(
+            resolved, result, LocalDateTime.of(2026, 3, 13, 10, 0), "{}", "[3]"
+        ));
+        Thread second = new Thread(() -> alarmMergeService.createOrMerge(
+            resolved, result, LocalDateTime.of(2026, 3, 13, 10, 0), "{}", "[3]"
+        ));
+        first.start();
+        second.start();
+        first.join();
+        second.join();
+
+        assertEquals(2, stored.getMergeCount().intValue());
+        verify(eventJdbcRepository, atLeastOnce()).insert(any());
     }
 
     @Test
@@ -185,7 +262,7 @@ class AlarmMergeServiceTest {
         existing.setEventCount(1);
         existing.setAlarmLevel(2);
         when(alarmRepository.findById(500L)).thenReturn(Optional.of(existing));
-        when(alarmRepository.saveAndFlush(any(AlarmEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(alarmRepository.save(any(AlarmEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(idGenerator.nextId()).thenReturn(1004L);
 
         AlarmEntity alarm = alarmMergeService.confirm(500L, 99L, "checked");
@@ -208,7 +285,7 @@ class AlarmMergeServiceTest {
         existing.setEventCount(1);
         existing.setAlarmLevel(2);
         when(alarmRepository.findById(500L)).thenReturn(Optional.of(existing));
-        when(alarmRepository.saveAndFlush(any(AlarmEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(alarmRepository.save(any(AlarmEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(idGenerator.nextId()).thenReturn(1005L);
 
         AlarmEntity alarm = alarmMergeService.close(500L, "done");
