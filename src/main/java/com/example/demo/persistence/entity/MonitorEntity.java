@@ -14,6 +14,12 @@ public class MonitorEntity {
 
     private String name;
 
+    @Column(name = "area_id")
+    private Long areaId;
+
+    @Column(name = "area_name")
+    private String areaName;
+
     @Column(name = "device_id")
     private Long deviceId;
 
@@ -33,6 +39,22 @@ public class MonitorEntity {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public Long getAreaId() {
+        return areaId;
+    }
+
+    public void setAreaId(Long areaId) {
+        this.areaId = areaId;
+    }
+
+    public String getAreaName() {
+        return areaName;
+    }
+
+    public void setAreaName(String areaName) {
+        this.areaName = areaName;
     }
 
     public Long getDeviceId() {

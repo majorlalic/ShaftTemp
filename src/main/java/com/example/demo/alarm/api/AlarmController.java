@@ -44,7 +44,7 @@ public class AlarmController {
     @PostMapping("/{alarmId}/confirm")
     public ResponseEntity<Map<String, Object>> confirm(@PathVariable Long alarmId, @RequestBody(required = false) AlarmActionRequest request) {
         AlarmActionRequest payload = request == null ? new AlarmActionRequest() : request;
-        alarmService.confirm(alarmId, payload.getUserId(), payload.getRemark());
+        alarmService.confirm(alarmId, payload.getHandler(), payload.getRemark());
         return ResponseEntity.ok(queryService.getAlarmDetail(alarmId));
     }
 

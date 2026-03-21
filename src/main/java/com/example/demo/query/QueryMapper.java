@@ -35,8 +35,8 @@ public class QueryMapper {
         payload.put("alarmLevel", alarm.getAlarmLevel());
         payload.put("title", alarm.getTitle());
         payload.put("content", alarm.getContent());
-        payload.put("confirmUserId", alarm.getConfirmUserId());
-        payload.put("confirmTime", alarm.getConfirmTime());
+        payload.put("handler", alarm.getHandler());
+        payload.put("handleTime", alarm.getHandleTime());
         payload.put("handleRemark", alarm.getHandleRemark());
         payload.put("updatedOn", alarm.getUpdatedOn());
         return payload;

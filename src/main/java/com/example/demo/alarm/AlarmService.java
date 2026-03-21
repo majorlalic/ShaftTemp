@@ -22,7 +22,7 @@ public interface AlarmService {
         String detailJson
     );
 
-    AlarmEntity confirm(Long alarmId, Long userId, String remark);
+    AlarmEntity confirm(Long alarmId, Long handler, String remark);
 
     AlarmEntity observe(Long alarmId, String remark);
 

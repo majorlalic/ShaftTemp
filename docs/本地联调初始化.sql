@@ -33,10 +33,10 @@ INSERT INTO device (
 );
 
 INSERT INTO monitor (
-    id, name, area_id, service_range, elevator_count, shaft_type, monitor_status, owner_company, device_id,
+    id, name, area_id, area_name, elevator_count, shaft_type, monitor_status, owner_company, device_id,
     remark, deleted, created_on, updated_on
 ) VALUES (
-    4001, '1号竖井', 1001, '测试竖井', 2, 'POWER', 'RUNNING', '测试单位', 3001,
+    4001, '1号竖井', 1001, '测试区域/1号竖井', 2, 'POWER', 'RUNNING', '测试单位', 3001,
     '本地联调监测对象', 0, NOW(), NOW()
 );
 

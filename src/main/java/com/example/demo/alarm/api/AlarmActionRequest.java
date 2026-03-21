@@ -2,16 +2,16 @@ package com.example.demo.alarm.api;
 
 public class AlarmActionRequest {
 
-    private Long userId;
+    private Long handler;
     private String remark;
     private Integer status;
 
-    public Long getUserId() {
-        return userId;
+    public Long getHandler() {
+        return handler;
     }
 
-    public void setUserId(Long userId) {
-        this.userId = userId;
+    public void setHandler(Long handler) {
+        this.handler = handler;
     }
 
     public String getRemark() {

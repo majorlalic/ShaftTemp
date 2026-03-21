@@ -72,11 +72,11 @@ public class AlarmEntity {
     private String title;
     private String content;
 
-    @Column(name = "confirm_user_id")
-    private Long confirmUserId;
+    @Column(name = "handler")
+    private Long handler;
 
-    @Column(name = "confirm_time")
-    private LocalDateTime confirmTime;
+    @Column(name = "handle_time")
+    private LocalDateTime handleTime;
 
     @Column(name = "handle_remark")
     private String handleRemark;
@@ -265,20 +265,20 @@ public class AlarmEntity {
         this.content = content;
     }
 
-    public Long getConfirmUserId() {
-        return confirmUserId;
+    public Long getHandler() {
+        return handler;
     }
 
-    public void setConfirmUserId(Long confirmUserId) {
-        this.confirmUserId = confirmUserId;
+    public void setHandler(Long handler) {
+        this.handler = handler;
     }
 
-    public LocalDateTime getConfirmTime() {
-        return confirmTime;
+    public LocalDateTime getHandleTime() {
+        return handleTime;
     }
 
-    public void setConfirmTime(LocalDateTime confirmTime) {
-        this.confirmTime = confirmTime;
+    public void setHandleTime(LocalDateTime handleTime) {
+        this.handleTime = handleTime;
     }
 
     public String getHandleRemark() {

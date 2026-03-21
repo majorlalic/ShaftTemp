@@ -146,13 +146,13 @@ public class AlarmMergeService implements AlarmService {
 
     @Override
     @Transactional
-    public AlarmEntity confirm(Long alarmId, Long userId, String remark) {
+    public AlarmEntity confirm(Long alarmId, Long handler, String remark) {
         AlarmEntity alarm = alarmRepository.findById(alarmId)
             .orElseThrow(() -> new IllegalArgumentException("Alarm not found: " + alarmId));
         alarm.setMergeKey(null);
         alarm.setStatus(AlarmStatus.CONFIRMED);
-        alarm.setConfirmUserId(userId);
-        alarm.setConfirmTime(LocalDateTime.now());
+        alarm.setHandler(handler);
+        alarm.setHandleTime(LocalDateTime.now());
         alarm.setHandleRemark(remark);
         alarm.setUpdatedOn(LocalDateTime.now());
         AlarmEntity savedAlarm = alarmRepository.save(alarm);
