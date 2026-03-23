@@ -16,6 +16,7 @@ DROP TABLE IF EXISTS temp_stat_minute;
 DROP TABLE IF EXISTS raw_data;
 DROP TABLE IF EXISTS event;
 DROP TABLE IF EXISTS alarm;
+DROP TABLE IF EXISTS alarm_rule;
 DROP TABLE IF EXISTS monitor_partition_bind;
 DROP TABLE IF EXISTS monitor_device_bind;
 DROP TABLE IF EXISTS shaft_floor;
@@ -209,6 +210,26 @@ CREATE TABLE alarm (
     KEY idx_alarm_monitor_type_status_deleted (monitor_id, alarm_type, status, deleted),
     KEY idx_alarm_device_time (device_id, last_alarm_time)
 ) COMMENT='alarm表';
+
+CREATE TABLE alarm_rule (
+    id bigint unsigned NOT NULL COMMENT '主键ID',
+    rule_name varchar(100) DEFAULT NULL COMMENT '规则名称',
+    biz_type varchar(20) DEFAULT NULL COMMENT '业务类型 MONITOR/DEVICE',
+    alarm_type varchar(30) DEFAULT NULL COMMENT '告警类型',
+    scope_type varchar(20) DEFAULT NULL COMMENT '作用范围 GLOBAL/AREA/MONITOR/DEVICE',
+    scope_id bigint unsigned DEFAULT NULL COMMENT '作用对象ID',
+    level tinyint unsigned DEFAULT NULL COMMENT '告警等级',
+    threshold_value decimal(10,2) DEFAULT NULL COMMENT '主阈值',
+    threshold_value2 decimal(10,2) DEFAULT NULL COMMENT '副阈值',
+    duration_seconds int DEFAULT NULL COMMENT '持续时长秒数',
+    enabled tinyint DEFAULT 1 COMMENT '是否启用',
+    remark varchar(500) DEFAULT NULL COMMENT '备注',
+    deleted tinyint DEFAULT 0 COMMENT '是否删除',
+    created_on datetime DEFAULT NULL COMMENT '创建时间',
+    updated_on datetime DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    KEY idx_alarm_rule_scope (biz_type, alarm_type, scope_type, scope_id, enabled, deleted)
+) COMMENT='告警规则表';
 
 CREATE TABLE event (
     id bigint unsigned NOT NULL COMMENT '主键ID',

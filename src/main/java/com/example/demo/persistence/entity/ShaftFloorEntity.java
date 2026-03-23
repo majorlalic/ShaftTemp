@@ -15,10 +15,21 @@ public class ShaftFloorEntity {
     @Column(name = "monitor_id")
     private Long monitorId;
 
+    @Column(name = "area_id")
+    private Long areaId;
+
     private String name;
 
     @Column(name = "device_id")
     private Long deviceId;
+
+    @Column(name = "start_point")
+    private Integer startPoint;
+
+    @Column(name = "end_point")
+    private Integer endPoint;
+
+    private Integer sort;
 
     private Integer deleted;
 
@@ -46,12 +57,44 @@ public class ShaftFloorEntity {
         this.name = name;
     }
 
+    public Long getAreaId() {
+        return areaId;
+    }
+
+    public void setAreaId(Long areaId) {
+        this.areaId = areaId;
+    }
+
     public Long getDeviceId() {
         return deviceId;
     }
 
     public void setDeviceId(Long deviceId) {
         this.deviceId = deviceId;
+    }
+
+    public Integer getStartPoint() {
+        return startPoint;
+    }
+
+    public void setStartPoint(Integer startPoint) {
+        this.startPoint = startPoint;
+    }
+
+    public Integer getEndPoint() {
+        return endPoint;
+    }
+
+    public void setEndPoint(Integer endPoint) {
+        this.endPoint = endPoint;
+    }
+
+    public Integer getSort() {
+        return sort;
+    }
+
+    public void setSort(Integer sort) {
+        this.sort = sort;
     }
 
     public Integer getDeleted() {

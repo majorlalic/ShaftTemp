@@ -1,5 +1,6 @@
 package com.example.demo.persistence.entity;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -18,6 +19,28 @@ public class DeviceEntity {
 
     private String name;
 
+    @Column(name = "device_type")
+    private String deviceType;
+
+    private String model;
+
+    private String manufacturer;
+
+    @Column(name = "factory_date")
+    private LocalDate factoryDate;
+
+    @Column(name = "run_date")
+    private LocalDate runDate;
+
+    @Column(name = "asset_status")
+    private String assetStatus;
+
+    @Column(name = "area_id")
+    private Long areaId;
+
+    @Column(name = "org_id")
+    private Long orgId;
+
     @Column(name = "online_status")
     private Integer onlineStatus;
 
@@ -31,6 +54,11 @@ public class DeviceEntity {
 
     @Column(name = "updated_on")
     private LocalDateTime updatedOn;
+
+    @Column(name = "created_on")
+    private LocalDateTime createdOn;
+
+    private String remark;
 
     public Long getId() {
         return id;
@@ -54,6 +82,70 @@ public class DeviceEntity {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getDeviceType() {
+        return deviceType;
+    }
+
+    public void setDeviceType(String deviceType) {
+        this.deviceType = deviceType;
+    }
+
+    public String getModel() {
+        return model;
+    }
+
+    public void setModel(String model) {
+        this.model = model;
+    }
+
+    public String getManufacturer() {
+        return manufacturer;
+    }
+
+    public void setManufacturer(String manufacturer) {
+        this.manufacturer = manufacturer;
+    }
+
+    public LocalDate getFactoryDate() {
+        return factoryDate;
+    }
+
+    public void setFactoryDate(LocalDate factoryDate) {
+        this.factoryDate = factoryDate;
+    }
+
+    public LocalDate getRunDate() {
+        return runDate;
+    }
+
+    public void setRunDate(LocalDate runDate) {
+        this.runDate = runDate;
+    }
+
+    public String getAssetStatus() {
+        return assetStatus;
+    }
+
+    public void setAssetStatus(String assetStatus) {
+        this.assetStatus = assetStatus;
+    }
+
+    public Long getAreaId() {
+        return areaId;
+    }
+
+    public void setAreaId(Long areaId) {
+        this.areaId = areaId;
+    }
+
+    public Long getOrgId() {
+        return orgId;
+    }
+
+    public void setOrgId(Long orgId) {
+        this.orgId = orgId;
     }
 
     public Integer getOnlineStatus() {
@@ -94,5 +186,21 @@ public class DeviceEntity {
 
     public void setUpdatedOn(LocalDateTime updatedOn) {
         this.updatedOn = updatedOn;
+    }
+
+    public LocalDateTime getCreatedOn() {
+        return createdOn;
+    }
+
+    public void setCreatedOn(LocalDateTime createdOn) {
+        this.createdOn = createdOn;
+    }
+
+    public String getRemark() {
+        return remark;
+    }
+
+    public void setRemark(String remark) {
+        this.remark = remark;
     }
 }

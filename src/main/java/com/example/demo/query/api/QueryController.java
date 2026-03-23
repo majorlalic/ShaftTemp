@@ -1,6 +1,7 @@
 package com.example.demo.query.api;
 
 import com.example.demo.query.QueryService;
+import com.example.demo.web.ApiResponse;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -23,27 +24,27 @@ public class QueryController {
     }
 
     @GetMapping("/events")
-    public ResponseEntity<List<Map<String, Object>>> listEvents(
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> listEvents(
         @RequestParam(required = false) Long alarmId,
         @RequestParam(required = false) Long shaftFloorId,
         @RequestParam(required = false) String partitionCode
     ) {
-        return ResponseEntity.ok(queryService.listEvents(alarmId, shaftFloorId, partitionCode));
+        return ResponseEntity.ok(ApiResponse.success(queryService.listEvents(alarmId, shaftFloorId, partitionCode)));
     }
 
     @GetMapping("/raw-data")
-    public ResponseEntity<List<Map<String, Object>>> listRawData(
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> listRawData(
         @RequestParam(required = false) Long monitorId,
         @RequestParam(required = false) Long deviceId,
         @RequestParam(required = false) Long shaftFloorId,
         @RequestParam(required = false) String partitionCode,
         @RequestParam(required = false) Integer limit
     ) {
-        return ResponseEntity.ok(queryService.listRawData(monitorId, deviceId, shaftFloorId, partitionCode, limit));
+        return ResponseEntity.ok(ApiResponse.success(queryService.listRawData(monitorId, deviceId, shaftFloorId, partitionCode, limit)));
     }
 
     @GetMapping("/temp-stats/minute")
-    public ResponseEntity<List<Map<String, Object>>> listTempStats(
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> listTempStats(
         @RequestParam(required = false) Long monitorId,
         @RequestParam(required = false) Long deviceId,
         @RequestParam(required = false) Long shaftFloorId,
@@ -52,11 +53,13 @@ public class QueryController {
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
         @RequestParam(required = false) Integer limit
     ) {
-        return ResponseEntity.ok(queryService.listTempStats(monitorId, deviceId, shaftFloorId, partitionCode, from, to, limit));
+        return ResponseEntity.ok(ApiResponse.success(
+            queryService.listTempStats(monitorId, deviceId, shaftFloorId, partitionCode, from, to, limit)
+        ));
     }
 
     @GetMapping("/devices/{deviceId}/realtime")
-    public ResponseEntity<Map<String, Object>> getRealtime(@PathVariable Long deviceId) {
-        return ResponseEntity.ok(queryService.getRealtimeDeviceState(deviceId));
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getRealtime(@PathVariable Long deviceId) {
+        return ResponseEntity.ok(ApiResponse.success(queryService.getRealtimeDeviceState(deviceId)));
     }
 }

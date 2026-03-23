@@ -268,7 +268,8 @@ class AlarmMergeServiceTest {
         AlarmEntity alarm = alarmMergeService.confirm(500L, 99L, "checked");
 
         assertEquals(AlarmStatus.CONFIRMED, alarm.getStatus().intValue());
-        assertEquals(99L, alarm.getConfirmUserId().longValue());
+        assertEquals(99L, alarm.getHandler().longValue());
+        assertNotNull(alarm.getHandleTime());
         assertEquals(2, alarm.getEventCount().intValue());
         verify(realtimeStateService).clearActiveAlarmId("TEMP_THRESHOLD", "10");
         verify(eventJdbcRepository).insert(any());

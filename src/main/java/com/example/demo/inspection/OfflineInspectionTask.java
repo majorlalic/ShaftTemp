@@ -4,6 +4,7 @@ import com.example.demo.AppProperties;
 import com.example.demo.alarm.AlarmService;
 import com.example.demo.alarm.rule.AlarmRuleEngine;
 import com.example.demo.alarm.rule.RuleEvaluationResult;
+import com.example.demo.alarm.rule.service.AlarmRuleResolverService;
 import com.example.demo.ingest.service.DeviceResolverService;
 import com.example.demo.persistence.entity.DeviceEntity;
 import com.example.demo.persistence.entity.DeviceOnlineLogEntity;
@@ -33,6 +34,7 @@ public class OfflineInspectionTask {
     private final DeviceOnlineLogRepository deviceOnlineLogRepository;
     private final RealtimeStateService realtimeStateService;
     private final AlarmRuleEngine alarmRuleEngine;
+    private final AlarmRuleResolverService alarmRuleResolverService;
     private final AlarmService alarmService;
     private final IdGenerator idGenerator;
     private final ObjectMapper objectMapper;
@@ -44,6 +46,7 @@ public class OfflineInspectionTask {
         DeviceOnlineLogRepository deviceOnlineLogRepository,
         RealtimeStateService realtimeStateService,
         AlarmRuleEngine alarmRuleEngine,
+        AlarmRuleResolverService alarmRuleResolverService,
         AlarmService alarmService,
         IdGenerator idGenerator,
         ObjectMapper objectMapper
@@ -54,6 +57,7 @@ public class OfflineInspectionTask {
         this.deviceOnlineLogRepository = deviceOnlineLogRepository;
         this.realtimeStateService = realtimeStateService;
         this.alarmRuleEngine = alarmRuleEngine;
+        this.alarmRuleResolverService = alarmRuleResolverService;
         this.alarmService = alarmService;
         this.idGenerator = idGenerator;
         this.objectMapper = objectMapper;
@@ -67,28 +71,35 @@ public class OfflineInspectionTask {
         }
         List<DeviceEntity> devices = deviceRepository.findAllActive();
         for (DeviceEntity device : devices) {
+            MonitorEntity monitor = monitorRepository.findActiveByDeviceId(device.getId()).orElse(null);
+            if (monitor == null) {
+                continue;
+            }
+            DeviceResolverService.ResolvedTarget resolved = DeviceResolverService.ResolvedTarget.forDevice(device, monitor);
             Optional<LocalDateTime> reportTime = realtimeStateService.getLastReportTime(device.getId());
             LocalDateTime lastReportTime = reportTime.orElse(device.getLastReportTime());
             if (lastReportTime == null) {
                 continue;
             }
             long offlineSeconds = Duration.between(lastReportTime, LocalDateTime.now()).getSeconds();
-            if (offlineSeconds < appProperties.getAlarm().getOfflineThresholdSeconds()) {
+            AlarmRuleResolverService.RuleConfig rule = alarmRuleResolverService.resolveDeviceRule(resolved, "DEVICE_OFFLINE");
+            long thresholdSeconds = rule.getThresholdValue() == null
+                ? appProperties.getAlarm().getOfflineThresholdSeconds()
+                : rule.getThresholdValue().longValue();
+            if (!rule.isEnabled() || offlineSeconds < thresholdSeconds) {
                 continue;
             }
             int level = realtimeStateService.incrementOfflineLevel(device.getId());
             if (level > 1 && device.getOnlineStatus() != null && device.getOnlineStatus() == 0) {
                 continue;
             }
-            triggerOffline(device, offlineSeconds);
+            triggerOffline(resolved, offlineSeconds);
         }
     }
 
-    private void triggerOffline(DeviceEntity device, long offlineSeconds) {
-        MonitorEntity monitor = monitorRepository.findActiveByDeviceId(device.getId()).orElse(null);
-        if (monitor == null) {
-            return;
-        }
+    private void triggerOffline(DeviceResolverService.ResolvedTarget resolved, long offlineSeconds) {
+        DeviceEntity device = resolved.getDevice();
+        MonitorEntity monitor = resolved.getMonitor();
         LocalDateTime now = LocalDateTime.now();
         device.setOnlineStatus(0);
         device.setLastOfflineTime(now);
@@ -105,17 +116,16 @@ public class OfflineInspectionTask {
         log.setCreatedOn(now);
         deviceOnlineLogRepository.save(log);
 
-        RuleEvaluationResult result = alarmRuleEngine.buildOfflineResult(
-            monitor.getName() == null ? "监测对象" : monitor.getName(),
-            offlineSeconds
-        );
-        alarmService.createOrMerge(
-            DeviceResolverService.ResolvedTarget.forDevice(device, monitor),
-            result,
-            now,
-            toJson(Collections.singletonMap("offlineSeconds", offlineSeconds)),
-            "[]"
-        );
+        RuleEvaluationResult result = alarmRuleEngine.buildOfflineResult(resolved, offlineSeconds);
+        if (result != null) {
+            alarmService.createOrMerge(
+                resolved,
+                result,
+                now,
+                toJson(Collections.singletonMap("offlineSeconds", offlineSeconds)),
+                "[]"
+            );
+        }
     }
 
     private String toJson(Object value) {

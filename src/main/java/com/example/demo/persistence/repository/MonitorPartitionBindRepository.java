@@ -16,4 +16,10 @@ public interface MonitorPartitionBindRepository extends JpaRepository<MonitorPar
 
     @Query("select b from MonitorPartitionBindEntity b where b.bindStatus = 1 and (b.deleted is null or b.deleted = 0)")
     List<MonitorPartitionBindEntity> findAllActive();
+
+    @Query("select b from MonitorPartitionBindEntity b where b.monitorId = ?1 and b.bindStatus = 1 and (b.deleted is null or b.deleted = 0) order by b.partitionNo asc, b.id asc")
+    List<MonitorPartitionBindEntity> findAllActiveByMonitorId(Long monitorId);
+
+    @Query("select b from MonitorPartitionBindEntity b where b.deviceId = ?1 and b.bindStatus = 1 and (b.deleted is null or b.deleted = 0) order by b.partitionNo asc, b.id asc")
+    List<MonitorPartitionBindEntity> findAllActiveByDeviceId(Long deviceId);
 }

@@ -75,8 +75,7 @@ public class ReportIngestService {
         RealtimeSummary previousSummary = realtimeStateService.getLastPartitionSummary(resolved.getPartitionCode()).orElse(null);
         ReportMetrics metrics = new ReportMetrics(request.getMaxTemp(), request.getMinTemp(), request.getAvgTemp());
         List<RuleEvaluationResult> results = alarmRuleEngine.evaluateMeasure(
-            resolved.getMonitor(),
-            resolved.getPartitionName(),
+            resolved,
             metrics,
             previousSummary
         );
@@ -152,14 +151,11 @@ public class ReportIngestService {
         }
 
         if (Boolean.TRUE.equals(request.getFaultStatus())) {
-            RuleEvaluationResult faultResult = alarmRuleEngine.buildUpstreamAlarmResult(
-                "PARTITION_FAULT",
-                resolved.getMonitor().getName(),
-                resolved.getPartitionName(),
-                "故障状态为 true"
-            );
-            alarmService.createOrMerge(resolved, faultResult, collectTime, toJson(buildAlarmStatusDetail(request)), "[]");
-            alarmCount++;
+            RuleEvaluationResult faultResult = alarmRuleEngine.buildPartitionFaultResult(resolved, "故障状态为 true");
+            if (faultResult != null) {
+                alarmService.createOrMerge(resolved, faultResult, collectTime, toJson(buildAlarmStatusDetail(request)), "[]");
+                alarmCount++;
+            }
         } else {
             alarmService.recover(
                 resolved,

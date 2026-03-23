@@ -7,7 +7,9 @@ import static org.mockito.Mockito.when;
 import com.example.demo.AppProperties;
 import com.example.demo.alarm.AlarmService;
 import com.example.demo.alarm.rule.AlarmRuleEngine;
+import com.example.demo.alarm.rule.service.AlarmRuleResolverService;
 import com.example.demo.persistence.entity.DeviceEntity;
+import com.example.demo.persistence.entity.MonitorEntity;
 import com.example.demo.persistence.repository.DeviceOnlineLogRepository;
 import com.example.demo.persistence.repository.DeviceRepository;
 import com.example.demo.persistence.repository.MonitorRepository;
@@ -37,6 +39,8 @@ class OfflineInspectionTaskTest {
     @Mock
     private AlarmRuleEngine alarmRuleEngine;
     @Mock
+    private AlarmRuleResolverService alarmRuleResolverService;
+    @Mock
     private AlarmService alarmService;
     @Mock
     private IdGenerator idGenerator;
@@ -52,6 +56,7 @@ class OfflineInspectionTaskTest {
             deviceOnlineLogRepository,
             realtimeStateService,
             alarmRuleEngine,
+            alarmRuleResolverService,
             alarmService,
             idGenerator,
             new ObjectMapper()
@@ -60,8 +65,13 @@ class OfflineInspectionTaskTest {
         DeviceEntity device = new DeviceEntity();
         device.setId(1L);
         device.setLastReportTime(LocalDateTime.now());
+        MonitorEntity monitor = new MonitorEntity();
+        monitor.setId(10L);
         when(deviceRepository.findAllActive()).thenReturn(Collections.singletonList(device));
+        when(monitorRepository.findActiveByDeviceId(1L)).thenReturn(Optional.of(monitor));
         when(realtimeStateService.getLastReportTime(1L)).thenReturn(Optional.of(LocalDateTime.now()));
+        when(alarmRuleResolverService.resolveDeviceRule(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq("DEVICE_OFFLINE")))
+            .thenReturn(new AlarmRuleResolverService.RuleConfig(true, 2, java.math.BigDecimal.valueOf(30L), null));
 
         task.inspect();
 
