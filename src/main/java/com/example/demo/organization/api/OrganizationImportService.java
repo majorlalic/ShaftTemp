@@ -8,11 +8,12 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -116,6 +117,7 @@ public class OrganizationImportService {
         try {
             List<String[]> rows = parseCsv(file);
             Map<Long, OrgEntity> entities = new LinkedHashMap<Long, OrgEntity>();
+            Map<Long, OrgEntity> existing = toOrgMap(orgRepository.findAllActive());
             for (int i = 1; i < rows.size(); i++) {
                 String[] row = rows.get(i);
                 if (row.length < 5) {
@@ -130,7 +132,7 @@ public class OrganizationImportService {
                 entity.setDeleted(0);
                 entities.put(entity.getId(), entity);
             }
-            fillOrgPaths(entities);
+            fillOrgPaths(existing, entities);
             return new ArrayList<OrgEntity>(entities.values());
         } catch (IOException ex) {
             throw new IllegalArgumentException("Failed to parse org csv", ex);
@@ -141,6 +143,7 @@ public class OrganizationImportService {
         try {
             List<String[]> rows = parseCsv(file);
             Map<Long, AreaEntity> entities = new LinkedHashMap<Long, AreaEntity>();
+            Map<Long, AreaEntity> existing = toAreaMap(areaRepository.findAllActive());
             for (int i = 1; i < rows.size(); i++) {
                 String[] row = rows.get(i);
                 if (row.length < 5) {
@@ -155,7 +158,7 @@ public class OrganizationImportService {
                 entity.setDeleted(0);
                 entities.put(entity.getId(), entity);
             }
-            fillAreaPaths(entities);
+            fillAreaPaths(existing, entities);
             return new ArrayList<AreaEntity>(entities.values());
         } catch (IOException ex) {
             throw new IllegalArgumentException("Failed to parse area csv", ex);
@@ -172,36 +175,80 @@ public class OrganizationImportService {
         return rows;
     }
 
-    private void fillOrgPaths(Map<Long, OrgEntity> entities) {
-        for (OrgEntity entity : entities.values()) {
-            List<String> ids = new ArrayList<String>();
-            List<String> names = new ArrayList<String>();
-            OrgEntity cursor = entity;
-            while (cursor != null) {
-                ids.add(0, String.valueOf(cursor.getId()));
-                names.add(0, cursor.getName());
-                Long parentId = cursor.getParentId();
-                cursor = parentId == null ? null : entities.get(parentId);
-            }
-            entity.setPathIds(String.join("/", ids));
-            entity.setPathNames(String.join("/", names));
+    private void fillOrgPaths(Map<Long, OrgEntity> existing, Map<Long, OrgEntity> imported) {
+        Map<Long, OrgEntity> lookup = new LinkedHashMap<Long, OrgEntity>(existing);
+        lookup.putAll(imported);
+        for (OrgEntity entity : imported.values()) {
+            fillOrgPath(entity, lookup);
         }
     }
 
-    private void fillAreaPaths(Map<Long, AreaEntity> entities) {
-        for (AreaEntity entity : entities.values()) {
-            List<String> ids = new ArrayList<String>();
-            List<String> names = new ArrayList<String>();
-            AreaEntity cursor = entity;
-            while (cursor != null) {
-                ids.add(0, String.valueOf(cursor.getId()));
-                names.add(0, cursor.getName());
-                Long parentId = cursor.getParentId();
-                cursor = parentId == null ? null : entities.get(parentId);
-            }
-            entity.setPathIds(String.join("/", ids));
-            entity.setPathNames(String.join("/", names));
+    private void fillAreaPaths(Map<Long, AreaEntity> existing, Map<Long, AreaEntity> imported) {
+        Map<Long, AreaEntity> lookup = new LinkedHashMap<Long, AreaEntity>(existing);
+        lookup.putAll(imported);
+        for (AreaEntity entity : imported.values()) {
+            fillAreaPath(entity, lookup);
         }
+    }
+
+    private void fillOrgPath(OrgEntity entity, Map<Long, OrgEntity> lookup) {
+        List<String> ids = new ArrayList<String>();
+        List<String> names = new ArrayList<String>();
+        Set<Long> visited = new HashSet<Long>();
+        OrgEntity cursor = entity;
+        while (cursor != null) {
+            if (!visited.add(cursor.getId())) {
+                throw new IllegalArgumentException("Org parent relation contains a cycle: " + cursor.getId());
+            }
+            ids.add(0, String.valueOf(cursor.getId()));
+            names.add(0, cursor.getName());
+            Long parentId = cursor.getParentId();
+            if (parentId == null || parentId.longValue() == 0L) {
+                cursor = null;
+            } else {
+                cursor = lookup.get(parentId);
+            }
+        }
+        entity.setPathIds(String.join("/", ids));
+        entity.setPathNames(String.join("/", names));
+    }
+
+    private void fillAreaPath(AreaEntity entity, Map<Long, AreaEntity> lookup) {
+        List<String> ids = new ArrayList<String>();
+        List<String> names = new ArrayList<String>();
+        Set<Long> visited = new HashSet<Long>();
+        AreaEntity cursor = entity;
+        while (cursor != null) {
+            if (!visited.add(cursor.getId())) {
+                throw new IllegalArgumentException("Area parent relation contains a cycle: " + cursor.getId());
+            }
+            ids.add(0, String.valueOf(cursor.getId()));
+            names.add(0, cursor.getName());
+            Long parentId = cursor.getParentId();
+            if (parentId == null || parentId.longValue() == 0L) {
+                cursor = null;
+            } else {
+                cursor = lookup.get(parentId);
+            }
+        }
+        entity.setPathIds(String.join("/", ids));
+        entity.setPathNames(String.join("/", names));
+    }
+
+    private Map<Long, OrgEntity> toOrgMap(List<OrgEntity> rows) {
+        Map<Long, OrgEntity> result = new LinkedHashMap<Long, OrgEntity>();
+        for (OrgEntity row : rows) {
+            result.put(row.getId(), row);
+        }
+        return result;
+    }
+
+    private Map<Long, AreaEntity> toAreaMap(List<AreaEntity> rows) {
+        Map<Long, AreaEntity> result = new LinkedHashMap<Long, AreaEntity>();
+        for (AreaEntity row : rows) {
+            result.put(row.getId(), row);
+        }
+        return result;
     }
 
     private Long parseNullableLong(String raw) {

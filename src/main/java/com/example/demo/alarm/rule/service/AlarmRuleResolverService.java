@@ -6,7 +6,6 @@ import com.example.demo.persistence.entity.AlarmRuleEntity;
 import com.example.demo.persistence.repository.AlarmRuleRepository;
 import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
@@ -39,7 +38,7 @@ public class AlarmRuleResolverService {
     }
 
     public RuleConfig resolveMonitorRule(DeviceResolverService.ResolvedTarget resolved, String alarmType) {
-        AlarmRuleEntity matched = resolveBest("MONITOR", alarmType, resolved);
+        AlarmRuleEntity matched = resolveBest("MONITOR", alarmType);
         if (matched == null) {
             return fallbackMonitorRule(alarmType);
         }
@@ -47,52 +46,25 @@ public class AlarmRuleResolverService {
     }
 
     public RuleConfig resolveDeviceRule(DeviceResolverService.ResolvedTarget resolved, String alarmType) {
-        AlarmRuleEntity matched = resolveBest("DEVICE", alarmType, resolved);
+        AlarmRuleEntity matched = resolveBest("DEVICE", alarmType);
         if (matched == null) {
             return fallbackDeviceRule(alarmType);
         }
         return toConfig(matched, fallbackThreshold(alarmType));
     }
 
-    private AlarmRuleEntity resolveBest(String bizType, String alarmType, DeviceResolverService.ResolvedTarget resolved) {
+    private AlarmRuleEntity resolveBest(String bizType, String alarmType) {
         return cache.get().stream()
             .filter(rule -> bizType.equals(rule.getBizType()))
             .filter(rule -> alarmType.equals(rule.getAlarmType()))
-            .filter(rule -> matchesScope(rule, resolved))
-            .sorted(Comparator.comparingInt((AlarmRuleEntity rule) -> scopeWeight(rule.getScopeType())).reversed()
-                .thenComparing(AlarmRuleEntity::getUpdatedOn, Comparator.nullsLast(Comparator.reverseOrder())))
+            .filter(this::isGlobalRule)
             .findFirst()
             .orElse(null);
     }
 
-    private boolean matchesScope(AlarmRuleEntity rule, DeviceResolverService.ResolvedTarget resolved) {
+    private boolean isGlobalRule(AlarmRuleEntity rule) {
         String scopeType = rule.getScopeType();
-        if (scopeType == null || "GLOBAL".equals(scopeType)) {
-            return true;
-        }
-        if ("AREA".equals(scopeType)) {
-            return resolved.getMonitor().getAreaId() != null && resolved.getMonitor().getAreaId().equals(rule.getScopeId());
-        }
-        if ("MONITOR".equals(scopeType)) {
-            return resolved.getMonitor().getId().equals(rule.getScopeId());
-        }
-        if ("DEVICE".equals(scopeType)) {
-            return resolved.getDevice().getId().equals(rule.getScopeId());
-        }
-        return false;
-    }
-
-    private int scopeWeight(String scopeType) {
-        if ("DEVICE".equals(scopeType)) {
-            return 4;
-        }
-        if ("MONITOR".equals(scopeType)) {
-            return 3;
-        }
-        if ("AREA".equals(scopeType)) {
-            return 2;
-        }
-        return 1;
+        return scopeType == null || "GLOBAL".equals(scopeType);
     }
 
     private RuleConfig fallbackMonitorRule(String alarmType) {

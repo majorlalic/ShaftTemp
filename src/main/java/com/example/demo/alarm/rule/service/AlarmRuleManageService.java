@@ -34,7 +34,7 @@ public class AlarmRuleManageService {
         return alarmRuleRepository.findAllActive().stream()
             .filter(rule -> bizType == null || bizType.equals(rule.getBizType()))
             .filter(rule -> alarmType == null || alarmType.equals(rule.getAlarmType()))
-            .filter(rule -> scopeType == null || scopeType.equals(rule.getScopeType()))
+            .filter(rule -> scopeType == null || "GLOBAL".equals(rule.getScopeType()))
             .filter(rule -> enabled == null || enabled.equals(rule.getEnabled()))
             .map(this::toMap)
             .collect(Collectors.toList());
@@ -95,8 +95,8 @@ public class AlarmRuleManageService {
         entity.setRuleName(request.getRuleName());
         entity.setBizType(request.getBizType());
         entity.setAlarmType(request.getAlarmType());
-        entity.setScopeType(request.getScopeType());
-        entity.setScopeId(request.getScopeId());
+        entity.setScopeType("GLOBAL");
+        entity.setScopeId(null);
         entity.setLevel(request.getLevel());
         entity.setThresholdValue(request.getThresholdValue());
         entity.setThresholdValue2(request.getThresholdValue2());
