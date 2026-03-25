@@ -13,6 +13,7 @@ USE shaft;
 
 DROP TABLE IF EXISTS device_online_log;
 DROP TABLE IF EXISTS temp_stat_minute;
+DROP TABLE IF EXISTS device_raw_data;
 DROP TABLE IF EXISTS raw_data;
 DROP TABLE IF EXISTS event;
 DROP TABLE IF EXISTS alarm;
@@ -289,6 +290,29 @@ CREATE TABLE raw_data (
     KEY idx_raw_data_monitor_time (monitor_id, collect_time),
     KEY idx_raw_data_partition_time (partition_code, collect_time)
 ) COMMENT='raw_data表';
+
+CREATE TABLE device_raw_data (
+    id bigint unsigned NOT NULL COMMENT '主键ID',
+    device_id bigint unsigned DEFAULT NULL COMMENT '终端ID',
+    iot_code varchar(100) DEFAULT NULL COMMENT '物联编码',
+    monitor_id bigint unsigned DEFAULT NULL COMMENT '监测对象ID',
+    topic varchar(200) DEFAULT NULL COMMENT '消息主题',
+    ied_full_path varchar(200) DEFAULT NULL COMMENT '设备路径',
+    collect_time datetime DEFAULT NULL COMMENT '采集时间',
+    point_count int unsigned DEFAULT NULL COMMENT '点位数量',
+    valid_start_point int unsigned DEFAULT NULL COMMENT '有效开始点位',
+    valid_end_point int unsigned DEFAULT NULL COMMENT '有效结束点位',
+    values_json json DEFAULT NULL COMMENT '设备数组原始JSON',
+    max_temp decimal(8,2) DEFAULT NULL COMMENT '最大温度',
+    min_temp decimal(8,2) DEFAULT NULL COMMENT '最小温度',
+    avg_temp decimal(8,2) DEFAULT NULL COMMENT '平均温度',
+    deleted tinyint DEFAULT 0 COMMENT '是否删除',
+    created_on datetime DEFAULT NULL COMMENT '创建时间',
+    PRIMARY KEY (id),
+    KEY idx_device_raw_data_device_time (device_id, collect_time),
+    KEY idx_device_raw_data_monitor_time (monitor_id, collect_time),
+    KEY idx_device_raw_data_iot_time (iot_code, collect_time)
+) COMMENT='device_raw_data表';
 
 CREATE TABLE temp_stat_minute (
     id bigint unsigned NOT NULL COMMENT '主键ID',

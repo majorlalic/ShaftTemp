@@ -5,6 +5,7 @@ USE shaft;
 
 DELETE FROM device_online_log;
 DELETE FROM temp_stat_minute;
+DELETE FROM device_raw_data;
 DELETE FROM raw_data;
 DELETE FROM event;
 DELETE FROM alarm;

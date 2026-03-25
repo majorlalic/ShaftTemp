@@ -1,10 +1,12 @@
 package com.example.demo.query;
 
 import com.example.demo.persistence.entity.AlarmEntity;
+import com.example.demo.persistence.entity.DeviceRawDataEntity;
 import com.example.demo.persistence.entity.EventEntity;
 import com.example.demo.persistence.entity.RawDataEntity;
 import com.example.demo.persistence.entity.TempStatMinuteEntity;
 import com.example.demo.persistence.repository.AlarmRepository;
+import com.example.demo.persistence.repository.DeviceRawDataRepository;
 import com.example.demo.persistence.repository.EventRepository;
 import com.example.demo.persistence.repository.RawDataRepository;
 import com.example.demo.persistence.repository.TempStatMinuteRepository;
@@ -24,6 +26,7 @@ import org.springframework.stereotype.Service;
 public class QueryService {
 
     private final AlarmRepository alarmRepository;
+    private final DeviceRawDataRepository deviceRawDataRepository;
     private final EventRepository eventRepository;
     private final RawDataRepository rawDataRepository;
     private final TempStatMinuteRepository tempStatMinuteRepository;
@@ -32,6 +35,7 @@ public class QueryService {
 
     public QueryService(
         AlarmRepository alarmRepository,
+        DeviceRawDataRepository deviceRawDataRepository,
         EventRepository eventRepository,
         RawDataRepository rawDataRepository,
         TempStatMinuteRepository tempStatMinuteRepository,
@@ -39,6 +43,7 @@ public class QueryService {
         QueryMapper queryMapper
     ) {
         this.alarmRepository = alarmRepository;
+        this.deviceRawDataRepository = deviceRawDataRepository;
         this.eventRepository = eventRepository;
         this.rawDataRepository = rawDataRepository;
         this.tempStatMinuteRepository = tempStatMinuteRepository;
@@ -91,6 +96,30 @@ public class QueryService {
         List<Map<String, Object>> payload = new ArrayList<Map<String, Object>>();
         for (int i = 0; i < results.size() && i < safeLimit; i++) {
             payload.add(queryMapper.toRawDataMap(results.get(i)));
+        }
+        return payload;
+    }
+
+    public List<Map<String, Object>> listDeviceRawData(
+        Long monitorId,
+        Long deviceId,
+        String iotCode,
+        LocalDateTime from,
+        LocalDateTime to,
+        Integer limit
+    ) {
+        if (from == null || to == null) {
+            throw new IllegalArgumentException("from and to are required for device raw data query");
+        }
+        int safeLimit = limit == null ? 50 : Math.max(1, limit.intValue());
+        List<DeviceRawDataEntity> results = deviceRawDataRepository.findByCollectTimeBetweenOrderByCollectTimeDesc(from, to).stream()
+            .filter(row -> monitorId == null || monitorId.equals(row.getMonitorId()))
+            .filter(row -> deviceId == null || deviceId.equals(row.getDeviceId()))
+            .filter(row -> iotCode == null || iotCode.equals(row.getIotCode()))
+            .collect(Collectors.toList());
+        List<Map<String, Object>> payload = new ArrayList<Map<String, Object>>();
+        for (int i = 0; i < results.size() && i < safeLimit; i++) {
+            payload.add(queryMapper.toDeviceRawDataMap(results.get(i)));
         }
         return payload;
     }

@@ -3,6 +3,7 @@ package com.example.demo.query;
 import com.example.demo.alarm.AlarmEventType;
 import com.example.demo.alarm.AlarmStatus;
 import com.example.demo.persistence.entity.AlarmEntity;
+import com.example.demo.persistence.entity.DeviceRawDataEntity;
 import com.example.demo.persistence.entity.EventEntity;
 import com.example.demo.persistence.entity.RawDataEntity;
 import com.example.demo.persistence.entity.TempStatMinuteEntity;
@@ -83,6 +84,25 @@ public class QueryMapper {
         payload.put("minTemp", rawData.getMinTemp());
         payload.put("avgTemp", rawData.getAvgTemp());
         payload.put("abnormalFlag", rawData.getAbnormalFlag());
+        return payload;
+    }
+
+    public Map<String, Object> toDeviceRawDataMap(DeviceRawDataEntity rawData) {
+        Map<String, Object> payload = new LinkedHashMap<String, Object>();
+        payload.put("id", rawData.getId());
+        payload.put("deviceId", rawData.getDeviceId());
+        payload.put("iotCode", rawData.getIotCode());
+        payload.put("monitorId", rawData.getMonitorId());
+        payload.put("topic", rawData.getTopic());
+        payload.put("iedFullPath", rawData.getIedFullPath());
+        payload.put("collectTime", rawData.getCollectTime());
+        payload.put("pointCount", rawData.getPointCount());
+        payload.put("validStartPoint", rawData.getValidStartPoint());
+        payload.put("validEndPoint", rawData.getValidEndPoint());
+        payload.put("valuesJson", rawData.getValuesJson());
+        payload.put("maxTemp", rawData.getMaxTemp());
+        payload.put("minTemp", rawData.getMinTemp());
+        payload.put("avgTemp", rawData.getAvgTemp());
         return payload;
     }
 

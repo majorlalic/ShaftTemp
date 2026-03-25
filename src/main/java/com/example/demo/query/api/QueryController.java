@@ -43,6 +43,20 @@ public class QueryController {
         return ResponseEntity.ok(ApiResponse.success(queryService.listRawData(monitorId, deviceId, shaftFloorId, partitionCode, limit)));
     }
 
+    @GetMapping("/device-raw-data")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> listDeviceRawData(
+        @RequestParam(required = false) Long monitorId,
+        @RequestParam(required = false) Long deviceId,
+        @RequestParam(required = false) String iotCode,
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
+        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
+        @RequestParam(required = false) Integer limit
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+            queryService.listDeviceRawData(monitorId, deviceId, iotCode, from, to, limit)
+        ));
+    }
+
     @GetMapping("/temp-stats/minute")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> listTempStats(
         @RequestParam(required = false) Long monitorId,
