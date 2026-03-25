@@ -6,7 +6,7 @@ import com.example.demo.persistence.entity.RawDataEntity;
 import com.example.demo.persistence.entity.TempStatMinuteEntity;
 import com.example.demo.persistence.repository.AlarmRepository;
 import com.example.demo.persistence.repository.EventRepository;
-import com.example.demo.persistence.repository.RawDataRepository;
+import com.example.demo.persistence.repository.RawDataQueryRepository;
 import com.example.demo.persistence.repository.TempStatMinuteRepository;
 import com.example.demo.realtime.RealtimeStateService;
 import com.example.demo.realtime.RealtimeStateService.RealtimeSummary;
@@ -25,7 +25,7 @@ public class QueryService {
 
     private final AlarmRepository alarmRepository;
     private final EventRepository eventRepository;
-    private final RawDataRepository rawDataRepository;
+    private final RawDataQueryRepository rawDataQueryRepository;
     private final TempStatMinuteRepository tempStatMinuteRepository;
     private final RealtimeStateService realtimeStateService;
     private final QueryMapper queryMapper;
@@ -33,14 +33,14 @@ public class QueryService {
     public QueryService(
         AlarmRepository alarmRepository,
         EventRepository eventRepository,
-        RawDataRepository rawDataRepository,
+        RawDataQueryRepository rawDataQueryRepository,
         TempStatMinuteRepository tempStatMinuteRepository,
         RealtimeStateService realtimeStateService,
         QueryMapper queryMapper
     ) {
         this.alarmRepository = alarmRepository;
         this.eventRepository = eventRepository;
-        this.rawDataRepository = rawDataRepository;
+        this.rawDataQueryRepository = rawDataQueryRepository;
         this.tempStatMinuteRepository = tempStatMinuteRepository;
         this.realtimeStateService = realtimeStateService;
         this.queryMapper = queryMapper;
@@ -80,14 +80,28 @@ public class QueryService {
             .collect(Collectors.toList());
     }
 
-    public List<Map<String, Object>> listRawData(Long monitorId, Long deviceId, Long shaftFloorId, String partitionCode, Integer limit) {
-        List<RawDataEntity> results = rawDataRepository.findRecentAll().stream()
-            .filter(rawData -> monitorId == null || monitorId.equals(rawData.getMonitorId()))
-            .filter(rawData -> deviceId == null || deviceId.equals(rawData.getDeviceId()))
-            .filter(rawData -> shaftFloorId == null || shaftFloorId.equals(rawData.getShaftFloorId()))
-            .filter(rawData -> partitionCode == null || partitionCode.equals(rawData.getPartitionCode()))
-            .collect(Collectors.toList());
+    public List<Map<String, Object>> listRawData(
+        Long monitorId,
+        Long deviceId,
+        Long shaftFloorId,
+        String partitionCode,
+        LocalDateTime from,
+        LocalDateTime to,
+        Integer limit
+    ) {
+        if (from == null || to == null) {
+            throw new IllegalArgumentException("from and to are required for raw data query");
+        }
         int safeLimit = limit == null ? 50 : Math.max(1, limit.intValue());
+        List<RawDataEntity> results = rawDataQueryRepository.query(
+            monitorId,
+            deviceId,
+            shaftFloorId,
+            partitionCode,
+            from,
+            to,
+            safeLimit
+        );
         List<Map<String, Object>> payload = new ArrayList<Map<String, Object>>();
         for (int i = 0; i < results.size() && i < safeLimit; i++) {
             payload.add(queryMapper.toRawDataMap(results.get(i)));

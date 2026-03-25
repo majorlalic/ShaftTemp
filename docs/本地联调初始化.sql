@@ -1,10 +1,13 @@
 -- 本地联调初始化数据
 -- 执行前请先运行：数据库建库.sql
+-- 当前脚本会清理固定表和 raw_data_template
+-- 已存在的 raw_data_yyyyMM 月表如需清空，请按实际月份手工处理
 
 USE shaft;
 
 DELETE FROM device_online_log;
 DELETE FROM temp_stat_minute;
+DELETE FROM raw_data_template;
 DELETE FROM raw_data;
 DELETE FROM event;
 DELETE FROM alarm;

@@ -52,6 +52,10 @@ shaft:
     partition-binding-refresh-ms: 300000
   stat:
     flush-delay-ms: 15000
+  raw-data:
+    retention-days: 365
+    cleanup-enabled: false
+    cleanup-fixed-delay-ms: 86400000
   inspection:
     enabled: true
     fixed-delay-ms: 30000

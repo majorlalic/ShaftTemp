@@ -9,14 +9,24 @@ import org.springframework.stereotype.Repository;
 public class RawDataJdbcRepository {
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
+    private final RawDataTableRouter rawDataTableRouter;
+    private final RawDataTableManager rawDataTableManager;
 
-    public RawDataJdbcRepository(NamedParameterJdbcTemplate jdbcTemplate) {
+    public RawDataJdbcRepository(
+        NamedParameterJdbcTemplate jdbcTemplate,
+        RawDataTableRouter rawDataTableRouter,
+        RawDataTableManager rawDataTableManager
+    ) {
         this.jdbcTemplate = jdbcTemplate;
+        this.rawDataTableRouter = rawDataTableRouter;
+        this.rawDataTableManager = rawDataTableManager;
     }
 
     public int insert(RawDataEntity entity) {
+        String tableName = rawDataTableRouter.resolveTable(entity.getCollectTime());
+        rawDataTableManager.ensureTableExists(tableName);
         String sql =
-            "insert into raw_data (" +
+            "insert into " + tableName + " (" +
             "id, device_id, iot_code, monitor_id, shaft_floor_id, partition_code, partition_name, data_reference, " +
             "device_token, partition_no, source_format, collect_time, point_count, valid_start_point, valid_end_point, " +
             "values_json, max_temp, min_temp, avg_temp, abnormal_flag, deleted, created_on" +

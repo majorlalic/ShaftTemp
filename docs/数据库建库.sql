@@ -13,6 +13,7 @@ USE shaft;
 
 DROP TABLE IF EXISTS device_online_log;
 DROP TABLE IF EXISTS temp_stat_minute;
+DROP TABLE IF EXISTS raw_data_template;
 DROP TABLE IF EXISTS raw_data;
 DROP TABLE IF EXISTS event;
 DROP TABLE IF EXISTS alarm;
@@ -289,6 +290,9 @@ CREATE TABLE raw_data (
     KEY idx_raw_data_monitor_time (monitor_id, collect_time),
     KEY idx_raw_data_partition_time (partition_code, collect_time)
 ) COMMENT='raw_data表';
+
+CREATE TABLE raw_data_template LIKE raw_data;
+ALTER TABLE raw_data_template COMMENT='raw_data月表模板';
 
 CREATE TABLE temp_stat_minute (
     id bigint unsigned NOT NULL COMMENT '主键ID',

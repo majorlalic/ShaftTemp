@@ -11,7 +11,6 @@ import com.example.demo.persistence.entity.RawDataEntity;
 import com.example.demo.persistence.repository.DeviceOnlineLogRepository;
 import com.example.demo.persistence.repository.DeviceRepository;
 import com.example.demo.persistence.repository.RawDataJdbcRepository;
-import com.example.demo.persistence.repository.RawDataRepository;
 import com.example.demo.persistence.service.TempStatMinuteService;
 import com.example.demo.realtime.RealtimeStateService;
 import com.example.demo.realtime.RealtimeStateService.RealtimeSummary;
@@ -30,7 +29,6 @@ public class ReportIngestService {
 
     private final DeviceResolverService deviceResolverService;
     private final DeviceRepository deviceRepository;
-    private final RawDataRepository rawDataRepository;
     private final DeviceOnlineLogRepository deviceOnlineLogRepository;
     private final RealtimeStateService realtimeStateService;
     private final AlarmRuleEngine alarmRuleEngine;
@@ -43,7 +41,6 @@ public class ReportIngestService {
     public ReportIngestService(
         DeviceResolverService deviceResolverService,
         DeviceRepository deviceRepository,
-        RawDataRepository rawDataRepository,
         DeviceOnlineLogRepository deviceOnlineLogRepository,
         RealtimeStateService realtimeStateService,
         AlarmRuleEngine alarmRuleEngine,
@@ -55,7 +52,6 @@ public class ReportIngestService {
     ) {
         this.deviceResolverService = deviceResolverService;
         this.deviceRepository = deviceRepository;
-        this.rawDataRepository = rawDataRepository;
         this.deviceOnlineLogRepository = deviceOnlineLogRepository;
         this.realtimeStateService = realtimeStateService;
         this.alarmRuleEngine = alarmRuleEngine;

@@ -11,6 +11,7 @@ public class AppProperties {
     private final Inspection inspection = new Inspection();
     private final Cache cache = new Cache();
     private final Stat stat = new Stat();
+    private final RawData rawData = new RawData();
 
     public Mq getMq() {
         return mq;
@@ -30,6 +31,10 @@ public class AppProperties {
 
     public Stat getStat() {
         return stat;
+    }
+
+    public RawData getRawData() {
+        return rawData;
     }
 
     public static class Mq {
@@ -161,6 +166,36 @@ public class AppProperties {
 
         public void setFlushDelayMs(long flushDelayMs) {
             this.flushDelayMs = flushDelayMs;
+        }
+    }
+
+    public static class RawData {
+        private int retentionDays = 365;
+        private boolean cleanupEnabled = false;
+        private long cleanupFixedDelayMs = 86400000L;
+
+        public int getRetentionDays() {
+            return retentionDays;
+        }
+
+        public void setRetentionDays(int retentionDays) {
+            this.retentionDays = retentionDays;
+        }
+
+        public boolean isCleanupEnabled() {
+            return cleanupEnabled;
+        }
+
+        public void setCleanupEnabled(boolean cleanupEnabled) {
+            this.cleanupEnabled = cleanupEnabled;
+        }
+
+        public long getCleanupFixedDelayMs() {
+            return cleanupFixedDelayMs;
+        }
+
+        public void setCleanupFixedDelayMs(long cleanupFixedDelayMs) {
+            this.cleanupFixedDelayMs = cleanupFixedDelayMs;
         }
     }
 }

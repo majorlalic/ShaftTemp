@@ -38,9 +38,13 @@ public class QueryController {
         @RequestParam(required = false) Long deviceId,
         @RequestParam(required = false) Long shaftFloorId,
         @RequestParam(required = false) String partitionCode,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
         @RequestParam(required = false) Integer limit
     ) {
-        return ResponseEntity.ok(ApiResponse.success(queryService.listRawData(monitorId, deviceId, shaftFloorId, partitionCode, limit)));
+        return ResponseEntity.ok(ApiResponse.success(
+            queryService.listRawData(monitorId, deviceId, shaftFloorId, partitionCode, from, to, limit)
+        ));
     }
 
     @GetMapping("/temp-stats/minute")
