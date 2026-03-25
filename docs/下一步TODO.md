@@ -1,54 +1,26 @@
 # 下一步 TODO
 
-## P0 已完成
-
-- 分区 MQ 模型接入
-- Redis 实时状态
-- `raw_data` 落库
-- 告警主单与事件
-- 离线巡检
-- 告警状态机
-- `merge_key` 待确认唯一性
-- `event_count` 与 `merge_count` 拆分
-- 建库脚本、初始化脚本整理
-
-## 下一阶段建议
-
-### 1. 组织导入路径修正
-
-目标：
-
-- 修正 `organization/import` 里子节点 `path_ids / path_names` 拼接
-- 兼容库里已存在父节点，而不是只按导入批次内部拼接
-
-建议：
-
-- 导入时优先读取数据库中父节点路径
-- 没有父节点时再按根节点初始化路径
-
-### 2. 接口收口
+### 1. 接口收口
 
 目标：
 
 - 避免两套告警接口长期并存
 
-建议：
-
-- 明确对外主用 `/api/alarm/*` 还是 `/api/alarms/*`
-
-### 3. 原始数据方案收敛
+### 2. 原始数据方案收敛
 
 目标：
 
-- 明确 `raw_data` 最终是否继续按分区一条一条落
+- 明确当前分区版 `raw_data` 的长期策略
+- 为未来设备数组消息预留独立原始表方案
 - 决定是否移除 `temp_stat_minute`
 
 建议：
 
-- 优先评估“设备数组 topic 负责 `raw_data`，分区消息只做实时告警”的方案
+- 当前继续保留分区版 `raw_data`
+- 后续如拿到设备数组消息，新增独立表承载，不与当前 `raw_data` 混存
 - 如果维持当前模型，至少尽快做分月表和保留周期
 
-### 4. 原始数据分月表
+### 3. 原始数据分月表
 
 目标：
 
@@ -60,21 +32,21 @@
 - 先做 `raw_data_yyyyMM`
 - 后续再考虑 `event_yyyyMM`
 
-### 5. 长时间压测
+### 4. 更长时间压测
 
 目标：
 
-- 验证 10 分钟以上持续写入
+- 在已完成 5 分钟压测基础上，继续验证 10 到 30 分钟持续写入
 - 验证 Redis 分钟刷盘、离线巡检并行时的稳定性
 
 建议：
 
-- 5000 到 20000 条连续 `Measure`
+- 74 req/s 左右持续压测
 - 20 到 50 并发
 - 观察错误率、主单数量、`merge_count`、`event_count`
-- 观察规则缓存更新后的实时命中情况
+- 观察 `minute:stat:*` 键数量和刷盘延迟
 
-### 6. MQ 真实联调
+### 5. MQ 真实联调
 
 目标：
 
@@ -86,13 +58,29 @@
 - 现场设备命名规则是否稳定
 - `Measure / Alarm` 两类消息是否完整覆盖
 
-### 7. 查询层冷热分离
+### 6. 查询层冷热分离
 
 目标：
 
 - 实时查 Redis
 - 趋势查 `temp_stat_minute`
 - 追溯才查 `raw_data`
+
+### 7. 上线前配置核对
+
+上线前至少确认以下配置和数据：
+
+- `spring.datasource.*`
+- `spring.redis.*`
+- `shaft.mq.enabled`
+- `shaft.mq.queue`
+- `shaft.alarm.window-size`
+- `shaft.alarm.event-throttle-seconds`
+- `shaft.inspection.enabled`
+- `shaft.inspection.fixed-delay-ms`
+- `shaft.stat.flush-delay-ms`
+- `alarm_rule` 表是否已初始化
+- `monitor_partition_bind` 是否与现场 `dataReference` 一致
 
 ### 8. 文档与交接
 
