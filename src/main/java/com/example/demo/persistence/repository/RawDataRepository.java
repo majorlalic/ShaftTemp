@@ -2,11 +2,16 @@ package com.example.demo.persistence.repository;
 
 import com.example.demo.persistence.entity.RawDataEntity;
 import java.util.List;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Select;
 
-public interface RawDataRepository extends JpaRepository<RawDataEntity, Long> {
+@Mapper
+public interface RawDataRepository {
 
-    @Query("select r from RawDataEntity r where (r.deleted is null or r.deleted = 0) order by r.collectTime desc")
+    @Select(
+        "select * from raw_data " +
+        "where (deleted is null or deleted = 0) " +
+        "order by collect_time desc, id desc"
+    )
     List<RawDataEntity> findRecentAll();
 }
