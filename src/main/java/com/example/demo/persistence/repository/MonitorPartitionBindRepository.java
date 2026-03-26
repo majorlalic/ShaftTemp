@@ -3,23 +3,24 @@ package com.example.demo.persistence.repository;
 import com.example.demo.persistence.entity.MonitorPartitionBindEntity;
 import java.util.List;
 import java.util.Optional;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Select;
 
-public interface MonitorPartitionBindRepository extends JpaRepository<MonitorPartitionBindEntity, Long> {
+@Mapper
+public interface MonitorPartitionBindRepository {
 
-    @Query("select b from MonitorPartitionBindEntity b where b.partitionCode = ?1 and b.bindStatus = 1 and (b.deleted is null or b.deleted = 0)")
+    @Select("select * from monitor_partition_bind where partition_code = #{partitionCode} and bind_status = 1 and (deleted is null or deleted = 0) limit 1")
     Optional<MonitorPartitionBindEntity> findActiveByPartitionCode(String partitionCode);
 
-    @Query("select b from MonitorPartitionBindEntity b where b.dataReference = ?1 and b.bindStatus = 1 and (b.deleted is null or b.deleted = 0)")
+    @Select("select * from monitor_partition_bind where data_reference = #{dataReference} and bind_status = 1 and (deleted is null or deleted = 0) limit 1")
     Optional<MonitorPartitionBindEntity> findActiveByDataReference(String dataReference);
 
-    @Query("select b from MonitorPartitionBindEntity b where b.bindStatus = 1 and (b.deleted is null or b.deleted = 0)")
+    @Select("select * from monitor_partition_bind where bind_status = 1 and (deleted is null or deleted = 0)")
     List<MonitorPartitionBindEntity> findAllActive();
 
-    @Query("select b from MonitorPartitionBindEntity b where b.monitorId = ?1 and b.bindStatus = 1 and (b.deleted is null or b.deleted = 0) order by b.partitionNo asc, b.id asc")
+    @Select("select * from monitor_partition_bind where monitor_id = #{monitorId} and bind_status = 1 and (deleted is null or deleted = 0) order by partition_no asc, id asc")
     List<MonitorPartitionBindEntity> findAllActiveByMonitorId(Long monitorId);
 
-    @Query("select b from MonitorPartitionBindEntity b where b.deviceId = ?1 and b.bindStatus = 1 and (b.deleted is null or b.deleted = 0) order by b.partitionNo asc, b.id asc")
+    @Select("select * from monitor_partition_bind where device_id = #{deviceId} and bind_status = 1 and (deleted is null or deleted = 0) order by partition_no asc, id asc")
     List<MonitorPartitionBindEntity> findAllActiveByDeviceId(Long deviceId);
 }

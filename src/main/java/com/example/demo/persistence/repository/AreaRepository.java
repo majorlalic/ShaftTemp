@@ -2,11 +2,27 @@ package com.example.demo.persistence.repository;
 
 import com.example.demo.persistence.entity.AreaEntity;
 import java.util.List;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
+import org.apache.ibatis.annotations.Insert;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Select;
 
-public interface AreaRepository extends JpaRepository<AreaEntity, Long> {
+@Mapper
+public interface AreaRepository {
 
-    @Query("select a from AreaEntity a where a.deleted is null or a.deleted = 0 order by a.sort asc, a.id asc")
+    @Select("select * from area where deleted is null or deleted = 0 order by sort asc, id asc")
     List<AreaEntity> findAllActive();
+
+    @Insert({
+        "insert into area (id, parent_id, name, type, path_ids, path_names, sort, deleted) values (",
+        "#{id}, #{parentId}, #{name}, #{type}, #{pathIds}, #{pathNames}, #{sort}, #{deleted}",
+        ") on duplicate key update ",
+        "parent_id = values(parent_id),",
+        "name = values(name),",
+        "type = values(type),",
+        "path_ids = values(path_ids),",
+        "path_names = values(path_names),",
+        "sort = values(sort),",
+        "deleted = values(deleted)"
+    })
+    int upsert(AreaEntity entity);
 }

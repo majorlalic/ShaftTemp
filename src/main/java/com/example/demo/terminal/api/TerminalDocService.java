@@ -209,7 +209,7 @@ public class TerminalDocService {
             if (request.getOrgId() != null) {
                 device.setOrgId(request.getOrgId());
             }
-            deviceRepository.save(device);
+            deviceRepository.updateById(device);
             successCount++;
 
             if (request.getMonitorId() != null && !monitorDeviceBindRepository.findActiveByMonitorIdAndDeviceId(request.getMonitorId(), deviceId).isPresent()) {
@@ -222,7 +222,7 @@ public class TerminalDocService {
                 bind.setCreatedOn(now);
                 bind.setUpdatedOn(now);
                 bind.setDeleted(0);
-                monitorDeviceBindRepository.save(bind);
+                monitorDeviceBindRepository.insert(bind);
                 bindCreatedFor.add(deviceId);
             }
         }

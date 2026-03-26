@@ -1,6 +1,8 @@
 package com.example.demo;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "shaft")
@@ -34,7 +36,11 @@ public class AppProperties {
 
     public static class Mq {
         private boolean enabled;
-        private String queue = "shaft.temp.report";
+        private String brokerUrl = "tcp://localhost:1883";
+        private String clientId = "shaft-temp-consumer";
+        private String username;
+        private String password;
+        private List<String> topics = new ArrayList<String>();
 
         public boolean isEnabled() {
             return enabled;
@@ -44,12 +50,44 @@ public class AppProperties {
             this.enabled = enabled;
         }
 
-        public String getQueue() {
-            return queue;
+        public String getBrokerUrl() {
+            return brokerUrl;
         }
 
-        public void setQueue(String queue) {
-            this.queue = queue;
+        public void setBrokerUrl(String brokerUrl) {
+            this.brokerUrl = brokerUrl;
+        }
+
+        public String getClientId() {
+            return clientId;
+        }
+
+        public void setClientId(String clientId) {
+            this.clientId = clientId;
+        }
+
+        public String getUsername() {
+            return username;
+        }
+
+        public void setUsername(String username) {
+            this.username = username;
+        }
+
+        public String getPassword() {
+            return password;
+        }
+
+        public void setPassword(String password) {
+            this.password = password;
+        }
+
+        public List<String> getTopics() {
+            return topics;
+        }
+
+        public void setTopics(List<String> topics) {
+            this.topics = topics;
         }
     }
 

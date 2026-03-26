@@ -3,17 +3,18 @@ package com.example.demo.persistence.repository;
 import com.example.demo.persistence.entity.ShaftFloorEntity;
 import java.util.List;
 import java.util.Optional;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Select;
 
-public interface ShaftFloorRepository extends JpaRepository<ShaftFloorEntity, Long> {
+@Mapper
+public interface ShaftFloorRepository {
 
-    @Query("select f from ShaftFloorEntity f where f.id = ?1 and (f.deleted is null or f.deleted = 0)")
+    @Select("select * from shaft_floor where id = #{id} and (deleted is null or deleted = 0) limit 1")
     Optional<ShaftFloorEntity> findActiveById(Long id);
 
-    @Query("select f from ShaftFloorEntity f where f.monitorId = ?1 and (f.deleted is null or f.deleted = 0) order by f.sort asc, f.id asc")
+    @Select("select * from shaft_floor where monitor_id = #{monitorId} and (deleted is null or deleted = 0) order by sort asc, id asc")
     List<ShaftFloorEntity> findAllActiveByMonitorId(Long monitorId);
 
-    @Query("select f from ShaftFloorEntity f where f.deviceId = ?1 and (f.deleted is null or f.deleted = 0) order by f.sort asc, f.id asc")
+    @Select("select * from shaft_floor where device_id = #{deviceId} and (deleted is null or deleted = 0) order by sort asc, id asc")
     List<ShaftFloorEntity> findAllActiveByDeviceId(Long deviceId);
 }

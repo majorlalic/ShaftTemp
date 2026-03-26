@@ -8,14 +8,9 @@ import com.example.demo.ingest.service.ReportIngestService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.amqp.support.AmqpHeaders;
-import org.springframework.amqp.rabbit.annotation.RabbitListener;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Component;
 
 @Component
-@ConditionalOnProperty(prefix = "shaft.mq", name = "enabled", havingValue = "true")
 public class TemperatureReportMessageConsumer {
 
     private final ReportIngestService reportIngestService;
@@ -35,26 +30,25 @@ public class TemperatureReportMessageConsumer {
         this.partitionTopicParser = partitionTopicParser;
     }
 
-    @RabbitListener(queues = "${shaft.mq.queue}")
-    public void consume(String payload, @Header(value = AmqpHeaders.RECEIVED_ROUTING_KEY, required = false) String routingKey) {
+    public void consume(String payload, String topic) {
         try {
             JsonNode root = objectMapper.readTree(payload);
-            PartitionTopicParser.MessageType messageType = partitionTopicParser.detect(routingKey, root);
+            PartitionTopicParser.MessageType messageType = partitionTopicParser.detect(topic, root);
             if (messageType == PartitionTopicParser.MessageType.DEVICE_ARRAY) {
                 DeviceArrayRawRequest request = objectMapper.treeToValue(root, DeviceArrayRawRequest.class);
-                request.setTopic(routingKey);
+                request.setTopic(topic);
                 deviceRawDataIngestService.ingest(request);
             } else if (messageType == PartitionTopicParser.MessageType.MEASURE) {
                 PartitionMeasureRequest request = objectMapper.treeToValue(root, PartitionMeasureRequest.class);
-                request.setTopic(routingKey);
+                request.setTopic(topic);
                 reportIngestService.ingestMeasure(request);
             } else {
                 PartitionAlarmRequest request = objectMapper.treeToValue(root, PartitionAlarmRequest.class);
-                request.setTopic(routingKey);
+                request.setTopic(topic);
                 reportIngestService.ingestAlarm(request);
             }
         } catch (JsonProcessingException ex) {
-            throw new IllegalArgumentException("Failed to parse MQ payload", ex);
+            throw new IllegalArgumentException("Failed to parse MQTT payload", ex);
         }
     }
 }

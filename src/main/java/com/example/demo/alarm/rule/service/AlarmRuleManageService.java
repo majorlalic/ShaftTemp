@@ -52,7 +52,8 @@ public class AlarmRuleManageService {
         entity.setDeleted(0);
         entity.setCreatedOn(now);
         fill(entity, request, now);
-        Map<String, Object> payload = toMap(alarmRuleRepository.saveAndFlush(entity));
+        alarmRuleRepository.insert(entity);
+        Map<String, Object> payload = toMap(entity);
         alarmRuleResolverService.refresh();
         return payload;
     }
@@ -61,7 +62,8 @@ public class AlarmRuleManageService {
     public Map<String, Object> updateRule(Long id, AlarmRuleUpsertRequest request) {
         AlarmRuleEntity entity = findRule(id);
         fill(entity, request, LocalDateTime.now());
-        Map<String, Object> payload = toMap(alarmRuleRepository.saveAndFlush(entity));
+        alarmRuleRepository.updateById(entity);
+        Map<String, Object> payload = toMap(entity);
         alarmRuleResolverService.refresh();
         return payload;
     }
@@ -71,7 +73,8 @@ public class AlarmRuleManageService {
         AlarmRuleEntity entity = findRule(id);
         entity.setEnabled(enabled);
         entity.setUpdatedOn(LocalDateTime.now());
-        Map<String, Object> payload = toMap(alarmRuleRepository.saveAndFlush(entity));
+        alarmRuleRepository.updateById(entity);
+        Map<String, Object> payload = toMap(entity);
         alarmRuleResolverService.refresh();
         return payload;
     }
@@ -81,7 +84,8 @@ public class AlarmRuleManageService {
         AlarmRuleEntity entity = findRule(id);
         entity.setDeleted(1);
         entity.setUpdatedOn(LocalDateTime.now());
-        Map<String, Object> payload = toMap(alarmRuleRepository.saveAndFlush(entity));
+        alarmRuleRepository.updateById(entity);
+        Map<String, Object> payload = toMap(entity);
         alarmRuleResolverService.refresh();
         return payload;
     }

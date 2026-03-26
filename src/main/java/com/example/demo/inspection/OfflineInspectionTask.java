@@ -104,7 +104,7 @@ public class OfflineInspectionTask {
         device.setOnlineStatus(0);
         device.setLastOfflineTime(now);
         device.setUpdatedOn(now);
-        deviceRepository.save(device);
+        deviceRepository.updateById(device);
 
         DeviceOnlineLogEntity log = new DeviceOnlineLogEntity();
         log.setId(idGenerator.nextId());
@@ -114,7 +114,7 @@ public class OfflineInspectionTask {
         log.setReason("offline inspection");
         log.setDeleted(0);
         log.setCreatedOn(now);
-        deviceOnlineLogRepository.save(log);
+        deviceOnlineLogRepository.insert(log);
 
         RuleEvaluationResult result = alarmRuleEngine.buildOfflineResult(resolved, offlineSeconds);
         if (result != null) {

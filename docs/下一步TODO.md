@@ -52,6 +52,7 @@
 - `dataReference` 是否与绑定表一致
 - 现场设备命名规则是否稳定
 - `Measure / Alarm / DeviceArray` 三类消息是否完整覆盖
+- MQTT broker 地址、用户名、密码、topic 是否与现场一致
 
 ### 5. 查询层冷热分离
 
@@ -68,7 +69,9 @@
 - `spring.datasource.*`
 - `spring.redis.*`
 - `shaft.mq.enabled`
-- `shaft.mq.queue`
+- `shaft.mq.broker-url`
+- `shaft.mq.client-id`
+- `shaft.mq.topics`
 - `shaft.alarm.window-size`
 - `shaft.alarm.event-throttle-seconds`
 - `shaft.inspection.enabled`

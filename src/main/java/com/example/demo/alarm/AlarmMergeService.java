@@ -125,7 +125,7 @@ public class AlarmMergeService implements AlarmService {
         alarm.setStatus(AlarmStatus.AUTO_RECOVERED);
         alarm.setLastAlarmTime(eventTime);
         alarm.setUpdatedOn(eventTime);
-        alarmRepository.save(alarm);
+        alarmRepository.updateById(alarm);
         realtimeStateService.clearActiveAlarmId(alarmType, String.valueOf(resolved.getMonitor().getId()));
 
         createEvent(
@@ -155,7 +155,9 @@ public class AlarmMergeService implements AlarmService {
         alarm.setHandleTime(LocalDateTime.now());
         alarm.setHandleRemark(remark);
         alarm.setUpdatedOn(LocalDateTime.now());
-        AlarmEntity savedAlarm = alarmRepository.save(alarm);
+        alarmRepository.updateById(alarm);
+        AlarmEntity savedAlarm = alarmRepository.findById(alarmId)
+            .orElseThrow(() -> new IllegalArgumentException("Alarm not found: " + alarmId));
         realtimeStateService.clearActiveAlarmId(savedAlarm.getAlarmType(), String.valueOf(savedAlarm.getMonitorId()));
         createLifecycleEvent(savedAlarm, "MANUAL_CONFIRM", AlarmEventType.CONFIRM, remark);
         return savedAlarm;
@@ -170,7 +172,9 @@ public class AlarmMergeService implements AlarmService {
         alarm.setStatus(AlarmStatus.OBSERVING);
         alarm.setHandleRemark(remark);
         alarm.setUpdatedOn(LocalDateTime.now());
-        AlarmEntity savedAlarm = alarmRepository.save(alarm);
+        alarmRepository.updateById(alarm);
+        AlarmEntity savedAlarm = alarmRepository.findById(alarmId)
+            .orElseThrow(() -> new IllegalArgumentException("Alarm not found: " + alarmId));
         realtimeStateService.clearActiveAlarmId(savedAlarm.getAlarmType(), String.valueOf(savedAlarm.getMonitorId()));
         createLifecycleEvent(savedAlarm, "MANUAL_OBSERVE", AlarmEventType.OBSERVE, remark);
         return savedAlarm;
@@ -185,7 +189,9 @@ public class AlarmMergeService implements AlarmService {
         alarm.setStatus(AlarmStatus.FALSE_POSITIVE);
         alarm.setHandleRemark(remark);
         alarm.setUpdatedOn(LocalDateTime.now());
-        AlarmEntity savedAlarm = alarmRepository.save(alarm);
+        alarmRepository.updateById(alarm);
+        AlarmEntity savedAlarm = alarmRepository.findById(alarmId)
+            .orElseThrow(() -> new IllegalArgumentException("Alarm not found: " + alarmId));
         realtimeStateService.clearActiveAlarmId(savedAlarm.getAlarmType(), String.valueOf(savedAlarm.getMonitorId()));
         createLifecycleEvent(savedAlarm, "MANUAL_FALSE", AlarmEventType.FALSE_POSITIVE, remark);
         return savedAlarm;
@@ -200,7 +206,9 @@ public class AlarmMergeService implements AlarmService {
         alarm.setStatus(AlarmStatus.CLOSED);
         alarm.setHandleRemark(remark);
         alarm.setUpdatedOn(LocalDateTime.now());
-        AlarmEntity savedAlarm = alarmRepository.save(alarm);
+        alarmRepository.updateById(alarm);
+        AlarmEntity savedAlarm = alarmRepository.findById(alarmId)
+            .orElseThrow(() -> new IllegalArgumentException("Alarm not found: " + alarmId));
         realtimeStateService.clearActiveAlarmId(savedAlarm.getAlarmType(), String.valueOf(savedAlarm.getMonitorId()));
         createLifecycleEvent(savedAlarm, "MANUAL_CLOSE", AlarmEventType.CLOSE, remark);
         return savedAlarm;
@@ -279,7 +287,7 @@ public class AlarmMergeService implements AlarmService {
         event.setUpdatedOn(eventTime);
         eventJdbcRepository.insert(event);
         alarm.setEventCount(alarm.getEventCount() == null ? 1 : alarm.getEventCount() + 1);
-        alarmRepository.save(alarm);
+        alarmRepository.updateById(alarm);
         realtimeStateService.markEventWritten(alarmType, String.valueOf(resolved.getMonitor().getId()), eventTime);
     }
 
