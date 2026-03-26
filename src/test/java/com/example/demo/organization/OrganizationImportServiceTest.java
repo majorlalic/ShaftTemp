@@ -1,7 +1,6 @@
 package com.example.demo.organization;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -51,9 +50,9 @@ class OrganizationImportServiceTest {
         Map<String, Object> result = service.importCsv("org", file);
 
         assertEquals(1, result.get("successCount"));
-        ArgumentCaptor<List<OrgEntity>> captor = ArgumentCaptor.forClass(List.class);
-        verify(orgRepository).saveAll(captor.capture());
-        OrgEntity imported = captor.getValue().get(0);
+        ArgumentCaptor<OrgEntity> captor = ArgumentCaptor.forClass(OrgEntity.class);
+        verify(orgRepository).upsert(captor.capture());
+        OrgEntity imported = captor.getValue();
         assertEquals("2001/2100", imported.getPathIds());
         assertEquals("测试机构/导入机构", imported.getPathNames());
     }
@@ -79,9 +78,9 @@ class OrganizationImportServiceTest {
         Map<String, Object> result = service.importCsv("area", file);
 
         assertEquals(1, result.get("successCount"));
-        ArgumentCaptor<List<AreaEntity>> captor = ArgumentCaptor.forClass(List.class);
-        verify(areaRepository).saveAll(captor.capture());
-        AreaEntity imported = captor.getValue().get(0);
+        ArgumentCaptor<AreaEntity> captor = ArgumentCaptor.forClass(AreaEntity.class);
+        verify(areaRepository).upsert(captor.capture());
+        AreaEntity imported = captor.getValue();
         assertEquals("1001/1100", imported.getPathIds());
         assertEquals("测试区域/导入区域", imported.getPathNames());
     }

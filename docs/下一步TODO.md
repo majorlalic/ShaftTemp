@@ -1,12 +1,6 @@
 # 下一步 TODO
 
-### 1. 接口收口
-
-目标：
-
-- 避免两套告警接口长期并存
-
-### 2. 原始数据方案收敛
+### 1. 原始数据方案收敛
 
 目标：
 
@@ -20,7 +14,7 @@
 - 后续如拿到设备数组消息，新增独立表承载，不与当前 `raw_data` 混存
 - 如果维持当前模型，至少尽快做分月表和保留周期
 
-### 3. 原始数据分月表
+### 2. 原始数据分月表
 
 目标：
 
@@ -32,7 +26,7 @@
 - 先做 `raw_data_yyyyMM`
 - 后续再考虑 `event_yyyyMM`
 
-### 4. 更长时间压测
+### 3. 更长时间压测
 
 目标：
 
@@ -46,7 +40,7 @@
 - 观察错误率、主单数量、`merge_count`、`event_count`
 - 观察 `minute:stat:*` 键数量和刷盘延迟
 
-### 5. MQ 真实联调
+### 4. MQ 真实联调
 
 目标：
 
@@ -57,8 +51,9 @@
 - `dataReference` 是否与绑定表一致
 - 现场设备命名规则是否稳定
 - `Measure / Alarm` 两类消息是否完整覆盖
+- MQTT broker 地址、用户名、密码、topic 是否与现场一致
 
-### 6. 查询层冷热分离
+### 5. 查询层冷热分离
 
 目标：
 
@@ -66,14 +61,16 @@
 - 趋势查 `temp_stat_minute`
 - 追溯才查 `raw_data`
 
-### 7. 上线前配置核对
+### 6. 上线前配置核对
 
 上线前至少确认以下配置和数据：
 
 - `spring.datasource.*`
 - `spring.redis.*`
 - `shaft.mq.enabled`
-- `shaft.mq.queue`
+- `shaft.mq.broker-url`
+- `shaft.mq.client-id`
+- `shaft.mq.topics`
 - `shaft.alarm.window-size`
 - `shaft.alarm.event-throttle-seconds`
 - `shaft.inspection.enabled`
@@ -82,7 +79,7 @@
 - `alarm_rule` 表是否已初始化
 - `monitor_partition_bind` 是否与现场 `dataReference` 一致
 
-### 8. 文档与交接
+### 7. 文档与交接
 
 目标：
 

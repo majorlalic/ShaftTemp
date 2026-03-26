@@ -4,24 +4,11 @@ server:
 spring:
   application:
     name: shaft-temp
-  rabbitmq:
-    host: localhost
-    port: 5672
-    listener:
-      simple:
-        acknowledge-mode: auto
   datasource:
     url: jdbc:mysql://localhost:3306/shaft?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     username: root
     password: 123456
     driver-class-name: com.mysql.cj.jdbc.Driver
-  jpa:
-    hibernate:
-      ddl-auto: none
-    open-in-view: false
-    properties:
-      hibernate:
-        format_sql: true
   data:
     redis:
       repositories:
@@ -36,10 +23,19 @@ spring:
 logging:
   level:
     com.example.demo: INFO
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true
 shaft:
   mq:
     enabled: false
-    queue: shaft.temp.report
+    broker-url: tcp://localhost:1883
+    client-id: shaft-temp-consumer
+    username:
+    password:
+    topics:
+      - /TMP/+/Measure
+      - /TMP/+/Alarm
   alarm:
     temperature-threshold: 70.0
     temperature-diff-threshold: 20.0

@@ -203,7 +203,7 @@ public class ReportIngestService {
         device.setOnlineStatus(1);
         device.setLastReportTime(collectTime);
         device.setUpdatedOn(LocalDateTime.now());
-        deviceRepository.save(device);
+        deviceRepository.updateById(device);
         realtimeStateService.resetOfflineLevel(device.getId());
 
         if (wasOffline) {
@@ -215,7 +215,7 @@ public class ReportIngestService {
             log.setReason("received report");
             log.setDeleted(0);
             log.setCreatedOn(LocalDateTime.now());
-            deviceOnlineLogRepository.save(log);
+            deviceOnlineLogRepository.insert(log);
         }
     }
 

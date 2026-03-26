@@ -54,7 +54,9 @@ public class OrganizationImportService {
         }
         if ("org".equalsIgnoreCase(type)) {
             List<OrgEntity> entities = parseOrg(file);
-            orgRepository.saveAll(entities);
+            for (OrgEntity entity : entities) {
+                orgRepository.upsert(entity);
+            }
             Map<String, Object> data = new LinkedHashMap<String, Object>();
             data.put("type", "org");
             data.put("successCount", entities.size());
@@ -62,7 +64,9 @@ public class OrganizationImportService {
         }
         if ("area".equalsIgnoreCase(type)) {
             List<AreaEntity> entities = parseArea(file);
-            areaRepository.saveAll(entities);
+            for (AreaEntity entity : entities) {
+                areaRepository.upsert(entity);
+            }
             Map<String, Object> data = new LinkedHashMap<String, Object>();
             data.put("type", "area");
             data.put("successCount", entities.size());

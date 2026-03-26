@@ -67,6 +67,7 @@ public class TempStatMinuteService {
             aggregate.getPartitionCode(),
             aggregate.getStatTime()
         ).orElse(null);
+        boolean isNew = entity == null;
         if (entity == null) {
             entity = new TempStatMinuteEntity();
             entity.setId(idGenerator.nextId());
@@ -92,6 +93,11 @@ public class TempStatMinuteService {
             entity.setAvgTemp(entity.getAvgTemp().add(aggregate.getAvgTemp()).divide(new BigDecimal("2"), 2, RoundingMode.HALF_UP));
             entity.setAlarmPointCount((entity.getAlarmPointCount() == null ? 0 : entity.getAlarmPointCount()) + aggregate.getAlarmCount());
         }
-        return tempStatMinuteRepository.save(entity);
+        if (isNew) {
+            tempStatMinuteRepository.insert(entity);
+        } else {
+            tempStatMinuteRepository.updateById(entity);
+        }
+        return entity;
     }
 }

@@ -3,20 +3,45 @@ package com.example.demo.persistence.repository;
 import com.example.demo.persistence.entity.DeviceEntity;
 import java.util.List;
 import java.util.Optional;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
-public interface DeviceRepository extends JpaRepository<DeviceEntity, Long> {
+@Mapper
+public interface DeviceRepository {
 
-    @Query("select d from DeviceEntity d where d.iotCode = ?1 and (d.deleted is null or d.deleted = 0)")
+    @Select("select * from device where iot_code = #{iotCode} and (deleted is null or deleted = 0) limit 1")
     Optional<DeviceEntity> findActiveByIotCode(String iotCode);
 
-    @Query("select d from DeviceEntity d where d.id = ?1 and (d.deleted is null or d.deleted = 0)")
+    @Select("select * from device where id = #{id} and (deleted is null or deleted = 0) limit 1")
     Optional<DeviceEntity> findActiveById(Long id);
 
-    @Query("select d from DeviceEntity d where d.deleted is null or d.deleted = 0")
+    @Select("select * from device where deleted is null or deleted = 0")
     List<DeviceEntity> findAllActive();
 
-    @Query("select d from DeviceEntity d where d.assetStatus = ?1 and (d.deleted is null or d.deleted = 0)")
+    @Select("select * from device where asset_status = #{assetStatus} and (deleted is null or deleted = 0)")
     List<DeviceEntity> findAllActiveByAssetStatus(String assetStatus);
+
+    @Update({
+        "update device set",
+        "iot_code = #{iotCode},",
+        "name = #{name},",
+        "device_type = #{deviceType},",
+        "model = #{model},",
+        "manufacturer = #{manufacturer},",
+        "factory_date = #{factoryDate},",
+        "run_date = #{runDate},",
+        "asset_status = #{assetStatus},",
+        "area_id = #{areaId},",
+        "org_id = #{orgId},",
+        "online_status = #{onlineStatus},",
+        "last_report_time = #{lastReportTime},",
+        "last_offline_time = #{lastOfflineTime},",
+        "deleted = #{deleted},",
+        "updated_on = #{updatedOn},",
+        "created_on = #{createdOn},",
+        "remark = #{remark}",
+        "where id = #{id}"
+    })
+    int updateById(DeviceEntity entity);
 }
