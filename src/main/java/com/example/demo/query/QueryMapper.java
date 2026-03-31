@@ -5,7 +5,6 @@ import com.example.demo.alarm.AlarmStatus;
 import com.example.demo.persistence.entity.AlarmEntity;
 import com.example.demo.persistence.entity.EventEntity;
 import com.example.demo.persistence.entity.RawDataEntity;
-import com.example.demo.persistence.entity.TempStatMinuteEntity;
 import com.example.demo.realtime.RealtimeStateService.RealtimeSummary;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -38,6 +37,7 @@ public class QueryMapper {
         payload.put("handler", alarm.getHandler());
         payload.put("handleTime", alarm.getHandleTime());
         payload.put("handleRemark", alarm.getHandleRemark());
+        payload.put("pushStatus", alarm.getPushStatus());
         payload.put("updatedOn", alarm.getUpdatedOn());
         return payload;
     }
@@ -71,35 +71,21 @@ public class QueryMapper {
         payload.put("id", rawData.getId());
         payload.put("deviceId", rawData.getDeviceId());
         payload.put("iotCode", rawData.getIotCode());
+        payload.put("topic", rawData.getTopic());
+        payload.put("partitionId", rawData.getPartitionId());
         payload.put("monitorId", rawData.getMonitorId());
         payload.put("shaftFloorId", rawData.getShaftFloorId());
-        payload.put("partitionCode", rawData.getPartitionCode());
-        payload.put("partitionName", rawData.getPartitionName());
         payload.put("dataReference", rawData.getDataReference());
+        payload.put("iedFullPath", rawData.getIedFullPath());
         payload.put("collectTime", rawData.getCollectTime());
-        payload.put("pointCount", rawData.getPointCount());
-        payload.put("valuesJson", rawData.getValuesJson());
         payload.put("maxTemp", rawData.getMaxTemp());
         payload.put("minTemp", rawData.getMinTemp());
         payload.put("avgTemp", rawData.getAvgTemp());
-        payload.put("abnormalFlag", rawData.getAbnormalFlag());
-        return payload;
-    }
-
-    public Map<String, Object> toTempStatMap(TempStatMinuteEntity stat) {
-        Map<String, Object> payload = new LinkedHashMap<String, Object>();
-        payload.put("id", stat.getId());
-        payload.put("deviceId", stat.getDeviceId());
-        payload.put("monitorId", stat.getMonitorId());
-        payload.put("shaftFloorId", stat.getShaftFloorId());
-        payload.put("partitionCode", stat.getPartitionCode());
-        payload.put("partitionName", stat.getPartitionName());
-        payload.put("dataReference", stat.getDataReference());
-        payload.put("statTime", stat.getStatTime());
-        payload.put("maxTemp", stat.getMaxTemp());
-        payload.put("minTemp", stat.getMinTemp());
-        payload.put("avgTemp", stat.getAvgTemp());
-        payload.put("alarmPointCount", stat.getAlarmPointCount());
+        payload.put("maxTempPosition", rawData.getMaxTempPosition());
+        payload.put("minTempPosition", rawData.getMinTempPosition());
+        payload.put("maxTempChannel", rawData.getMaxTempChannel());
+        payload.put("minTempChannel", rawData.getMinTempChannel());
+        payload.put("payloadJson", rawData.getPayloadJson());
         return payload;
     }
 

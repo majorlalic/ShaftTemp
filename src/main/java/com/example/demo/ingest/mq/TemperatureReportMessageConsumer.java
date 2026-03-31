@@ -28,18 +28,31 @@ public class TemperatureReportMessageConsumer {
     public void consume(String payload, String topic) {
         try {
             JsonNode root = objectMapper.readTree(payload);
-            PartitionTopicParser.MessageType messageType = partitionTopicParser.detect(topic, root);
-            if (messageType == PartitionTopicParser.MessageType.MEASURE) {
-                PartitionMeasureRequest request = objectMapper.treeToValue(root, PartitionMeasureRequest.class);
-                request.setTopic(topic);
-                reportIngestService.ingestMeasure(request);
-            } else {
-                PartitionAlarmRequest request = objectMapper.treeToValue(root, PartitionAlarmRequest.class);
-                request.setTopic(topic);
-                reportIngestService.ingestAlarm(request);
+            String iotCode = partitionTopicParser.extractIotCode(topic);
+            if (root.isArray()) {
+                for (JsonNode node : root) {
+                    dispatch(topic, iotCode, node);
+                }
+                return;
             }
+            dispatch(topic, iotCode, root);
         } catch (JsonProcessingException ex) {
             throw new IllegalArgumentException("Failed to parse MQTT payload", ex);
+        }
+    }
+
+    private void dispatch(String topic, String iotCode, JsonNode payloadNode) throws JsonProcessingException {
+        PartitionTopicParser.MessageType messageType = partitionTopicParser.detect(topic, payloadNode);
+        if (messageType == PartitionTopicParser.MessageType.MEASURE) {
+            PartitionMeasureRequest request = objectMapper.treeToValue(payloadNode, PartitionMeasureRequest.class);
+            request.setTopic(topic);
+            request.setIotCode(iotCode);
+            reportIngestService.ingestMeasure(request);
+        } else {
+            PartitionAlarmRequest request = objectMapper.treeToValue(payloadNode, PartitionAlarmRequest.class);
+            request.setTopic(topic);
+            request.setIotCode(iotCode);
+            reportIngestService.ingestAlarm(request);
         }
     }
 }

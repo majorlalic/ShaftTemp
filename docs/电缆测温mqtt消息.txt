@@ -1,0 +1,17 @@
+数据topic: /TMP/xinfu_16A/Measure：[{"MaxTemp":"38.4","MaxTempPosition":"1.2","MaxTempChannel":"1","AvgTemp":"32.1","MinTemp":"27.8","MinTempPosition":"7.2","MinTempChannel":"3","PartitionId":1,"timestamp":"2025-04-21T02:50:29.190Z","IedFullPath":"南宁站|xx县|xx区|xx栋|1楼","dataReference":"/TMP/xx_TMP_th01"}]
+
+告警topic: /TMP/xinfu_16A/Alarm：[{"AlarmStatus": true,"FaultStatus": false,"timestamp":"2025-04-21T02:50:29.190Z","PartitionId":1,"IedFullPath":"南宁站|xx县|xx区|xx栋|1楼","dataReference":"/TMP/xx_TMP_th01"}]
+
+xinfu_16A：表示竖井装置
+
+PartitionId: 分区标识,对应设备id
+MaxTemp：分区最大温度
+MaxTempPosition：分区最大温度所在位置，米标
+MaxTempChannel：分区最大温度所在通道
+AvgTemp：分区平均温度
+MinTemp：分区最小温度
+MinTempPosition：分区最小温度所在位置
+MinTempChannel：分区最小温度所在通道
+
+AlarmStatus：分区告警状态，true表示火警，false表示正常
+FaultStatus：分区故障状态，true表示故障，false表示正常

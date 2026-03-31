@@ -11,7 +11,6 @@ import com.example.demo.persistence.entity.RawDataEntity;
 import com.example.demo.persistence.repository.DeviceOnlineLogRepository;
 import com.example.demo.persistence.repository.DeviceRepository;
 import com.example.demo.persistence.repository.RawDataJdbcRepository;
-import com.example.demo.persistence.service.TempStatMinuteService;
 import com.example.demo.realtime.RealtimeStateService;
 import com.example.demo.realtime.RealtimeStateService.RealtimeSummary;
 import com.example.demo.support.IdGenerator;
@@ -33,7 +32,7 @@ public class ReportIngestService {
     private final RealtimeStateService realtimeStateService;
     private final AlarmRuleEngine alarmRuleEngine;
     private final AlarmService alarmService;
-    private final TempStatMinuteService tempStatMinuteService;
+    private final AlarmRawIngestService alarmRawIngestService;
     private final RawDataJdbcRepository rawDataJdbcRepository;
     private final IdGenerator idGenerator;
     private final ObjectMapper objectMapper;
@@ -45,7 +44,7 @@ public class ReportIngestService {
         RealtimeStateService realtimeStateService,
         AlarmRuleEngine alarmRuleEngine,
         AlarmService alarmService,
-        TempStatMinuteService tempStatMinuteService,
+        AlarmRawIngestService alarmRawIngestService,
         RawDataJdbcRepository rawDataJdbcRepository,
         IdGenerator idGenerator,
         ObjectMapper objectMapper
@@ -56,7 +55,7 @@ public class ReportIngestService {
         this.realtimeStateService = realtimeStateService;
         this.alarmRuleEngine = alarmRuleEngine;
         this.alarmService = alarmService;
-        this.tempStatMinuteService = tempStatMinuteService;
+        this.alarmRawIngestService = alarmRawIngestService;
         this.rawDataJdbcRepository = rawDataJdbcRepository;
         this.idGenerator = idGenerator;
         this.objectMapper = objectMapper;
@@ -65,7 +64,12 @@ public class ReportIngestService {
     @Transactional
     public IngestResult ingestMeasure(PartitionMeasureRequest request) {
         String partitionCode = extractPartitionCode(request.getDataReference());
-        DeviceResolverService.ResolvedTarget resolved = deviceResolverService.resolve(request.getDataReference(), partitionCode);
+        DeviceResolverService.ResolvedTarget resolved = deviceResolverService.resolve(
+            request.getIotCode(),
+            request.getPartitionId(),
+            request.getDataReference(),
+            partitionCode
+        );
         DeviceEntity device = resolved.getDevice();
         LocalDateTime collectTime = request.getTimestamp() == null ? LocalDateTime.now() : request.getTimestamp();
         RealtimeSummary previousSummary = realtimeStateService.getLastPartitionSummary(resolved.getPartitionCode()).orElse(null);
@@ -79,29 +83,26 @@ public class ReportIngestService {
         RawDataEntity rawData = new RawDataEntity();
         rawData.setId(idGenerator.nextId());
         rawData.setDeviceId(device.getId());
-        rawData.setIotCode(device.getIotCode());
+        rawData.setIotCode(request.getIotCode() == null ? device.getIotCode() : request.getIotCode());
+        rawData.setTopic(request.getTopic());
+        rawData.setPartitionId(request.getPartitionId() == null ? resolved.getPartitionId() : request.getPartitionId());
         rawData.setMonitorId(resolved.getMonitor().getId());
         rawData.setShaftFloorId(resolved.getShaftFloorId());
-        rawData.setPartitionCode(resolved.getPartitionCode());
-        rawData.setPartitionName(resolved.getPartitionName());
         rawData.setDataReference(resolved.getDataReference());
-        rawData.setDeviceToken(resolved.getDeviceToken());
-        rawData.setPartitionNo(resolved.getPartitionNo());
-        rawData.setSourceFormat(resolved.getSourceFormat());
+        rawData.setIedFullPath(request.getIedFullPath());
         rawData.setCollectTime(collectTime);
-        rawData.setPointCount(0);
-        rawData.setValidStartPoint(0);
-        rawData.setValidEndPoint(0);
-        rawData.setValuesJson(toJson(buildMeasureSnapshot(request)));
         rawData.setMaxTemp(metrics.getMaxTemp());
         rawData.setMinTemp(metrics.getMinTemp());
         rawData.setAvgTemp(metrics.getAvgTemp());
-        rawData.setAbnormalFlag(results.isEmpty() ? 0 : 1);
+        rawData.setMaxTempPosition(request.getMaxTempPosition());
+        rawData.setMinTempPosition(request.getMinTempPosition());
+        rawData.setMaxTempChannel(request.getMaxTempChannel());
+        rawData.setMinTempChannel(request.getMinTempChannel());
+        rawData.setPayloadJson(toJson(buildMeasureSnapshot(request)));
         rawData.setDeleted(0);
         rawData.setCreatedOn(LocalDateTime.now());
         rawDataJdbcRepository.insert(rawData);
 
-        tempStatMinuteService.aggregate(resolved, collectTime, metrics, results.size());
         realtimeStateService.updateMeasureState(resolved, collectTime, request, metrics);
         updateDeviceOnlineState(device, collectTime);
 
@@ -121,54 +122,8 @@ public class ReportIngestService {
 
     @Transactional
     public IngestResult ingestAlarm(PartitionAlarmRequest request) {
-        String partitionCode = extractPartitionCode(request.getDataReference());
-        DeviceResolverService.ResolvedTarget resolved = deviceResolverService.resolve(request.getDataReference(), partitionCode);
-        LocalDateTime collectTime = request.getTimestamp() == null ? LocalDateTime.now() : request.getTimestamp();
-        realtimeStateService.updateAlarmState(resolved, collectTime, request.getAlarmStatus(), request.getFaultStatus());
-        updateDeviceOnlineState(resolved.getDevice(), collectTime);
-
-        int alarmCount = 0;
-        if (Boolean.TRUE.equals(request.getAlarmStatus())) {
-            RuleEvaluationResult fireResult = alarmRuleEngine.buildUpstreamAlarmResult(
-                "PARTITION_FIRE",
-                resolved.getMonitor().getName(),
-                resolved.getPartitionName(),
-                "上游告警状态为 true"
-            );
-            alarmService.createOrMerge(resolved, fireResult, collectTime, toJson(buildAlarmStatusDetail(request)), "[]");
-            alarmCount++;
-        } else {
-            alarmService.recover(
-                resolved,
-                "PARTITION_FIRE",
-                collectTime,
-                toJson(Collections.singletonMap("message", "alarm status recovered"))
-            );
-        }
-
-        if (Boolean.TRUE.equals(request.getFaultStatus())) {
-            RuleEvaluationResult faultResult = alarmRuleEngine.buildPartitionFaultResult(resolved, "故障状态为 true");
-            if (faultResult != null) {
-                alarmService.createOrMerge(resolved, faultResult, collectTime, toJson(buildAlarmStatusDetail(request)), "[]");
-                alarmCount++;
-            }
-        } else {
-            alarmService.recover(
-                resolved,
-                "PARTITION_FAULT",
-                collectTime,
-                toJson(Collections.singletonMap("message", "fault status recovered"))
-            );
-        }
-
-        return new IngestResult(
-            resolved.getDevice().getId(),
-            resolved.getMonitor().getId(),
-            resolved.getPartitionCode(),
-            null,
-            alarmCount,
-            null
-        );
+        Long alarmRawId = alarmRawIngestService.ingest(request);
+        return new IngestResult(null, null, null, alarmRawId, 0, null);
     }
 
     private void recoverInactiveMeasureAlarms(
@@ -230,6 +185,8 @@ public class ReportIngestService {
     private Object buildMeasureSnapshot(PartitionMeasureRequest request) {
         java.util.Map<String, Object> payload = new java.util.LinkedHashMap<String, Object>();
         payload.put("topic", request.getTopic());
+        payload.put("iotCode", request.getIotCode());
+        payload.put("partitionId", request.getPartitionId());
         payload.put("iedFullPath", request.getIedFullPath());
         payload.put("dataReference", request.getDataReference());
         payload.put("maxTemp", request.getMaxTemp());
@@ -239,17 +196,6 @@ public class ReportIngestService {
         payload.put("minTempPosition", request.getMinTempPosition());
         payload.put("maxTempChannel", request.getMaxTempChannel());
         payload.put("minTempChannel", request.getMinTempChannel());
-        payload.put("timestamp", request.getTimestamp());
-        return payload;
-    }
-
-    private Object buildAlarmStatusDetail(PartitionAlarmRequest request) {
-        java.util.Map<String, Object> payload = new java.util.LinkedHashMap<String, Object>();
-        payload.put("topic", request.getTopic());
-        payload.put("iedFullPath", request.getIedFullPath());
-        payload.put("dataReference", request.getDataReference());
-        payload.put("alarmStatus", request.getAlarmStatus());
-        payload.put("faultStatus", request.getFaultStatus());
         payload.put("timestamp", request.getTimestamp());
         return payload;
     }

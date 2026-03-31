@@ -43,11 +43,13 @@ public class TerminalDocController {
 
     @GetMapping("/alarm/list")
     public ResponseEntity<ApiResponse<PagePayload<Map<String, Object>>>> alarmList(
+        @RequestParam(required = false) Integer pageNo,
         @RequestParam(required = false) Integer pageNum,
         @RequestParam(required = false) Integer pageSize,
         @RequestParam(required = false) String status
     ) {
-        return ResponseEntity.ok(ApiResponse.success(terminalDocService.alarmList(pageNum, pageSize, status)));
+        Integer resolvedPageNo = pageNo == null ? pageNum : pageNo;
+        return ResponseEntity.ok(ApiResponse.success(terminalDocService.alarmList(resolvedPageNo, pageSize, status)));
     }
 
     @PutMapping("/alarm/handle")
@@ -72,6 +74,7 @@ public class TerminalDocController {
 
     @GetMapping("/ledger/list")
     public ResponseEntity<ApiResponse<PagePayload<Map<String, Object>>>> ledgerList(
+        @RequestParam(required = false) Integer pageNo,
         @RequestParam(required = false) Integer pageNum,
         @RequestParam(required = false) Integer pageSize,
         @RequestParam(required = false) String deviceType,
@@ -81,8 +84,9 @@ public class TerminalDocController {
         @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
         @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate
     ) {
+        Integer resolvedPageNo = pageNo == null ? pageNum : pageNo;
         return ResponseEntity.ok(ApiResponse.success(
-            terminalDocService.ledgerList(pageNum, pageSize, deviceType, company, model, orgId, startDate, endDate)
+            terminalDocService.ledgerList(resolvedPageNo, pageSize, deviceType, company, model, orgId, startDate, endDate)
         ));
     }
 
@@ -93,11 +97,13 @@ public class TerminalDocController {
 
     @GetMapping("/access/list")
     public ResponseEntity<ApiResponse<PagePayload<Map<String, Object>>>> accessList(
+        @RequestParam(required = false) Integer pageNo,
         @RequestParam(required = false) Integer pageNum,
         @RequestParam(required = false) Integer pageSize,
         @RequestParam(required = false) String status
     ) {
-        return ResponseEntity.ok(ApiResponse.success(terminalDocService.accessList(pageNum, pageSize, status)));
+        Integer resolvedPageNo = pageNo == null ? pageNum : pageNo;
+        return ResponseEntity.ok(ApiResponse.success(terminalDocService.accessList(resolvedPageNo, pageSize, status)));
     }
 
     @PostMapping("/access/confirm")

@@ -1,9 +1,10 @@
 -- 测温物联网系统完整建库脚本
 -- 当前版本对应：
--- 1. 分区 MQ 模型（Measure / Alarm）
--- 2. 告警状态码 + eventType + eventCount
+-- 1. 设备级 Topic + 分区数组消息模型（Measure / Alarm）
+-- 2. 告警状态码 + eventType + eventCount + pushStatus
 -- 3. 待确认告警 merge_key 唯一合并
--- 4. 主键、必要索引、唯一约束已内置
+-- 4. alarm_raw 原始告警存档表
+-- 5. 主键、必要索引、唯一约束已内置
 
 CREATE DATABASE IF NOT EXISTS shaft
 DEFAULT CHARACTER SET utf8mb4
@@ -11,10 +12,23 @@ DEFAULT COLLATE utf8mb4_general_ci;
 
 USE shaft;
 
+-- 清理历史 raw_data_yyyyMM 月表，避免结构漂移
+SET @drop_month_sql = NULL;
+SELECT GROUP_CONCAT(CONCAT('DROP TABLE IF EXISTS `', table_name, '`') SEPARATOR '; ')
+INTO @drop_month_sql
+FROM information_schema.tables
+WHERE table_schema = DATABASE()
+  AND table_name REGEXP '^raw_data_[0-9]{6}$';
+SET @drop_month_sql = IFNULL(@drop_month_sql, 'SELECT 1');
+PREPARE stmt_drop_month FROM @drop_month_sql;
+EXECUTE stmt_drop_month;
+DEALLOCATE PREPARE stmt_drop_month;
+
 DROP TABLE IF EXISTS device_online_log;
-DROP TABLE IF EXISTS temp_stat_minute;
 DROP TABLE IF EXISTS raw_data_template;
 DROP TABLE IF EXISTS raw_data;
+DROP TABLE IF EXISTS device_raw_data;
+DROP TABLE IF EXISTS alarm_raw;
 DROP TABLE IF EXISTS event;
 DROP TABLE IF EXISTS alarm;
 DROP TABLE IF EXISTS alarm_rule;
@@ -158,6 +172,7 @@ CREATE TABLE monitor_partition_bind (
     monitor_id bigint unsigned DEFAULT NULL COMMENT '监测对象ID',
     device_id bigint unsigned DEFAULT NULL COMMENT '终端ID',
     shaft_floor_id bigint unsigned DEFAULT NULL COMMENT '楼层ID',
+    partition_id int DEFAULT NULL COMMENT '分区标识，对应消息PartitionId',
     partition_code varchar(100) DEFAULT NULL COMMENT '分区编码',
     partition_name varchar(100) DEFAULT NULL COMMENT '分区名称',
     data_reference varchar(200) DEFAULT NULL COMMENT 'MQ数据引用',
@@ -172,6 +187,7 @@ CREATE TABLE monitor_partition_bind (
     updated_on datetime DEFAULT NULL COMMENT '更新时间',
     deleted_on datetime DEFAULT NULL COMMENT '删除时间',
     PRIMARY KEY (id),
+    UNIQUE KEY uk_monitor_partition_bind_device_partition_deleted (device_id, partition_id, deleted),
     KEY idx_monitor_partition_bind_partition_deleted (partition_code, deleted),
     KEY idx_monitor_partition_bind_reference_deleted (data_reference, deleted),
     KEY idx_monitor_partition_bind_monitor_deleted (monitor_id, deleted)
@@ -203,6 +219,7 @@ CREATE TABLE alarm (
     handler bigint unsigned DEFAULT NULL COMMENT '处理人ID',
     handle_time datetime DEFAULT NULL COMMENT '处理时间',
     handle_remark varchar(500) DEFAULT NULL COMMENT '处理备注',
+    push_status tinyint DEFAULT 0 COMMENT '推送状态 0未推送1已推送',
     deleted tinyint DEFAULT 0 COMMENT '是否删除',
     created_on datetime DEFAULT NULL COMMENT '创建时间',
     updated_on datetime DEFAULT NULL COMMENT '更新时间',
@@ -211,6 +228,24 @@ CREATE TABLE alarm (
     KEY idx_alarm_monitor_type_status_deleted (monitor_id, alarm_type, status, deleted),
     KEY idx_alarm_device_time (device_id, last_alarm_time)
 ) COMMENT='alarm表';
+
+CREATE TABLE alarm_raw (
+    id bigint unsigned NOT NULL COMMENT '主键ID',
+    iot_code varchar(100) DEFAULT NULL COMMENT '设备唯一标识，取topic设备段',
+    topic varchar(200) DEFAULT NULL COMMENT '原始topic',
+    partition_id int DEFAULT NULL COMMENT '分区标识',
+    alarm_status tinyint DEFAULT NULL COMMENT '上游告警状态 0/1',
+    fault_status tinyint DEFAULT NULL COMMENT '上游故障状态 0/1',
+    ied_full_path varchar(500) DEFAULT NULL COMMENT '完整路径',
+    data_reference varchar(200) DEFAULT NULL COMMENT '消息数据引用',
+    collect_time datetime DEFAULT NULL COMMENT '采集时间',
+    payload_json json DEFAULT NULL COMMENT '原始消息项JSON',
+    deleted tinyint DEFAULT 0 COMMENT '是否删除',
+    created_on datetime DEFAULT NULL COMMENT '创建时间',
+    PRIMARY KEY (id),
+    KEY idx_alarm_raw_iot_time (iot_code, collect_time),
+    KEY idx_alarm_raw_partition_time (partition_id, collect_time)
+) COMMENT='上游告警原始数据表';
 
 CREATE TABLE alarm_rule (
     id bigint unsigned NOT NULL COMMENT '主键ID',
@@ -265,58 +300,33 @@ CREATE TABLE event (
 CREATE TABLE raw_data (
     id bigint unsigned NOT NULL COMMENT '主键ID',
     device_id bigint unsigned DEFAULT NULL COMMENT '终端ID',
-    iot_code varchar(100) DEFAULT NULL COMMENT '物联编码',
+    iot_code varchar(100) DEFAULT NULL COMMENT '设备唯一标识，取topic设备段',
+    topic varchar(200) DEFAULT NULL COMMENT '原始topic',
+    partition_id int DEFAULT NULL COMMENT '分区标识',
     monitor_id bigint unsigned DEFAULT NULL COMMENT '监测对象ID',
     shaft_floor_id bigint unsigned DEFAULT NULL COMMENT '楼层ID',
-    partition_code varchar(100) DEFAULT NULL COMMENT '分区编码',
-    partition_name varchar(100) DEFAULT NULL COMMENT '分区名称',
     data_reference varchar(200) DEFAULT NULL COMMENT 'MQ数据引用',
-    device_token varchar(100) DEFAULT NULL COMMENT '设备编码片段',
-    partition_no int DEFAULT NULL COMMENT '分区序号',
-    source_format varchar(30) DEFAULT NULL COMMENT '数据来源格式',
+    ied_full_path varchar(500) DEFAULT NULL COMMENT '完整路径',
     collect_time datetime DEFAULT NULL COMMENT '采集时间',
-    point_count int unsigned DEFAULT NULL COMMENT '点位数量',
-    valid_start_point int unsigned DEFAULT NULL COMMENT '有效开始点位',
-    valid_end_point int unsigned DEFAULT NULL COMMENT '有效结束点位',
-    values_json json DEFAULT NULL COMMENT '分区测量快照JSON',
     max_temp decimal(8,2) DEFAULT NULL COMMENT '最大温度',
     min_temp decimal(8,2) DEFAULT NULL COMMENT '最小温度',
     avg_temp decimal(8,2) DEFAULT NULL COMMENT '平均温度',
-    abnormal_flag tinyint DEFAULT 0 COMMENT '是否异常',
+    max_temp_position decimal(10,2) DEFAULT NULL COMMENT '最大温度所在位置',
+    min_temp_position decimal(10,2) DEFAULT NULL COMMENT '最小温度所在位置',
+    max_temp_channel int DEFAULT NULL COMMENT '最大温度所在通道',
+    min_temp_channel int DEFAULT NULL COMMENT '最小温度所在通道',
+    payload_json json DEFAULT NULL COMMENT '原始消息项JSON',
     deleted tinyint DEFAULT 0 COMMENT '是否删除',
     created_on datetime DEFAULT NULL COMMENT '创建时间',
     PRIMARY KEY (id),
-    KEY idx_raw_data_device_time (device_id, collect_time),
+    KEY idx_raw_data_iot_time (iot_code, collect_time),
+    KEY idx_raw_data_device_partition_time (device_id, partition_id, collect_time),
     KEY idx_raw_data_monitor_time (monitor_id, collect_time),
-    KEY idx_raw_data_partition_time (partition_code, collect_time)
+    KEY idx_raw_data_partition_time (partition_id, collect_time)
 ) COMMENT='raw_data表';
 
 CREATE TABLE raw_data_template LIKE raw_data;
 ALTER TABLE raw_data_template COMMENT='raw_data月表模板';
-
-CREATE TABLE temp_stat_minute (
-    id bigint unsigned NOT NULL COMMENT '主键ID',
-    device_id bigint unsigned DEFAULT NULL COMMENT '终端ID',
-    monitor_id bigint unsigned DEFAULT NULL COMMENT '监测对象ID',
-    shaft_floor_id bigint unsigned DEFAULT NULL COMMENT '楼层ID',
-    partition_code varchar(100) DEFAULT NULL COMMENT '分区编码',
-    partition_name varchar(100) DEFAULT NULL COMMENT '分区名称',
-    data_reference varchar(200) DEFAULT NULL COMMENT 'MQ数据引用',
-    device_token varchar(100) DEFAULT NULL COMMENT '设备编码片段',
-    partition_no int DEFAULT NULL COMMENT '分区序号',
-    source_format varchar(30) DEFAULT NULL COMMENT '数据来源格式',
-    stat_time datetime DEFAULT NULL COMMENT '统计时间',
-    max_temp decimal(8,2) DEFAULT NULL COMMENT '最大温度',
-    min_temp decimal(8,2) DEFAULT NULL COMMENT '最小温度',
-    avg_temp decimal(8,2) DEFAULT NULL COMMENT '平均温度',
-    alarm_point_count int unsigned DEFAULT 0 COMMENT '异常数量',
-    deleted tinyint DEFAULT 0 COMMENT '是否删除',
-    created_on datetime DEFAULT NULL COMMENT '创建时间',
-    PRIMARY KEY (id),
-    KEY idx_temp_stat_minute_partition_time (partition_code, stat_time),
-    KEY idx_temp_stat_minute_monitor_time (monitor_id, stat_time),
-    KEY idx_temp_stat_minute_device_time (device_id, stat_time)
-) COMMENT='temp_stat_minute表';
 
 CREATE TABLE device_online_log (
     id bigint unsigned NOT NULL COMMENT '主键ID',

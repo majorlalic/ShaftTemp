@@ -6,7 +6,6 @@
 
 - 明确当前分区版 `raw_data` 的长期策略
 - 为未来设备数组消息预留独立原始表方案
-- 决定是否移除 `temp_stat_minute`
 
 建议：
 
@@ -31,14 +30,13 @@
 目标：
 
 - 在已完成 5 分钟压测基础上，继续验证 10 到 30 分钟持续写入
-- 验证 Redis 分钟刷盘、离线巡检并行时的稳定性
+- 验证离线巡检并行时的稳定性
 
 建议：
 
 - 74 req/s 左右持续压测
 - 20 到 50 并发
 - 观察错误率、主单数量、`merge_count`、`event_count`
-- 观察 `minute:stat:*` 键数量和刷盘延迟
 
 ### 4. MQ 真实联调
 
@@ -53,13 +51,12 @@
 - `Measure / Alarm` 两类消息是否完整覆盖
 - MQTT broker 地址、用户名、密码、topic 是否与现场一致
 
-### 5. 查询层冷热分离
+### 5. 查询层优化
 
 目标：
 
 - 实时查 Redis
-- 趋势查 `temp_stat_minute`
-- 追溯才查 `raw_data`
+- 历史追溯查 `raw_data_yyyyMM`
 
 ### 6. 上线前配置核对
 
@@ -75,7 +72,6 @@
 - `shaft.alarm.event-throttle-seconds`
 - `shaft.inspection.enabled`
 - `shaft.inspection.fixed-delay-ms`
-- `shaft.stat.flush-delay-ms`
 - `alarm_rule` 表是否已初始化
 - `monitor_partition_bind` 是否与现场 `dataReference` 一致
 

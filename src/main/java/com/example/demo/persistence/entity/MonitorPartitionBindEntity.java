@@ -22,6 +22,9 @@ public class MonitorPartitionBindEntity {
     @Column(name = "shaft_floor_id")
     private Long shaftFloorId;
 
+    @Column(name = "partition_id")
+    private Integer partitionId;
+
     @Column(name = "partition_code")
     private String partitionCode;
 
@@ -75,6 +78,14 @@ public class MonitorPartitionBindEntity {
 
     public void setShaftFloorId(Long shaftFloorId) {
         this.shaftFloorId = shaftFloorId;
+    }
+
+    public Integer getPartitionId() {
+        return partitionId;
+    }
+
+    public void setPartitionId(Integer partitionId) {
+        this.partitionId = partitionId;
     }
 
     public String getPartitionCode() {

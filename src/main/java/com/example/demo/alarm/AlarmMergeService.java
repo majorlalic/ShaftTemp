@@ -226,6 +226,7 @@ public class AlarmMergeService implements AlarmService {
             alarm.getPartitionCode(),
             alarm.getPartitionName(),
             alarm.getDataReference(),
+            null,
             alarm.getDeviceToken(),
             alarm.getPartitionNo(),
             alarm.getSourceFormat()

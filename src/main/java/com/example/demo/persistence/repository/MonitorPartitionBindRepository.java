@@ -3,6 +3,7 @@ package com.example.demo.persistence.repository;
 import com.example.demo.persistence.entity.MonitorPartitionBindEntity;
 import java.util.List;
 import java.util.Optional;
+import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
 
@@ -14,6 +15,15 @@ public interface MonitorPartitionBindRepository {
 
     @Select("select * from monitor_partition_bind where data_reference = #{dataReference} and bind_status = 1 and (deleted is null or deleted = 0) limit 1")
     Optional<MonitorPartitionBindEntity> findActiveByDataReference(String dataReference);
+
+    @Select(
+        "select * from monitor_partition_bind " +
+        "where device_id = #{deviceId} and partition_id = #{partitionId} and bind_status = 1 and (deleted is null or deleted = 0) limit 1"
+    )
+    Optional<MonitorPartitionBindEntity> findActiveByDeviceAndPartitionId(
+        @Param("deviceId") Long deviceId,
+        @Param("partitionId") Integer partitionId
+    );
 
     @Select("select * from monitor_partition_bind where bind_status = 1 and (deleted is null or deleted = 0)")
     List<MonitorPartitionBindEntity> findAllActive();

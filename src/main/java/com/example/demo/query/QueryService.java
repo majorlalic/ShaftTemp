@@ -3,11 +3,9 @@ package com.example.demo.query;
 import com.example.demo.persistence.entity.AlarmEntity;
 import com.example.demo.persistence.entity.EventEntity;
 import com.example.demo.persistence.entity.RawDataEntity;
-import com.example.demo.persistence.entity.TempStatMinuteEntity;
 import com.example.demo.persistence.repository.AlarmRepository;
 import com.example.demo.persistence.repository.EventRepository;
 import com.example.demo.persistence.repository.RawDataQueryRepository;
-import com.example.demo.persistence.repository.TempStatMinuteRepository;
 import com.example.demo.realtime.RealtimeStateService;
 import com.example.demo.realtime.RealtimeStateService.RealtimeSummary;
 import java.time.LocalDateTime;
@@ -26,7 +24,6 @@ public class QueryService {
     private final AlarmRepository alarmRepository;
     private final EventRepository eventRepository;
     private final RawDataQueryRepository rawDataQueryRepository;
-    private final TempStatMinuteRepository tempStatMinuteRepository;
     private final RealtimeStateService realtimeStateService;
     private final QueryMapper queryMapper;
 
@@ -34,14 +31,12 @@ public class QueryService {
         AlarmRepository alarmRepository,
         EventRepository eventRepository,
         RawDataQueryRepository rawDataQueryRepository,
-        TempStatMinuteRepository tempStatMinuteRepository,
         RealtimeStateService realtimeStateService,
         QueryMapper queryMapper
     ) {
         this.alarmRepository = alarmRepository;
         this.eventRepository = eventRepository;
         this.rawDataQueryRepository = rawDataQueryRepository;
-        this.tempStatMinuteRepository = tempStatMinuteRepository;
         this.realtimeStateService = realtimeStateService;
         this.queryMapper = queryMapper;
     }
@@ -84,7 +79,7 @@ public class QueryService {
         Long monitorId,
         Long deviceId,
         Long shaftFloorId,
-        String partitionCode,
+        Integer partitionId,
         LocalDateTime from,
         LocalDateTime to,
         Integer limit
@@ -97,7 +92,7 @@ public class QueryService {
             monitorId,
             deviceId,
             shaftFloorId,
-            partitionCode,
+            partitionId,
             from,
             to,
             safeLimit
@@ -105,31 +100,6 @@ public class QueryService {
         List<Map<String, Object>> payload = new ArrayList<Map<String, Object>>();
         for (int i = 0; i < results.size() && i < safeLimit; i++) {
             payload.add(queryMapper.toRawDataMap(results.get(i)));
-        }
-        return payload;
-    }
-
-    public List<Map<String, Object>> listTempStats(
-        Long monitorId,
-        Long deviceId,
-        Long shaftFloorId,
-        String partitionCode,
-        LocalDateTime from,
-        LocalDateTime to,
-        Integer limit
-    ) {
-        List<TempStatMinuteEntity> results = tempStatMinuteRepository.findRecentAll().stream()
-            .filter(stat -> monitorId == null || monitorId.equals(stat.getMonitorId()))
-            .filter(stat -> deviceId == null || deviceId.equals(stat.getDeviceId()))
-            .filter(stat -> shaftFloorId == null || shaftFloorId.equals(stat.getShaftFloorId()))
-            .filter(stat -> partitionCode == null || partitionCode.equals(stat.getPartitionCode()))
-            .filter(stat -> from == null || !stat.getStatTime().isBefore(from))
-            .filter(stat -> to == null || !stat.getStatTime().isAfter(to))
-            .collect(Collectors.toList());
-        int safeLimit = limit == null ? 100 : Math.max(1, limit.intValue());
-        List<Map<String, Object>> payload = new ArrayList<Map<String, Object>>();
-        for (int i = 0; i < results.size() && i < safeLimit; i++) {
-            payload.add(queryMapper.toTempStatMap(results.get(i)));
         }
         return payload;
     }

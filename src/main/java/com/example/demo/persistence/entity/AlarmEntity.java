@@ -81,6 +81,9 @@ public class AlarmEntity {
     @Column(name = "handle_remark")
     private String handleRemark;
 
+    @Column(name = "push_status")
+    private Integer pushStatus;
+
     private Integer deleted;
 
     @Column(name = "created_on")
@@ -287,6 +290,14 @@ public class AlarmEntity {
 
     public void setHandleRemark(String handleRemark) {
         this.handleRemark = handleRemark;
+    }
+
+    public Integer getPushStatus() {
+        return pushStatus;
+    }
+
+    public void setPushStatus(Integer pushStatus) {
+        this.pushStatus = pushStatus;
     }
 
     public Integer getDeleted() {

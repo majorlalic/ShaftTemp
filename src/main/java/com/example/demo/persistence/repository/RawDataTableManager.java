@@ -21,9 +21,10 @@ public class RawDataTableManager {
 
     public void ensureTableExists(String tableName) {
         validateTableName(tableName);
-        if (knownTables.contains(tableName)) {
+        if (knownTables.contains(tableName) && tableExists(tableName)) {
             return;
         }
+        knownTables.remove(tableName);
         jdbcTemplate.execute("create table if not exists " + tableName + " like raw_data_template");
         knownTables.add(tableName);
     }

@@ -35,6 +35,7 @@ public class AlarmDocController {
 
     @GetMapping("/list")
     public ResponseEntity<ApiResponse<PagePayload<Map<String, Object>>>> list(
+        @RequestParam(required = false) Integer pageNo,
         @RequestParam(required = false) Integer pageNum,
         @RequestParam(required = false) Integer pageSize,
         @RequestParam(required = false) Long areaId,
@@ -43,16 +44,19 @@ public class AlarmDocController {
         @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime,
         @RequestParam(required = false) String status
     ) {
-        return ResponseEntity.ok(ApiResponse.success(alarmViewService.list(pageNum, pageSize, areaId, deviceId, startTime, endTime, status)));
+        Integer resolvedPageNo = pageNo == null ? pageNum : pageNo;
+        return ResponseEntity.ok(ApiResponse.success(alarmViewService.list(resolvedPageNo, pageSize, areaId, deviceId, startTime, endTime, status)));
     }
 
     @GetMapping("/merge/list")
     public ResponseEntity<ApiResponse<PagePayload<Map<String, Object>>>> mergeList(
         @RequestParam Long alarmId,
-        @RequestParam Integer pageNum,
+        @RequestParam(required = false) Integer pageNo,
+        @RequestParam(required = false) Integer pageNum,
         @RequestParam Integer pageSize
     ) {
-        return ResponseEntity.ok(ApiResponse.success(alarmViewService.mergeEvents(alarmId, pageNum, pageSize)));
+        Integer resolvedPageNo = pageNo == null ? pageNum : pageNo;
+        return ResponseEntity.ok(ApiResponse.success(alarmViewService.mergeEvents(alarmId, resolvedPageNo, pageSize)));
     }
 
     @GetMapping("/detail")

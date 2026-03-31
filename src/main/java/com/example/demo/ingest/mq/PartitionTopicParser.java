@@ -24,6 +24,17 @@ public class PartitionTopicParser {
         throw new IllegalArgumentException("Unsupported MQ payload type");
     }
 
+    public String extractIotCode(String topic) {
+        if (topic == null || topic.trim().isEmpty()) {
+            return null;
+        }
+        String[] parts = topic.split("/");
+        if (parts.length < 3) {
+            return null;
+        }
+        return parts[2];
+    }
+
     public enum MessageType {
         MEASURE,
         ALARM

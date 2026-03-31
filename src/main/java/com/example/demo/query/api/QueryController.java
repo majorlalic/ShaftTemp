@@ -37,28 +37,13 @@ public class QueryController {
         @RequestParam(required = false) Long monitorId,
         @RequestParam(required = false) Long deviceId,
         @RequestParam(required = false) Long shaftFloorId,
-        @RequestParam(required = false) String partitionCode,
+        @RequestParam(required = false) Integer partitionId,
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
         @RequestParam(required = false) Integer limit
     ) {
         return ResponseEntity.ok(ApiResponse.success(
-            queryService.listRawData(monitorId, deviceId, shaftFloorId, partitionCode, from, to, limit)
-        ));
-    }
-
-    @GetMapping("/temp-stats/minute")
-    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> listTempStats(
-        @RequestParam(required = false) Long monitorId,
-        @RequestParam(required = false) Long deviceId,
-        @RequestParam(required = false) Long shaftFloorId,
-        @RequestParam(required = false) String partitionCode,
-        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
-        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
-        @RequestParam(required = false) Integer limit
-    ) {
-        return ResponseEntity.ok(ApiResponse.success(
-            queryService.listTempStats(monitorId, deviceId, shaftFloorId, partitionCode, from, to, limit)
+            queryService.listRawData(monitorId, deviceId, shaftFloorId, partitionId, from, to, limit)
         ));
     }
 

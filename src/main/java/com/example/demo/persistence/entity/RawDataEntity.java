@@ -20,44 +20,25 @@ public class RawDataEntity {
     @Column(name = "iot_code")
     private String iotCode;
 
+    private String topic;
+
+    @Column(name = "partition_id")
+    private Integer partitionId;
+
     @Column(name = "monitor_id")
     private Long monitorId;
 
     @Column(name = "shaft_floor_id")
     private Long shaftFloorId;
 
-    @Column(name = "partition_code")
-    private String partitionCode;
-
-    @Column(name = "partition_name")
-    private String partitionName;
-
     @Column(name = "data_reference")
     private String dataReference;
 
-    @Column(name = "device_token")
-    private String deviceToken;
-
-    @Column(name = "partition_no")
-    private Integer partitionNo;
-
-    @Column(name = "source_format")
-    private String sourceFormat;
+    @Column(name = "ied_full_path")
+    private String iedFullPath;
 
     @Column(name = "collect_time")
     private LocalDateTime collectTime;
-
-    @Column(name = "point_count")
-    private Integer pointCount;
-
-    @Column(name = "valid_start_point")
-    private Integer validStartPoint;
-
-    @Column(name = "valid_end_point")
-    private Integer validEndPoint;
-
-    @Column(name = "values_json", columnDefinition = "json")
-    private String valuesJson;
 
     @Column(name = "max_temp")
     private BigDecimal maxTemp;
@@ -68,8 +49,20 @@ public class RawDataEntity {
     @Column(name = "avg_temp")
     private BigDecimal avgTemp;
 
-    @Column(name = "abnormal_flag")
-    private Integer abnormalFlag;
+    @Column(name = "max_temp_position")
+    private BigDecimal maxTempPosition;
+
+    @Column(name = "min_temp_position")
+    private BigDecimal minTempPosition;
+
+    @Column(name = "max_temp_channel")
+    private Integer maxTempChannel;
+
+    @Column(name = "min_temp_channel")
+    private Integer minTempChannel;
+
+    @Column(name = "payload_json", columnDefinition = "json")
+    private String payloadJson;
 
     private Integer deleted;
 
@@ -100,6 +93,22 @@ public class RawDataEntity {
         this.iotCode = iotCode;
     }
 
+    public String getTopic() {
+        return topic;
+    }
+
+    public void setTopic(String topic) {
+        this.topic = topic;
+    }
+
+    public Integer getPartitionId() {
+        return partitionId;
+    }
+
+    public void setPartitionId(Integer partitionId) {
+        this.partitionId = partitionId;
+    }
+
     public Long getMonitorId() {
         return monitorId;
     }
@@ -116,22 +125,6 @@ public class RawDataEntity {
         this.shaftFloorId = shaftFloorId;
     }
 
-    public String getPartitionCode() {
-        return partitionCode;
-    }
-
-    public void setPartitionCode(String partitionCode) {
-        this.partitionCode = partitionCode;
-    }
-
-    public String getPartitionName() {
-        return partitionName;
-    }
-
-    public void setPartitionName(String partitionName) {
-        this.partitionName = partitionName;
-    }
-
     public String getDataReference() {
         return dataReference;
     }
@@ -140,28 +133,12 @@ public class RawDataEntity {
         this.dataReference = dataReference;
     }
 
-    public String getDeviceToken() {
-        return deviceToken;
+    public String getIedFullPath() {
+        return iedFullPath;
     }
 
-    public void setDeviceToken(String deviceToken) {
-        this.deviceToken = deviceToken;
-    }
-
-    public Integer getPartitionNo() {
-        return partitionNo;
-    }
-
-    public void setPartitionNo(Integer partitionNo) {
-        this.partitionNo = partitionNo;
-    }
-
-    public String getSourceFormat() {
-        return sourceFormat;
-    }
-
-    public void setSourceFormat(String sourceFormat) {
-        this.sourceFormat = sourceFormat;
+    public void setIedFullPath(String iedFullPath) {
+        this.iedFullPath = iedFullPath;
     }
 
     public LocalDateTime getCollectTime() {
@@ -170,38 +147,6 @@ public class RawDataEntity {
 
     public void setCollectTime(LocalDateTime collectTime) {
         this.collectTime = collectTime;
-    }
-
-    public Integer getPointCount() {
-        return pointCount;
-    }
-
-    public void setPointCount(Integer pointCount) {
-        this.pointCount = pointCount;
-    }
-
-    public Integer getValidStartPoint() {
-        return validStartPoint;
-    }
-
-    public void setValidStartPoint(Integer validStartPoint) {
-        this.validStartPoint = validStartPoint;
-    }
-
-    public Integer getValidEndPoint() {
-        return validEndPoint;
-    }
-
-    public void setValidEndPoint(Integer validEndPoint) {
-        this.validEndPoint = validEndPoint;
-    }
-
-    public String getValuesJson() {
-        return valuesJson;
-    }
-
-    public void setValuesJson(String valuesJson) {
-        this.valuesJson = valuesJson;
     }
 
     public BigDecimal getMaxTemp() {
@@ -228,12 +173,44 @@ public class RawDataEntity {
         this.avgTemp = avgTemp;
     }
 
-    public Integer getAbnormalFlag() {
-        return abnormalFlag;
+    public BigDecimal getMaxTempPosition() {
+        return maxTempPosition;
     }
 
-    public void setAbnormalFlag(Integer abnormalFlag) {
-        this.abnormalFlag = abnormalFlag;
+    public void setMaxTempPosition(BigDecimal maxTempPosition) {
+        this.maxTempPosition = maxTempPosition;
+    }
+
+    public BigDecimal getMinTempPosition() {
+        return minTempPosition;
+    }
+
+    public void setMinTempPosition(BigDecimal minTempPosition) {
+        this.minTempPosition = minTempPosition;
+    }
+
+    public Integer getMaxTempChannel() {
+        return maxTempChannel;
+    }
+
+    public void setMaxTempChannel(Integer maxTempChannel) {
+        this.maxTempChannel = maxTempChannel;
+    }
+
+    public Integer getMinTempChannel() {
+        return minTempChannel;
+    }
+
+    public void setMinTempChannel(Integer minTempChannel) {
+        this.minTempChannel = minTempChannel;
+    }
+
+    public String getPayloadJson() {
+        return payloadJson;
+    }
+
+    public void setPayloadJson(String payloadJson) {
+        this.payloadJson = payloadJson;
     }
 
     public Integer getDeleted() {

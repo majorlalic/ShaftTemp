@@ -12,7 +12,6 @@ public class AppProperties {
     private final Alarm alarm = new Alarm();
     private final Inspection inspection = new Inspection();
     private final Cache cache = new Cache();
-    private final Stat stat = new Stat();
     private final RawData rawData = new RawData();
 
     public Mq getMq() {
@@ -29,10 +28,6 @@ public class AppProperties {
 
     public Cache getCache() {
         return cache;
-    }
-
-    public Stat getStat() {
-        return stat;
     }
 
     public RawData getRawData() {
@@ -192,18 +187,6 @@ public class AppProperties {
 
         public void setPartitionBindingRefreshMs(long partitionBindingRefreshMs) {
             this.partitionBindingRefreshMs = partitionBindingRefreshMs;
-        }
-    }
-
-    public static class Stat {
-        private long flushDelayMs = 15000L;
-
-        public long getFlushDelayMs() {
-            return flushDelayMs;
-        }
-
-        public void setFlushDelayMs(long flushDelayMs) {
-            this.flushDelayMs = flushDelayMs;
         }
     }
 

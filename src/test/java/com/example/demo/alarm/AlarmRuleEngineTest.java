@@ -41,6 +41,7 @@ class AlarmRuleEngineTest {
             "p1",
             "一区",
             "/TMP/p1",
+            null,
             "dev-01",
             1,
             "MQ_PARTITION"

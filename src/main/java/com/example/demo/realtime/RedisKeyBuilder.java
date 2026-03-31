@@ -1,13 +1,9 @@
 package com.example.demo.realtime;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import org.springframework.stereotype.Component;
 
 @Component
 public class RedisKeyBuilder {
-
-    private static final DateTimeFormatter MINUTE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmm");
 
     public String lastReportKey(Long deviceId) {
         return "device:last_report:" + deviceId;
@@ -36,14 +32,6 @@ public class RedisKeyBuilder {
 
     public String offlineLevelKey(Long deviceId) {
         return "device:offline_level:" + deviceId;
-    }
-
-    public String minuteStatKey(String partitionCode, LocalDateTime statTime) {
-        return "minute:stat:" + partitionCode + ":" + MINUTE_FORMATTER.format(statTime);
-    }
-
-    public String minuteStatPendingSetKey() {
-        return "minute:stat:pending";
     }
 
     public String lastEventTimeKey(String alarmType, String partitionCode) {

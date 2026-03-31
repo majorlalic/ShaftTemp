@@ -41,7 +41,7 @@ public class DeviceResolverService {
         this.appProperties = appProperties;
     }
 
-    public ResolvedTarget resolve(String dataReference, String partitionCode) {
+    public ResolvedTarget resolve(String iotCode, Integer partitionId, String dataReference, String partitionCode) {
         if (dataReference != null && !dataReference.trim().isEmpty()) {
             ResolvedTarget cachedByReference = dataReferenceCache.get(dataReference);
             if (cachedByReference != null) {
@@ -54,12 +54,22 @@ public class DeviceResolverService {
                 return cachedByPartition;
             }
         }
-        ResolvedTarget resolved = buildResolvedTarget(resolveBinding(dataReference, partitionCode));
+        ResolvedTarget resolved = buildResolvedTarget(resolveBinding(iotCode, partitionId, dataReference, partitionCode));
         cacheResolvedTarget(resolved);
         return resolved;
     }
 
-    private MonitorPartitionBindEntity resolveBinding(String dataReference, String partitionCode) {
+    private MonitorPartitionBindEntity resolveBinding(String iotCode, Integer partitionId, String dataReference, String partitionCode) {
+        if (iotCode != null && !iotCode.trim().isEmpty() && partitionId != null) {
+            Optional<DeviceEntity> deviceOptional = deviceRepository.findActiveByIotCode(iotCode);
+            if (deviceOptional.isPresent()) {
+                Optional<MonitorPartitionBindEntity> byPartitionId = monitorPartitionBindRepository
+                    .findActiveByDeviceAndPartitionId(deviceOptional.get().getId(), partitionId);
+                if (byPartitionId.isPresent()) {
+                    return byPartitionId.get();
+                }
+            }
+        }
         Optional<MonitorPartitionBindEntity> byReference = Optional.empty();
         if (dataReference != null && !dataReference.trim().isEmpty()) {
             byReference = monitorPartitionBindRepository.findActiveByDataReference(dataReference);
@@ -127,6 +137,7 @@ public class DeviceResolverService {
         private final String partitionCode;
         private final String partitionName;
         private final String dataReference;
+        private final Integer partitionId;
         private final String deviceToken;
         private final Integer partitionNo;
         private final String sourceFormat;
@@ -138,6 +149,7 @@ public class DeviceResolverService {
             String partitionCode,
             String partitionName,
             String dataReference,
+            Integer partitionId,
             String deviceToken,
             Integer partitionNo,
             String sourceFormat
@@ -148,6 +160,7 @@ public class DeviceResolverService {
             this.partitionCode = partitionCode;
             this.partitionName = partitionName;
             this.dataReference = dataReference;
+            this.partitionId = partitionId;
             this.deviceToken = deviceToken;
             this.partitionNo = partitionNo;
             this.sourceFormat = sourceFormat;
@@ -166,6 +179,7 @@ public class DeviceResolverService {
                 binding.getPartitionCode(),
                 binding.getPartitionName() == null ? binding.getPartitionCode() : binding.getPartitionName(),
                 binding.getDataReference(),
+                binding.getPartitionId(),
                 binding.getDeviceToken(),
                 binding.getPartitionNo(),
                 "MQ_PARTITION"
@@ -173,7 +187,7 @@ public class DeviceResolverService {
         }
 
         public static ResolvedTarget forDevice(DeviceEntity device, MonitorEntity monitor) {
-            return new ResolvedTarget(device, monitor, null, null, null, null, null, null, "MQ_PARTITION");
+            return new ResolvedTarget(device, monitor, null, null, null, null, null, null, null, "MQ_PARTITION");
         }
 
         public DeviceEntity getDevice() {
@@ -202,6 +216,10 @@ public class DeviceResolverService {
 
         public String getDataReference() {
             return dataReference;
+        }
+
+        public Integer getPartitionId() {
+            return partitionId;
         }
 
         public String getDeviceToken() {

@@ -27,35 +27,33 @@ public class RawDataJdbcRepository {
         rawDataTableManager.ensureTableExists(tableName);
         String sql =
             "insert into " + tableName + " (" +
-            "id, device_id, iot_code, monitor_id, shaft_floor_id, partition_code, partition_name, data_reference, " +
-            "device_token, partition_no, source_format, collect_time, point_count, valid_start_point, valid_end_point, " +
-            "values_json, max_temp, min_temp, avg_temp, abnormal_flag, deleted, created_on" +
+            "id, device_id, iot_code, topic, partition_id, monitor_id, shaft_floor_id, data_reference, ied_full_path, " +
+            "collect_time, max_temp, min_temp, avg_temp, max_temp_position, min_temp_position, max_temp_channel, min_temp_channel, " +
+            "payload_json, deleted, created_on" +
             ") values (" +
-            ":id, :deviceId, :iotCode, :monitorId, :shaftFloorId, :partitionCode, :partitionName, :dataReference, " +
-            ":deviceToken, :partitionNo, :sourceFormat, :collectTime, :pointCount, :validStartPoint, :validEndPoint, " +
-            ":valuesJson, :maxTemp, :minTemp, :avgTemp, :abnormalFlag, :deleted, :createdOn" +
+            ":id, :deviceId, :iotCode, :topic, :partitionId, :monitorId, :shaftFloorId, :dataReference, :iedFullPath, " +
+            ":collectTime, :maxTemp, :minTemp, :avgTemp, :maxTempPosition, :minTempPosition, :maxTempChannel, :minTempChannel, " +
+            ":payloadJson, :deleted, :createdOn" +
             ")";
         MapSqlParameterSource params = new MapSqlParameterSource()
             .addValue("id", entity.getId())
             .addValue("deviceId", entity.getDeviceId())
             .addValue("iotCode", entity.getIotCode())
+            .addValue("topic", entity.getTopic())
+            .addValue("partitionId", entity.getPartitionId())
             .addValue("monitorId", entity.getMonitorId())
             .addValue("shaftFloorId", entity.getShaftFloorId())
-            .addValue("partitionCode", entity.getPartitionCode())
-            .addValue("partitionName", entity.getPartitionName())
             .addValue("dataReference", entity.getDataReference())
-            .addValue("deviceToken", entity.getDeviceToken())
-            .addValue("partitionNo", entity.getPartitionNo())
-            .addValue("sourceFormat", entity.getSourceFormat())
+            .addValue("iedFullPath", entity.getIedFullPath())
             .addValue("collectTime", entity.getCollectTime())
-            .addValue("pointCount", entity.getPointCount())
-            .addValue("validStartPoint", entity.getValidStartPoint())
-            .addValue("validEndPoint", entity.getValidEndPoint())
-            .addValue("valuesJson", entity.getValuesJson())
             .addValue("maxTemp", entity.getMaxTemp())
             .addValue("minTemp", entity.getMinTemp())
             .addValue("avgTemp", entity.getAvgTemp())
-            .addValue("abnormalFlag", entity.getAbnormalFlag())
+            .addValue("maxTempPosition", entity.getMaxTempPosition())
+            .addValue("minTempPosition", entity.getMinTempPosition())
+            .addValue("maxTempChannel", entity.getMaxTempChannel())
+            .addValue("minTempChannel", entity.getMinTempChannel())
+            .addValue("payloadJson", entity.getPayloadJson())
             .addValue("deleted", entity.getDeleted())
             .addValue("createdOn", entity.getCreatedOn());
         return jdbcTemplate.update(sql, params);

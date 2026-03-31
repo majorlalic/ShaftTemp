@@ -1,14 +1,24 @@
 -- 本地联调初始化数据
 -- 执行前请先运行：数据库建库.sql
--- 当前脚本会清理固定表和 raw_data_template
--- 已存在的 raw_data_yyyyMM 月表如需清空，请按实际月份手工处理
+-- 当前脚本会清理固定表、raw_data_template 和历史 raw_data_yyyyMM 月表
 
 USE shaft;
 
+SET @drop_month_sql = NULL;
+SELECT GROUP_CONCAT(CONCAT('DROP TABLE IF EXISTS `', table_name, '`') SEPARATOR '; ')
+INTO @drop_month_sql
+FROM information_schema.tables
+WHERE table_schema = DATABASE()
+  AND table_name REGEXP '^raw_data_[0-9]{6}$';
+SET @drop_month_sql = IFNULL(@drop_month_sql, 'SELECT 1');
+PREPARE stmt_drop_month FROM @drop_month_sql;
+EXECUTE stmt_drop_month;
+DEALLOCATE PREPARE stmt_drop_month;
+
 DELETE FROM device_online_log;
-DELETE FROM temp_stat_minute;
 DELETE FROM raw_data_template;
 DELETE FROM raw_data;
+DELETE FROM alarm_raw;
 DELETE FROM event;
 DELETE FROM alarm;
 DELETE FROM alarm_rule;
@@ -57,11 +67,11 @@ INSERT INTO monitor_device_bind (
 );
 
 INSERT INTO monitor_partition_bind (
-    id, monitor_id, device_id, shaft_floor_id, partition_code, partition_name, data_reference,
+    id, monitor_id, device_id, shaft_floor_id, partition_id, partition_code, partition_name, data_reference,
     device_token, partition_no, bind_status, deleted, created_on, updated_on
 ) VALUES
-    (7001, 4001, 3001, 5001, 'shaft-dev-01_TMP_th01', '1层分区', '/TMP/shaft-dev-01_TMP_th01', 'shaft-dev-01', 1, 1, 0, NOW(), NOW()),
-    (7002, 4001, 3001, 5002, 'shaft-dev-01_TMP_th02', '2层分区', '/TMP/shaft-dev-01_TMP_th02', 'shaft-dev-01', 2, 1, 0, NOW(), NOW());
+    (7001, 4001, 3001, 5001, 1, 'shaft-dev-01_TMP_th01', '1层分区', '/TMP/shaft-dev-01_TMP_th01', 'shaft-dev-01', 1, 1, 0, NOW(), NOW()),
+    (7002, 4001, 3001, 5002, 2, 'shaft-dev-01_TMP_th02', '2层分区', '/TMP/shaft-dev-01_TMP_th02', 'shaft-dev-01', 2, 1, 0, NOW(), NOW());
 
 INSERT INTO alarm_rule
 (id, rule_name, biz_type, alarm_type, scope_type, scope_id, level, threshold_value, threshold_value2, duration_seconds, enabled, remark, deleted, created_on, updated_on)

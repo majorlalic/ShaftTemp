@@ -8,6 +8,10 @@ import javax.validation.constraints.NotNull;
 public class PartitionAlarmRequest {
 
     private String topic;
+    private String iotCode;
+
+    @JsonProperty("PartitionId")
+    private Integer partitionId;
 
     @NotBlank
     @JsonProperty("IedFullPath")
@@ -32,6 +36,22 @@ public class PartitionAlarmRequest {
 
     public void setTopic(String topic) {
         this.topic = topic;
+    }
+
+    public String getIotCode() {
+        return iotCode;
+    }
+
+    public void setIotCode(String iotCode) {
+        this.iotCode = iotCode;
+    }
+
+    public Integer getPartitionId() {
+        return partitionId;
+    }
+
+    public void setPartitionId(Integer partitionId) {
+        this.partitionId = partitionId;
     }
 
     public String getIedFullPath() {

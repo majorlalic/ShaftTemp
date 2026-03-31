@@ -434,9 +434,9 @@ public class TerminalDocService {
         int safePageSize = pageSize == null || pageSize.intValue() < 1 ? 10 : pageSize.intValue();
         int fromIndex = (safePageNum - 1) * safePageSize;
         if (fromIndex >= rows.size()) {
-            return new PagePayload<T>(rows.size(), new ArrayList<T>());
+            return new PagePayload<T>(rows.size(), new ArrayList<T>(), safePageNum);
         }
         int toIndex = Math.min(rows.size(), fromIndex + safePageSize);
-        return new PagePayload<T>(rows.size(), rows.subList(fromIndex, toIndex));
+        return new PagePayload<T>(rows.size(), rows.subList(fromIndex, toIndex), safePageNum);
     }
 }

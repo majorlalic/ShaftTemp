@@ -75,6 +75,7 @@ class AlarmMergeServiceTest {
             "dev_TMP_th01",
             "一区",
             "/TMP/dev_TMP_th01",
+            null,
             "dev",
             1,
             "MQ_PARTITION"
@@ -121,6 +122,7 @@ class AlarmMergeServiceTest {
             "dev_TMP_th01",
             "一区",
             "/TMP/dev_TMP_th01",
+            null,
             "dev",
             1,
             "MQ_PARTITION"
@@ -168,6 +170,7 @@ class AlarmMergeServiceTest {
             "dev_TMP_th01",
             "一区",
             "/TMP/dev_TMP_th01",
+            null,
             "dev",
             1,
             "MQ_PARTITION"
@@ -227,6 +230,7 @@ class AlarmMergeServiceTest {
             "dev_TMP_th01",
             "一区",
             "/TMP/dev_TMP_th01",
+            null,
             "dev",
             1,
             "MQ_PARTITION"
