@@ -1,0 +1,53 @@
+package com.example.demo.controller;
+
+import com.example.demo.vo.PartitionAlarmRequest;
+import com.example.demo.vo.PartitionMeasureRequest;
+import com.example.demo.service.ReportIngestService;
+import com.example.demo.vo.ApiResponse;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/service/iot")
+public class IotServiceController {
+
+    private final ReportIngestService reportIngestService;
+
+    public IotServiceController(ReportIngestService reportIngestService) {
+        this.reportIngestService = reportIngestService;
+    }
+
+    @PostMapping("/data/batch")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> processDataBatch(
+        @RequestBody List<PartitionMeasureRequest> requests
+    ) {
+        List<PartitionMeasureRequest> safeRequests = requests == null ? Collections.<PartitionMeasureRequest>emptyList() : requests;
+        List<Map<String, Object>> payload = new ArrayList<Map<String, Object>>();
+        for (PartitionMeasureRequest request : safeRequests) {
+            ReportIngestService.IngestResult result = reportIngestService.processMeasureWithoutRawData(request);
+            java.util.LinkedHashMap<String, Object> item = new java.util.LinkedHashMap<String, Object>();
+            item.put("deviceId", result.getDeviceId());
+            item.put("monitorId", result.getMonitorId());
+            item.put("partitionCode", result.getPartitionCode());
+            item.put("alarmCount", result.getAlarmCount());
+            payload.add(item);
+        }
+        return ResponseEntity.ok(ApiResponse.success(payload));
+    }
+
+    @PostMapping("/alarm/batch")
+    public ResponseEntity<ApiResponse<String>> processAlarmBatch(
+        @RequestBody(required = false) List<PartitionAlarmRequest> requests
+    ) {
+        int size = requests == null ? 0 : requests.size();
+        return ResponseEntity.ok(ApiResponse.success("ack:" + size));
+    }
+}
+
