@@ -1,0 +1,315 @@
+package com.example.demo.service;
+
+import com.example.demo.service.RuleEvaluationResult;
+import com.csg.dgri.szsiom.sysmanage.model.AlarmVO;
+import com.csg.dgri.szsiom.sysmanage.model.DeviceVO;
+import com.csg.dgri.szsiom.sysmanage.model.EventVO;
+import com.csg.dgri.szsiom.sysmanage.appservice.AlarmAppService;
+import com.csg.dgri.szsiom.sysmanage.appservice.EventAppService;
+import com.example.demo.service.RealtimeStateService;
+import com.example.demo.service.DeviceResolverService;
+import com.example.demo.service.IdGenerator;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Optional;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+public class AlarmMergeService implements AlarmService {
+
+    private static final DateTimeFormatter CODE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+
+    private final AlarmAppService<?> alarmRepository;
+    private final EventAppService<?> eventRepository;
+    private final RealtimeStateService realtimeStateService;
+    private final IdGenerator idGenerator;
+
+    public AlarmMergeService(
+        AlarmAppService<?> alarmRepository,
+        EventAppService<?> eventRepository,
+        RealtimeStateService realtimeStateService,
+        IdGenerator idGenerator
+    ) {
+        this.alarmRepository = alarmRepository;
+        this.eventRepository = eventRepository;
+        this.realtimeStateService = realtimeStateService;
+        this.idGenerator = idGenerator;
+    }
+
+    @Override
+    @Transactional
+    public AlarmVO createOrMerge(
+        DeviceResolverService.ResolvedTarget resolved,
+        RuleEvaluationResult result,
+        LocalDateTime eventTime,
+        String detailJson,
+        String pointListJson
+    ) {
+        String mergeKey = buildMergeKey(resolved.getMonitor().getId(), result.getAlarmType());
+        AlarmVO candidate = new AlarmVO();
+        candidate.setId(idGenerator.nextId());
+        candidate.setAlarmCode(result.getAlarmType() + "-" + CODE_FORMATTER.format(eventTime) + "-" + candidate.getId());
+        candidate.setAlarmType(result.getAlarmType());
+        candidate.setStatus(AlarmStatus.PENDING_CONFIRM);
+        candidate.setFirstAlarmTime(eventTime);
+        candidate.setMergeCount(1);
+        candidate.setEventCount(0);
+        candidate.setDeleted(0);
+        candidate.setCreatedOn(eventTime);
+        candidate.setSourceType(result.getSourceType());
+        candidate.setMonitorId(resolved.getMonitor().getId());
+        candidate.setDeviceId(resolved.getDevice().getId());
+        candidate.setShaftFloorId(resolved.getShaftFloorId());
+        candidate.setPartitionCode(resolved.getPartitionCode());
+        candidate.setPartitionName(resolved.getPartitionName());
+        candidate.setDataReference(resolved.getDataReference());
+        candidate.setDeviceToken(resolved.getDeviceToken());
+        candidate.setPartitionNo(resolved.getPartitionNo());
+        candidate.setSourceFormat(resolved.getSourceFormat());
+        candidate.setMergeKey(mergeKey);
+        candidate.setAlarmLevel(result.getAlarmLevel());
+        candidate.setTitle(result.getTitle());
+        candidate.setContent(result.getContent());
+        candidate.setLastAlarmTime(eventTime);
+        candidate.setUpdatedOn(eventTime);
+
+        AlarmVO savedAlarm;
+        boolean merged;
+        try {
+            alarmRepository.upsertPendingAlarm(candidate);
+            savedAlarm = alarmRepository.findById(candidate.getId())
+                .orElseThrow(() -> new IllegalStateException("Alarm not found after insert: " + candidate.getId()));
+            merged = false;
+        } catch (DuplicateKeyException ex) {
+            savedAlarm = alarmRepository.findByMergeKey(mergeKey)
+                .orElseThrow(() -> new IllegalStateException("Alarm not found after duplicate key: " + mergeKey));
+            savedAlarm.setSourceType(result.getSourceType());
+            savedAlarm.setDeviceId(resolved.getDevice().getId());
+            savedAlarm.setShaftFloorId(resolved.getShaftFloorId());
+            savedAlarm.setPartitionCode(resolved.getPartitionCode());
+            savedAlarm.setPartitionName(resolved.getPartitionName());
+            savedAlarm.setDataReference(resolved.getDataReference());
+            savedAlarm.setDeviceToken(resolved.getDeviceToken());
+            savedAlarm.setPartitionNo(resolved.getPartitionNo());
+            savedAlarm.setSourceFormat(resolved.getSourceFormat());
+            savedAlarm.setLastAlarmTime(eventTime);
+            savedAlarm.setMergeCount(savedAlarm.getMergeCount() == null ? 1 : savedAlarm.getMergeCount() + 1);
+            savedAlarm.setAlarmLevel(result.getAlarmLevel());
+            savedAlarm.setTitle(result.getTitle());
+            savedAlarm.setContent(result.getContent());
+            savedAlarm.setUpdatedOn(eventTime);
+            alarmRepository.updateById(savedAlarm);
+            merged = true;
+        }
+        realtimeStateService.setActiveAlarmId(result.getAlarmType(), String.valueOf(resolved.getMonitor().getId()), savedAlarm.getId());
+
+        if (!merged || realtimeStateService.shouldWriteMergedEvent(result.getAlarmType(), String.valueOf(resolved.getMonitor().getId()), eventTime)) {
+            createEvent(
+                savedAlarm,
+                resolved,
+                result.getAlarmType(),
+                result.getSourceType(),
+                merged ? AlarmEventType.MERGE : AlarmEventType.TRIGGER,
+                result.getContent(),
+                eventTime,
+                savedAlarm.getMergeCount(),
+                result.getAlarmLevel(),
+                pointListJson,
+                detailJson,
+                merged ? 1 : 0
+            );
+        }
+        return savedAlarm;
+    }
+
+    @Override
+    @Transactional
+    public void recover(
+        DeviceResolverService.ResolvedTarget resolved,
+        String alarmType,
+        LocalDateTime eventTime,
+        String detailJson
+    ) {
+        AlarmVO alarm = realtimeStateService.getActiveAlarmId(alarmType, String.valueOf(resolved.getMonitor().getId()))
+            .flatMap(alarmRepository::findById)
+            .orElseGet(() -> alarmRepository.findByMergeKey(buildMergeKey(resolved.getMonitor().getId(), alarmType)).orElse(null));
+        if (alarm == null) {
+            return;
+        }
+        alarm.setMergeKey(null);
+        alarm.setStatus(AlarmStatus.AUTO_RECOVERED);
+        alarm.setLastAlarmTime(eventTime);
+        alarm.setUpdatedOn(eventTime);
+        alarmRepository.updateById(alarm);
+        realtimeStateService.clearActiveAlarmId(alarmType, String.valueOf(resolved.getMonitor().getId()));
+
+        createEvent(
+            alarm,
+            resolved,
+            alarmType,
+            "RECOVERY",
+            AlarmEventType.RECOVER,
+            "告警已恢复",
+            eventTime,
+            (alarm.getMergeCount() == null ? 0 : alarm.getMergeCount()) + 1,
+            alarm.getAlarmLevel(),
+            "[]",
+            detailJson,
+            0
+        );
+    }
+
+    @Override
+    @Transactional
+    public AlarmVO confirm(Long alarmId, Long handler, String remark) {
+        AlarmVO alarm = alarmRepository.findById(alarmId)
+            .orElseThrow(() -> new IllegalArgumentException("Alarm not found: " + alarmId));
+        alarm.setMergeKey(null);
+        alarm.setStatus(AlarmStatus.CONFIRMED);
+        alarm.setHandler(handler);
+        alarm.setHandleTime(LocalDateTime.now());
+        alarm.setHandleRemark(remark);
+        alarm.setUpdatedOn(LocalDateTime.now());
+        alarmRepository.updateById(alarm);
+        AlarmVO savedAlarm = alarmRepository.findById(alarmId)
+            .orElseThrow(() -> new IllegalArgumentException("Alarm not found: " + alarmId));
+        realtimeStateService.clearActiveAlarmId(savedAlarm.getAlarmType(), String.valueOf(savedAlarm.getMonitorId()));
+        createLifecycleEvent(savedAlarm, "MANUAL_CONFIRM", AlarmEventType.CONFIRM, remark);
+        return savedAlarm;
+    }
+
+    @Override
+    @Transactional
+    public AlarmVO observe(Long alarmId, String remark) {
+        AlarmVO alarm = alarmRepository.findById(alarmId)
+            .orElseThrow(() -> new IllegalArgumentException("Alarm not found: " + alarmId));
+        alarm.setMergeKey(null);
+        alarm.setStatus(AlarmStatus.OBSERVING);
+        alarm.setHandleRemark(remark);
+        alarm.setUpdatedOn(LocalDateTime.now());
+        alarmRepository.updateById(alarm);
+        AlarmVO savedAlarm = alarmRepository.findById(alarmId)
+            .orElseThrow(() -> new IllegalArgumentException("Alarm not found: " + alarmId));
+        realtimeStateService.clearActiveAlarmId(savedAlarm.getAlarmType(), String.valueOf(savedAlarm.getMonitorId()));
+        createLifecycleEvent(savedAlarm, "MANUAL_OBSERVE", AlarmEventType.OBSERVE, remark);
+        return savedAlarm;
+    }
+
+    @Override
+    @Transactional
+    public AlarmVO markFalsePositive(Long alarmId, String remark) {
+        AlarmVO alarm = alarmRepository.findById(alarmId)
+            .orElseThrow(() -> new IllegalArgumentException("Alarm not found: " + alarmId));
+        alarm.setMergeKey(null);
+        alarm.setStatus(AlarmStatus.FALSE_POSITIVE);
+        alarm.setHandleRemark(remark);
+        alarm.setUpdatedOn(LocalDateTime.now());
+        alarmRepository.updateById(alarm);
+        AlarmVO savedAlarm = alarmRepository.findById(alarmId)
+            .orElseThrow(() -> new IllegalArgumentException("Alarm not found: " + alarmId));
+        realtimeStateService.clearActiveAlarmId(savedAlarm.getAlarmType(), String.valueOf(savedAlarm.getMonitorId()));
+        createLifecycleEvent(savedAlarm, "MANUAL_FALSE", AlarmEventType.FALSE_POSITIVE, remark);
+        return savedAlarm;
+    }
+
+    @Override
+    @Transactional
+    public AlarmVO close(Long alarmId, String remark) {
+        AlarmVO alarm = alarmRepository.findById(alarmId)
+            .orElseThrow(() -> new IllegalArgumentException("Alarm not found: " + alarmId));
+        alarm.setMergeKey(null);
+        alarm.setStatus(AlarmStatus.CLOSED);
+        alarm.setHandleRemark(remark);
+        alarm.setUpdatedOn(LocalDateTime.now());
+        alarmRepository.updateById(alarm);
+        AlarmVO savedAlarm = alarmRepository.findById(alarmId)
+            .orElseThrow(() -> new IllegalArgumentException("Alarm not found: " + alarmId));
+        realtimeStateService.clearActiveAlarmId(savedAlarm.getAlarmType(), String.valueOf(savedAlarm.getMonitorId()));
+        createLifecycleEvent(savedAlarm, "MANUAL_CLOSE", AlarmEventType.CLOSE, remark);
+        return savedAlarm;
+    }
+
+    private void createLifecycleEvent(AlarmVO alarm, String sourceType, Integer eventType, String remark) {
+        DeviceVO device = new DeviceVO();
+        device.setId(alarm.getDeviceId());
+        com.csg.dgri.szsiom.sysmanage.model.MonitorVO monitor = new com.csg.dgri.szsiom.sysmanage.model.MonitorVO();
+        monitor.setId(alarm.getMonitorId());
+        DeviceResolverService.ResolvedTarget resolved = new DeviceResolverService.ResolvedTarget(
+            device,
+            monitor,
+            null,
+            alarm.getPartitionCode(),
+            alarm.getPartitionName(),
+            alarm.getDataReference(),
+            null,
+            alarm.getDeviceToken(),
+            alarm.getPartitionNo(),
+            alarm.getSourceFormat()
+        );
+        createEvent(
+            alarm,
+            resolved,
+            alarm.getAlarmType(),
+            sourceType,
+            eventType,
+            remark == null || remark.trim().isEmpty() ? alarm.getContent() : remark,
+            LocalDateTime.now(),
+            (alarm.getMergeCount() == null ? 0 : alarm.getMergeCount()) + 1,
+            alarm.getAlarmLevel(),
+            "[]",
+            "{\"remark\":\"" + (remark == null ? "" : remark.replace("\"", "\\\"")) + "\"}",
+            0
+        );
+    }
+
+    private void createEvent(
+        AlarmVO alarm,
+        DeviceResolverService.ResolvedTarget resolved,
+        String alarmType,
+        String sourceType,
+        Integer eventType,
+        String content,
+        LocalDateTime eventTime,
+        Integer eventNo,
+        Integer eventLevel,
+        String pointListJson,
+        String detailJson,
+        Integer mergedFlag
+    ) {
+        EventVO event = new EventVO();
+        event.setId(idGenerator.nextId());
+        event.setAlarmId(alarm.getId());
+        event.setAlarmType(alarmType);
+        event.setSourceType(sourceType);
+        event.setMonitorId(resolved.getMonitor().getId());
+        event.setDeviceId(resolved.getDevice().getId());
+        event.setShaftFloorId(resolved.getShaftFloorId());
+        event.setPartitionCode(resolved.getPartitionCode());
+        event.setPartitionName(resolved.getPartitionName());
+        event.setDataReference(resolved.getDataReference());
+        event.setDeviceToken(resolved.getDeviceToken());
+        event.setPartitionNo(resolved.getPartitionNo());
+        event.setSourceFormat(resolved.getSourceFormat());
+        event.setEventType(eventType);
+        event.setEventTime(eventTime);
+        event.setEventNo(eventNo);
+        event.setEventLevel(eventLevel);
+        event.setPointListJson(pointListJson);
+        event.setDetailJson(detailJson);
+        event.setContent(content);
+        event.setMergedFlag(mergedFlag);
+        event.setDeleted(0);
+        event.setCreatedOn(eventTime);
+        event.setUpdatedOn(eventTime);
+        eventRepository.insert(event);
+        alarm.setEventCount(alarm.getEventCount() == null ? 1 : alarm.getEventCount() + 1);
+        alarmRepository.updateById(alarm);
+        realtimeStateService.markEventWritten(alarmType, String.valueOf(resolved.getMonitor().getId()), eventTime);
+    }
+
+    private String buildMergeKey(Long monitorId, String alarmType) {
+        return monitorId + ":" + alarmType;
+    }
+}

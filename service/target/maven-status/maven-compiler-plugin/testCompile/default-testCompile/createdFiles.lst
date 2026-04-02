@@ -1,5 +1,4 @@
 com/example/demo/ingest/ReportIngestServiceTest.class
-com/example/demo/service/AlarmMergeServiceTest.class
 com/example/demo/service/OfflineInspectionTaskTest.class
 com/example/demo/organization/OrganizationImportServiceTest.class
 com/example/demo/service/AlarmRuleEngineTest.class

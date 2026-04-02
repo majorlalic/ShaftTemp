@@ -1,0 +1,53 @@
+
+server:
+  port: 8080
+spring:
+  application:
+    name: shaft-temp
+  datasource:
+    url: jdbc:mysql://localhost:3306/shaft?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      repositories:
+        enabled: false
+  redis:
+    host: localhost
+    port: 6379
+  task:
+    scheduling:
+      pool:
+        size: 2
+logging:
+  level:
+    com.example.demo: INFO
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true
+shaft:
+  mq:
+    enabled: false
+    broker-url: tcp://localhost:1883
+    client-id: shaft-temp-consumer
+    username:
+    password:
+    topics:
+      - /TMP/+/Measure
+      - /TMP/+/Alarm
+  alarm:
+    temperature-threshold: 70.0
+    temperature-diff-threshold: 20.0
+    rise-rate-threshold: 10.0
+    fiber-break-threshold: 0.0
+    offline-threshold-seconds: 30
+    window-size: 20
+    event-throttle-seconds: 300
+  cache:
+    partition-binding-refresh-ms: 300000
+  iot:
+    service-base-url: http://127.0.0.1:8080
+  inspection:
+    enabled: true
+    fixed-delay-ms: 30000

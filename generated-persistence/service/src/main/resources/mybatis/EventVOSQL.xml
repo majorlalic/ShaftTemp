@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.csg.dgri.szsiom.sysmanage.model.EventVO">
+
+    <select id="findAll" parameterType="map" resultType="com.csg.dgri.szsiom.sysmanage.model.EventVO">
+        <![CDATA[
+        select * from ODS_DWEQ_DM_EVENT_D where (deleted is null or deleted = 0)
+        ]]>
+    </select>
+
+    <select id="findById" parameterType="map" resultType="com.csg.dgri.szsiom.sysmanage.model.EventVO">
+        <![CDATA[
+        select * from ODS_DWEQ_DM_EVENT_D where id = #{id}
+        ]]>
+    </select>
+
+    <select id="findByAlarmIdOrderByEventTimeDesc" parameterType="map" resultType="com.csg.dgri.szsiom.sysmanage.model.EventVO">
+        <![CDATA[
+        select * from ODS_DWEQ_DM_EVENT_D where alarm_id = #{alarmId} and (deleted is null or deleted = 0) order by event_time desc
+        ]]>
+    </select>
+
+    <insert id="insert" parameterType="com.csg.dgri.szsiom.sysmanage.model.EventVO">
+        <![CDATA[
+        insert into ODS_DWEQ_DM_EVENT_D (
+        id, alarm_id, alarm_type, source_type, monitor_id, device_id, shaft_floor_id, partition_code, partition_name,
+        data_reference, device_token, partition_no, source_format, event_type, event_time, event_no, event_level,
+        point_list_json, detail_json, content, merged_flag, deleted, created_on, updated_on
+        ) values (
+        #{id}, #{alarmId}, #{alarmType}, #{sourceType}, #{monitorId}, #{deviceId}, #{shaftFloorId}, #{partitionCode}, #{partitionName},
+        #{dataReference}, #{deviceToken}, #{partitionNo}, #{sourceFormat}, #{eventType}, #{eventTime}, #{eventNo}, #{eventLevel},
+        #{pointListJson}, #{detailJson}, #{content}, #{mergedFlag}, #{deleted}, #{createdOn}, #{updatedOn}
+        )
+        ]]>
+    </insert>
+
+</mapper>

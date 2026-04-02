@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.csg.dgri.szsiom.sysmanage.model.AlarmRawVO">
+
+    <insert id="insert" parameterType="com.csg.dgri.szsiom.sysmanage.model.AlarmRawVO">
+        <![CDATA[
+        insert into ODS_DWEQ_DM_ALARM_RAW_D (
+        id, iot_code, topic, partition_id, alarm_status, fault_status, ied_full_path, data_reference, collect_time, payload_json, deleted, created_on
+        ) values (
+        #{id}, #{iotCode}, #{topic}, #{partitionId}, #{alarmStatus}, #{faultStatus}, #{iedFullPath}, #{dataReference}, #{collectTime}, #{payloadJson}, #{deleted}, #{createdOn}
+        )
+        ]]>
+    </insert>
+
+</mapper>

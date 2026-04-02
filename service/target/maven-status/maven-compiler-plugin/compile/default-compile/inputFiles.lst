@@ -49,6 +49,7 @@
 /Users/sketch/Documents/project/ShaftTemp/service/src/main/java/com/example/demo/controller/MonitorController.java
 /Users/sketch/Documents/project/ShaftTemp/service/src/main/java/com/example/demo/service/RedisKeyBuilder.java
 /Users/sketch/Documents/project/ShaftTemp/service/src/main/java/com/example/demo/entity/AlarmRawEntity.java
+/Users/sketch/Documents/project/ShaftTemp/service/src/main/java/com/example/demo/vo/RestObject.java
 /Users/sketch/Documents/project/ShaftTemp/service/src/main/java/com/example/demo/dao/MonitorRepository.java
 /Users/sketch/Documents/project/ShaftTemp/service/src/main/java/com/example/demo/controller/DeviceController.java
 /Users/sketch/Documents/project/ShaftTemp/service/src/main/java/com/example/demo/entity/MonitorPartitionBindEntity.java
