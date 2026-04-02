@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.csg.dgri.szsiom.sysmanage.model.RawDataVO">
+
+    <insert id="insert" parameterType="com.csg.dgri.szsiom.sysmanage.model.RawDataVO">
+        <![CDATA[
+        insert into ODS_DWEQ_DM_RAW_DATA_D (
+        id, device_id, iot_code, topic, partition_id, monitor_id, shaft_floor_id, data_reference, ied_full_path,
+        collect_time, max_temp, min_temp, avg_temp, max_temp_position, min_temp_position, max_temp_channel, min_temp_channel,
+        payload_json, deleted, created_on
+        ) values (
+        #{id}, #{deviceId}, #{iotCode}, #{topic}, #{partitionId}, #{monitorId}, #{shaftFloorId}, #{dataReference}, #{iedFullPath},
+        #{collectTime}, #{maxTemp}, #{minTemp}, #{avgTemp}, #{maxTempPosition}, #{minTempPosition}, #{maxTempChannel}, #{minTempChannel},
+        #{payloadJson}, #{deleted}, #{createdOn}
+        )
+        ]]>
+    </insert>
+
+    <select id="query" parameterType="map" resultType="com.csg.dgri.szsiom.sysmanage.model.RawDataVO">
+        <![CDATA[
+        select * from (
+        select id, device_id, iot_code, topic, partition_id, monitor_id, shaft_floor_id, data_reference, ied_full_path,
+        collect_time, max_temp, min_temp, avg_temp, max_temp_position, min_temp_position, max_temp_channel, min_temp_channel,
+        payload_json, deleted, created_on
+        from ODS_DWEQ_DM_RAW_DATA_D
+        where (deleted is null or deleted = 0)
+        and collect_time >= #{from} and collect_time <= #{to}
+        and (#{monitorId} is null or monitor_id = #{monitorId})
+        and (#{deviceId} is null or device_id = #{deviceId})
+        and (#{shaftFloorId} is null or shaft_floor_id = #{shaftFloorId})
+        and (#{partitionId} is null or partition_id = #{partitionId})
+        order by collect_time desc, id desc
+        ) t
+        where rownum &lt;= #{limit}
+        ]]>
+    </select>
+
+</mapper>

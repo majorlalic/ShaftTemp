@@ -1,6 +1,6 @@
 package com.example.demo.service;
 
-import com.example.demo.vo.ApiResponse;
+import com.example.demo.vo.RestObject;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -14,16 +14,16 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class ApiExceptionHandler {
 
     @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ApiResponse<Map<String, Object>>> handleIllegalArgument(IllegalArgumentException ex) {
-        return ResponseEntity.badRequest().body(ApiResponse.failure(HttpStatus.BAD_REQUEST.value(), ex.getMessage(), buildData()));
+    public ResponseEntity<RestObject<Map<String, Object>>> handleIllegalArgument(IllegalArgumentException ex) {
+        return ResponseEntity.badRequest().body(RestObject.newFail(HttpStatus.BAD_REQUEST.value(), ex.getMessage(), buildData()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiResponse<Map<String, Object>>> handleValidation(MethodArgumentNotValidException ex) {
+    public ResponseEntity<RestObject<Map<String, Object>>> handleValidation(MethodArgumentNotValidException ex) {
         String message = ex.getBindingResult().getAllErrors().isEmpty()
             ? "invalid request"
             : ex.getBindingResult().getAllErrors().get(0).getDefaultMessage();
-        return ResponseEntity.badRequest().body(ApiResponse.failure(HttpStatus.BAD_REQUEST.value(), message, buildData()));
+        return ResponseEntity.badRequest().body(RestObject.newFail(HttpStatus.BAD_REQUEST.value(), message, buildData()));
     }
 
     private Map<String, Object> buildData() {

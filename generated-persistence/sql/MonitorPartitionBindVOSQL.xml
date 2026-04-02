@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.csg.dgri.szsiom.sysmanage.model.MonitorPartitionBindVO">
+
+    <select id="findActiveByPartitionCode" parameterType="map" resultType="com.csg.dgri.szsiom.sysmanage.model.MonitorPartitionBindVO">
+        <![CDATA[
+        select * from ODS_DWEQ_DM_MONITOR_PARTITION_BIND_D where partition_code = #{partitionCode} and bind_status = 1 and (deleted is null or deleted = 0)
+        ]]>
+    </select>
+
+    <select id="findActiveByDataReference" parameterType="map" resultType="com.csg.dgri.szsiom.sysmanage.model.MonitorPartitionBindVO">
+        <![CDATA[
+        select * from ODS_DWEQ_DM_MONITOR_PARTITION_BIND_D where data_reference = #{dataReference} and bind_status = 1 and (deleted is null or deleted = 0)
+        ]]>
+    </select>
+
+    <select id="findActiveByDeviceAndPartitionId" parameterType="map" resultType="com.csg.dgri.szsiom.sysmanage.model.MonitorPartitionBindVO">
+        <![CDATA[
+        select * from ODS_DWEQ_DM_MONITOR_PARTITION_BIND_D
+        where device_id = #{deviceId} and partition_id = #{partitionId} and bind_status = 1 and (deleted is null or deleted = 0)
+        ]]>
+    </select>
+
+    <select id="findAllActive" parameterType="map" resultType="com.csg.dgri.szsiom.sysmanage.model.MonitorPartitionBindVO">
+        <![CDATA[
+        select * from ODS_DWEQ_DM_MONITOR_PARTITION_BIND_D where bind_status = 1 and (deleted is null or deleted = 0)
+        ]]>
+    </select>
+
+    <select id="findAllActiveByMonitorId" parameterType="map" resultType="com.csg.dgri.szsiom.sysmanage.model.MonitorPartitionBindVO">
+        <![CDATA[
+        select * from ODS_DWEQ_DM_MONITOR_PARTITION_BIND_D where monitor_id = #{monitorId} and bind_status = 1 and (deleted is null or deleted = 0) order by partition_no asc, id asc
+        ]]>
+    </select>
+
+    <select id="findAllActiveByDeviceId" parameterType="map" resultType="com.csg.dgri.szsiom.sysmanage.model.MonitorPartitionBindVO">
+        <![CDATA[
+        select * from ODS_DWEQ_DM_MONITOR_PARTITION_BIND_D where device_id = #{deviceId} and bind_status = 1 and (deleted is null or deleted = 0) order by partition_no asc, id asc
+        ]]>
+    </select>
+
+</mapper>
