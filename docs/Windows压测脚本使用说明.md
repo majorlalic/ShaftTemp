@@ -23,6 +23,7 @@
 | `AvgTemp` | `78.0` | 测温请求字段（仅 measure） |
 | `TimeoutSec` | `10` | 单请求超时时间（秒） |
 | `MixMeasurePercent` | `90` | `mix` 模式下 measure 占比（0-100） |
+| `MaxErrorPrint` | `20` | 最多打印多少条失败明细（防止刷屏） |
 
 ## 3. 运行方式
 
@@ -66,7 +67,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows_pressure.ps1 `
 ## 4. 输出说明
 
 脚本会输出：
-- 每批进度：`batch=x/y ok=n fail=m`
+- 每批进度：`[PROGRESS] batch=x/y done=a/b(%) ok=n fail=m successRate=% batchCostMs=... qps=...`
 - 最终统计：
   - `total`
   - `ok`
@@ -74,6 +75,11 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows_pressure.ps1 `
   - `sentMeasure`
   - `sentAlarm`
   - `approxQps`
+- 失败明细（最多 `MaxErrorPrint` 条）：
+  - `[ERROR] idx=... mode=... part=... status=... elapsedMs=... msg=...`
+- 结束态：
+  - 全成功打印 `[RESULT] PASS`
+  - 有失败打印 `[RESULT] FAIL`
 
 ## 5. 压测后建议校验
 
@@ -91,4 +97,3 @@ select count(*) from ODS_DWEQ_DM_EVENT_D where created_on >= now() - interval 10
 - `measure` 模式才会走完整实时链路（Redis、规则判断、alarm/event）。
 - `alarm` 模式只压告警上报入口，不代表实时测温链路性能。
 - 如果失败率高，先下调 `Concurrency` 再观察。
-

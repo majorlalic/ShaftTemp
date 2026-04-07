@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>前端接口对接文档（Office版）</title>
+  <style>
+    body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; line-height: 1.6; color: #222; padding: 24px; }
+    h1, h2, h3 { margin-top: 24px; margin-bottom: 8px; }
+    h1 { font-size: 28px; }
+    h2 { font-size: 22px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
+    h3 { font-size: 18px; }
+    table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+    th, td { border: 1px solid #ccc; padding: 8px; font-size: 14px; text-align: left; vertical-align: top; }
+    th { background: #f5f5f5; }
+    pre { background: #f7f7f7; border: 1px solid #ddd; padding: 12px; overflow-x: auto; font-size: 13px; }
+    .note { color: #555; }
+  </style>
+</head>
+<body>
+  <h1>前端接口对接文档（Office版）</h1>
+  <p>更新时间：2026-04-07</p>
+  <p>接口前缀说明：当前服务按模块分组，实际路径为 <b>/shaft/*</b>。</p>
+
+  <h2>1. 统一返回结构</h2>
+  <h3>1.1 普通返回</h3>
+  <pre>{
+  "code": 200,
+  "message": "success",
+  "success": true,
+  "data": {}
+}</pre>
+
+  <h3>1.2 分页返回（data 为分页对象）</h3>
+  <pre>{
+  "code": 200,
+  "message": "success",
+  "success": true,
+  "data": {
+    "total": 100,
+    "list": [],
+    "pageNo": 1,
+    "totalSize": 100,
+    "dataList": []
+  }
+}</pre>
+
+  <h3>1.3 告警处理 action 取值</h3>
+  <p><b>confirm / observe / false_positive / close</b></p>
+  <h3>1.4 告警状态 statusCode 取值</h3>
+  <p><b>0 待确认，1 已确认，2 持续观察，3 误报，4 自动恢复</b></p>
+
+  <h2>2. 告警模块（/shaft/alarm）</h2>
+  <table>
+    <tr><th>方法</th><th>路径</th><th>说明</th></tr>
+    <tr><td>GET</td><td>/shaft/alarm/statistics</td><td>告警统计</td></tr>
+    <tr><td>GET</td><td>/shaft/alarm/list</td><td>告警分页列表</td></tr>
+    <tr><td>GET</td><td>/shaft/alarm/merge/list</td><td>告警合并事件分页</td></tr>
+    <tr><td>GET</td><td>/shaft/alarm/detail</td><td>告警详情（query）</td></tr>
+    <tr><td>POST</td><td>/shaft/alarm/handle</td><td>单条处理（监测对象）</td></tr>
+    <tr><td>POST</td><td>/shaft/alarm/batchHandle</td><td>批量处理（监测对象）</td></tr>
+    <tr><td>GET</td><td>/shaft/alarm/stat</td><td>终端告警统计</td></tr>
+    <tr><td>GET</td><td>/shaft/alarm/device/alarms</td><td>终端告警分页</td></tr>
+    <tr><td>PUT</td><td>/shaft/alarm/handle</td><td>单条处理（终端）</td></tr>
+    <tr><td>PUT</td><td>/shaft/alarm/batchHandle</td><td>批量处理（终端）</td></tr>
+    <tr><td>GET</td><td>/shaft/alarm/detail/{id}</td><td>终端告警详情</td></tr>
+    <tr><td>GET</td><td>/shaft/alarm/events</td><td>事件列表</td></tr>
+    <tr><td>GET</td><td>/shaft/alarm/alarm-rules</td><td>规则列表</td></tr>
+    <tr><td>GET</td><td>/shaft/alarm/alarm-rules/{id}</td><td>规则详情</td></tr>
+    <tr><td>POST</td><td>/shaft/alarm/alarm-rules</td><td>新增规则</td></tr>
+    <tr><td>PUT</td><td>/shaft/alarm/alarm-rules/{id}</td><td>修改规则</td></tr>
+    <tr><td>POST</td><td>/shaft/alarm/alarm-rules/{id}/enable</td><td>启用规则</td></tr>
+    <tr><td>POST</td><td>/shaft/alarm/alarm-rules/{id}/disable</td><td>停用规则</td></tr>
+    <tr><td>DELETE</td><td>/shaft/alarm/alarm-rules/{id}</td><td>删除规则（逻辑删）</td></tr>
+  </table>
+
+  <h3>2.1 处理告警请求体示例</h3>
+  <pre>{
+  "id": 1770000000000001,
+  "action": "confirm",
+  "handler": 10001,
+  "handleRemark": "已确认"
+}</pre>
+
+  <h3>2.2 批量处理请求体示例</h3>
+  <pre>{
+  "alarmIds": [1770000000000001, 1770000000000002],
+  "action": "false_positive",
+  "handler": 10001,
+  "handleRemark": "批量处理"
+}</pre>
+
+  <h3>2.3 规则维护请求体示例</h3>
+  <pre>{
+  "ruleName": "温度阈值规则",
+  "bizType": "MONITOR",
+  "alarmType": "TEMP_THRESHOLD",
+  "scopeType": "GLOBAL",
+  "scopeId": null,
+  "level": 2,
+  "thresholdValue": 70.0,
+  "thresholdValue2": null,
+  "durationSeconds": null,
+  "enabled": 1,
+  "remark": "默认规则"
+}</pre>
+
+  <h2>3. 监测对象模块（/shaft/monitor）</h2>
+  <table>
+    <tr><th>方法</th><th>路径</th><th>说明</th></tr>
+    <tr><td>GET</td><td>/shaft/monitor/detail/{id}</td><td>监测对象详情</td></tr>
+    <tr><td>GET</td><td>/shaft/monitor/statistics</td><td>按 shaftType 统计告警数量</td></tr>
+    <tr><td>GET</td><td>/shaft/monitor/raw-data</td><td>原始测温数据查询</td></tr>
+  </table>
+  <p class="note">raw-data 时间参数 from/to 使用 ISO 时间格式，例如：2026-04-07T10:00:00</p>
+
+  <h2>4. 设备模块（/shaft/device）</h2>
+  <table>
+    <tr><th>方法</th><th>路径</th><th>说明</th></tr>
+    <tr><td>GET</td><td>/shaft/device/statistics</td><td>设备在线统计</td></tr>
+    <tr><td>GET</td><td>/shaft/device/detail/{id}</td><td>设备详情</td></tr>
+    <tr><td>GET</td><td>/shaft/device/ledger/list</td><td>设备台账分页</td></tr>
+    <tr><td>GET</td><td>/shaft/device/stat</td><td>台账统计</td></tr>
+    <tr><td>GET</td><td>/shaft/device/access/list</td><td>接入清单分页</td></tr>
+    <tr><td>POST</td><td>/shaft/device/access/confirm</td><td>接入确认</td></tr>
+    <tr><td>GET</td><td>/shaft/device/realtime/{deviceId}</td><td>设备实时状态</td></tr>
+  </table>
+
+  <h3>4.1 接入确认请求体示例</h3>
+  <pre>{
+  "deviceIds": [3001, 3002],
+  "monitorId": 4001,
+  "areaId": 5001,
+  "orgId": 6001
+}</pre>
+
+  <h2>5. 区域机构模块（/shaft/areaOrg）</h2>
+  <table>
+    <tr><th>方法</th><th>路径</th><th>说明</th></tr>
+    <tr><td>GET</td><td>/shaft/areaOrg/tree</td><td>机构/区域树</td></tr>
+    <tr><td>GET</td><td>/shaft/areaOrg/template?type=org|area</td><td>下载 CSV 模板</td></tr>
+    <tr><td>POST</td><td>/shaft/areaOrg/import</td><td>导入 CSV（multipart）</td></tr>
+  </table>
+
+  <h2>6. IoT 接入模块（/shaft/iot）</h2>
+  <table>
+    <tr><th>方法</th><th>路径</th><th>说明</th></tr>
+    <tr><td>POST</td><td>/shaft/iot/reports/measure</td><td>单条测温上报（全链路）</td></tr>
+    <tr><td>POST</td><td>/shaft/iot/reports/alarm</td><td>单条状态上报</td></tr>
+    <tr><td>POST</td><td>/shaft/iot/data/batch</td><td>批量测温</td></tr>
+    <tr><td>POST</td><td>/shaft/iot/alarm/batch</td><td>批量告警状态（当前返回 ack）</td></tr>
+  </table>
+
+  <h3>6.1 reports/measure 请求体示例</h3>
+  <pre>{
+  "topic": "/TMP/shaft-dev-01_TMP_th01/Measure",
+  "iotCode": "shaft-dev-01",
+  "PartitionId": 1,
+  "IedFullPath": "/IED/shaft-dev-01",
+  "dataReference": "/TMP/shaft-dev-01_TMP_th01",
+  "MaxTemp": 80.0,
+  "MinTemp": 74.0,
+  "AvgTemp": 77.0,
+  "MaxTempPosition": 11.0,
+  "MinTempPosition": 3.0,
+  "MaxTempChannel": 1,
+  "MinTempChannel": 1,
+  "timestamp": "2026-04-07T10:10:00"
+}</pre>
+
+  <h3>6.2 reports/alarm 请求体示例</h3>
+  <pre>{
+  "topic": "/TMP/shaft-dev-01_TMP_th01/Alarm",
+  "iotCode": "shaft-dev-01",
+  "PartitionId": 1,
+  "IedFullPath": "/IED/shaft-dev-01",
+  "dataReference": "/TMP/shaft-dev-01_TMP_th01",
+  "AlarmStatus": true,
+  "FaultStatus": false,
+  "timestamp": "2026-04-07T10:10:00"
+}</pre>
+
+  <h2>7. 接口返回结果结构（data 字段）</h2>
+  <h3>7.1 告警模块</h3>
+  <p><b>GET /shaft/alarm/statistics</b> 的 data 结构示例：</p>
+  <pre>{
+  "total": 12,
+  "pendingCount": 4,
+  "confirmedCount": 3,
+  "observeCount": 3,
+  "falsePositiveCount": 2
+}</pre>
+
+  <p><b>GET /shaft/alarm/list</b> 的 data 结构示例：</p>
+  <pre>{
+  "total": 2,
+  "pageNo": 1,
+  "totalSize": 2,
+  "list": [
+    {
+      "id": 1770000000000001,
+      "alarmType": "TEMP_THRESHOLD",
+      "statusCode": 0,
+      "statusText": "待确认",
+      "monitorId": 4001,
+      "monitorName": "1号竖井",
+      "shaftFloorId": 5001,
+      "shaftFloorName": "B2",
+      "partitionCode": "shaft-dev-01_TMP_th01",
+      "content": "B2楼层温度为75度，阈值为50",
+      "firstAlarmTime": "2026-04-07 10:00:00",
+      "lastAlarmTime": "2026-04-07 10:05:00",
+      "mergeCount": 3,
+      "eventCount": 3
+    }
+  ]
+}</pre>
+
+  <p><b>GET /shaft/alarm/merge/list</b> 的 data 结构示例：</p>
+  <pre>{
+  "total": 3,
+  "pageNo": 1,
+  "totalSize": 3,
+  "list": [
+    {
+      "id": 1880000000000001,
+      "alarmId": 1770000000000001,
+      "eventType": "ALARM_TRIGGER",
+      "eventTime": "2026-04-07 10:05:00",
+      "content": "B2楼层温度为75度，阈值为50"
+    }
+  ]
+}</pre>
+
+  <p><b>GET /shaft/alarm/detail</b> 和 <b>GET /shaft/alarm/detail/{id}</b> 的 data 结构示例：</p>
+  <pre>{
+  "id": 1770000000000001,
+  "alarmType": "TEMP_THRESHOLD",
+  "statusCode": 1,
+  "statusText": "已确认",
+  "monitorId": 4001,
+  "monitorName": "1号竖井",
+  "deviceId": 3001,
+  "deviceName": "主设备-01",
+  "shaftFloorId": 5001,
+  "shaftFloorName": "B2",
+  "partitionCode": "shaft-dev-01_TMP_th01",
+  "content": "B2楼层温度为75度，阈值为50",
+  "firstAlarmTime": "2026-04-07 10:00:00",
+  "lastAlarmTime": "2026-04-07 10:05:00",
+  "handler": 10001,
+  "handleTime": "2026-04-07 10:06:00",
+  "handleRemark": "已确认",
+  "mergeCount": 3,
+  "eventCount": 3
+}</pre>
+
+  <p><b>POST/PUT /shaft/alarm/handle</b>、<b>POST/PUT /shaft/alarm/batchHandle</b> 的 data 结构示例：</p>
+  <pre>{
+  "affected": 1,
+  "updatedAlarmIds": [1770000000000001],
+  "action": "confirm"
+}</pre>
+
+  <p><b>GET /shaft/alarm/events</b> 的 data 结构示例：</p>
+  <pre>[
+  {
+    "id": 1880000000000001,
+    "alarmId": 1770000000000001,
+    "alarmType": "TEMP_THRESHOLD",
+    "eventType": "ALARM_TRIGGER",
+    "content": "B2楼层温度为75度，阈值为50",
+    "eventTime": "2026-04-07 10:05:00",
+    "partitionCode": "shaft-dev-01_TMP_th01"
+  }
+]</pre>
+
+  <p><b>GET /shaft/alarm/alarm-rules</b> 的 data 结构示例：</p>
+  <pre>[
+  {
+    "id": 9001,
+    "ruleName": "温度阈值规则",
+    "bizType": "MONITOR",
+    "alarmType": "TEMP_THRESHOLD",
+    "scopeType": "GLOBAL",
+    "thresholdValue": 70.0,
+    "thresholdValue2": null,
+    "durationSeconds": null,
+    "enabled": 1
+  }
+]</pre>
+
+  <h3>7.2 监测对象模块</h3>
+  <p><b>GET /shaft/monitor/detail/{id}</b> 的 data 结构示例：</p>
+  <pre>{
+  "id": 4001,
+  "monitorName": "1号竖井",
+  "shaftType": "VERTICAL_SHAFT",
+  "areaId": 5001,
+  "areaName": "园区A/1号楼",
+  "deviceCount": 2
+}</pre>
+
+  <p><b>GET /shaft/monitor/statistics</b> 的 data 结构示例：</p>
+  <pre>{
+  "total": 20,
+  "byShaftType": [
+    { "shaftType": "VERTICAL_SHAFT", "alarmCount": 12 },
+    { "shaftType": "TUNNEL", "alarmCount": 8 }
+  ]
+}</pre>
+
+  <p><b>GET /shaft/monitor/raw-data</b> 的 data 结构示例：</p>
+  <pre>[
+  {
+    "id": 1990000000000001,
+    "monitorId": 4001,
+    "deviceId": 3001,
+    "shaftFloorId": 5001,
+    "partitionId": 1,
+    "partitionCode": "shaft-dev-01_TMP_th01",
+    "maxTemp": 80.0,
+    "minTemp": 74.0,
+    "avgTemp": 77.0,
+    "reportedAt": "2026-04-07 10:10:00"
+  }
+]</pre>
+
+  <h3>7.3 设备模块</h3>
+  <p><b>GET /shaft/device/statistics</b> 的 data 结构示例：</p>
+  <pre>{
+  "total": 74,
+  "online": 70,
+  "offline": 4
+}</pre>
+
+  <p><b>GET /shaft/device/ledger/list</b> 的 data 结构示例：</p>
+  <pre>{
+  "total": 74,
+  "pageNo": 1,
+  "totalSize": 74,
+  "list": [
+    {
+      "id": 3001,
+      "iotCode": "shaft-dev-01",
+      "deviceType": "测温主机",
+      "model": "X100",
+      "company": "示例厂商",
+      "assetStatus": "已接入",
+      "orgId": 6001,
+      "orgName": "运营中心"
+    }
+  ]
+}</pre>
+
+  <p><b>GET /shaft/device/access/list</b> 的 data 结构示例：</p>
+  <pre>{
+  "total": 10,
+  "pageNo": 1,
+  "totalSize": 10,
+  "list": [
+    {
+      "deviceId": 3001,
+      "iotCode": "shaft-dev-01",
+      "status": "已接入",
+      "monitorId": 4001,
+      "monitorName": "1号竖井"
+    }
+  ]
+}</pre>
+
+  <p><b>POST /shaft/device/access/confirm</b> 的 data 结构示例：</p>
+  <pre>{
+  "affected": 2,
+  "deviceIds": [3001, 3002]
+}</pre>
+
+  <p><b>GET /shaft/device/realtime/{deviceId}</b> 的 data 结构示例：</p>
+  <pre>{
+  "deviceId": 3001,
+  "lastReportTime": "2026-04-07 10:10:00",
+  "online": true,
+  "partitions": [
+    { "partitionId": 1, "partitionCode": "shaft-dev-01_TMP_th01", "avgTemp": 77.0 },
+    { "partitionId": 2, "partitionCode": "shaft-dev-01_TMP_th02", "avgTemp": 73.0 }
+  ]
+}</pre>
+
+  <h3>7.4 区域机构模块</h3>
+  <p><b>GET /shaft/areaOrg/tree</b> 的 data 结构示例：</p>
+  <pre>{
+  "orgTree": [
+    { "id": 6001, "name": "运营中心", "children": [] }
+  ],
+  "areaTree": [
+    { "id": 5001, "name": "园区A", "children": [] }
+  ]
+}</pre>
+
+  <p><b>GET /shaft/areaOrg/template</b> 返回结构说明：</p>
+  <pre>HTTP 200
+Content-Type: text/csv;charset=UTF-8
+Content-Disposition: attachment; filename="organization-org-template.csv"
+Body: CSV 文件字节流</pre>
+
+  <p><b>POST /shaft/areaOrg/import</b> 的 data 结构示例：</p>
+  <pre>{
+  "total": 100,
+  "success": 98,
+  "failed": 2,
+  "errors": [
+    "第3行：orgName不能为空",
+    "第17行：areaId不存在"
+  ]
+}</pre>
+
+  <h3>7.5 IoT 接入模块</h3>
+  <p><b>POST /shaft/iot/reports/measure</b> 和 <b>POST /shaft/iot/reports/alarm</b> 的 data 结构示例：</p>
+  <pre>{
+  "deviceId": 3001,
+  "monitorId": 4001,
+  "partitionCode": "shaft-dev-01_TMP_th01",
+  "alarmCount": 1
+}</pre>
+
+  <p><b>POST /shaft/iot/data/batch</b> 的 data 结构示例：</p>
+  <pre>[
+  {
+    "deviceId": 3001,
+    "monitorId": 4001,
+    "partitionCode": "shaft-dev-01_TMP_th01",
+    "alarmCount": 0
+  }
+]</pre>
+
+  <p><b>POST /shaft/iot/alarm/batch</b> 的 data 结构示例：</p>
+  <pre>"ack:10"</pre>
+
+</body>
+</html>
