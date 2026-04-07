@@ -8,13 +8,11 @@ import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
+@RequestMapping("/shaft/areaOrg")
 public class AreaOrgController {
 
     private final OrganizationImportService organizationImportService;
@@ -23,12 +21,12 @@ public class AreaOrgController {
         this.organizationImportService = organizationImportService;
     }
 
-    @GetMapping("/api/organization/tree")
+    @GetMapping("/tree")
     public RestObject<Map<String, Object>> tree() {
         return RestObject.newOk(organizationImportService.tree());
     }
 
-    @GetMapping("/api/organization/template")
+    @GetMapping("/template")
     public ResponseEntity<byte[]> template(@RequestParam String type) {
         byte[] body = organizationImportService.template(type);
         String filename = "organization-" + type + "-template.csv";
@@ -38,7 +36,7 @@ public class AreaOrgController {
             .body(body);
     }
 
-    @PostMapping("/api/organization/import")
+    @PostMapping("/import")
     public RestObject<Map<String, Object>> importCsv(@RequestParam String type, @RequestParam("file") MultipartFile file) {
         return RestObject.newOk(organizationImportService.importCsv(type, file));
     }

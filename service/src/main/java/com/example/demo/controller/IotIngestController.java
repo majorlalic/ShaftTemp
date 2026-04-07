@@ -11,9 +11,11 @@ import java.util.Map;
 import javax.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@RequestMapping("/shaft/iot")
 public class IotIngestController {
 
     private final ReportIngestService reportIngestService;
@@ -22,17 +24,17 @@ public class IotIngestController {
         this.reportIngestService = reportIngestService;
     }
 
-    @PostMapping("/api/reports/measure")
+    @PostMapping("/reports/measure")
     public RestObject<ReportIngestService.IngestResult> ingestMeasure(@Valid @RequestBody PartitionMeasureRequest request) {
         return RestObject.newOk(reportIngestService.ingestMeasure(request));
     }
 
-    @PostMapping("/api/reports/alarm")
+    @PostMapping("/reports/alarm")
     public RestObject<ReportIngestService.IngestResult> ingestAlarm(@Valid @RequestBody PartitionAlarmRequest request) {
         return RestObject.newOk(reportIngestService.ingestAlarm(request));
     }
 
-    @PostMapping("/api/service/iot/data/batch")
+    @PostMapping("/data/batch")
     public RestObject<List<Map<String, Object>>> processDataBatch(
         @RequestBody List<PartitionMeasureRequest> requests
     ) {
@@ -50,7 +52,7 @@ public class IotIngestController {
         return RestObject.newOk(payload);
     }
 
-    @PostMapping("/api/service/iot/alarm/batch")
+    @PostMapping("/alarm/batch")
     public RestObject<String> processAlarmBatch(
         @RequestBody(required = false) List<PartitionAlarmRequest> requests
     ) {

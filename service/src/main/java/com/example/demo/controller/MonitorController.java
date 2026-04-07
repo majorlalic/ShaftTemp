@@ -7,12 +7,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
+@RequestMapping("/shaft/monitor")
 public class MonitorController {
 
     private final MonitorDocService monitorDocService;
@@ -23,17 +21,17 @@ public class MonitorController {
         this.queryService = queryService;
     }
 
-    @GetMapping("/api/monitor/{id}")
+    @GetMapping("/detail/{id}")
     public RestObject<Map<String, Object>> detail(@PathVariable Long id) {
         return RestObject.newOk(monitorDocService.detail(id));
     }
 
-    @GetMapping("/api/monitor/statistics")
+    @GetMapping("/statistics")
     public RestObject<Map<String, Object>> statistics() {
         return RestObject.newOk(monitorDocService.statistics());
     }
 
-    @GetMapping("/api/raw-data")
+    @GetMapping("/raw-data")
     public RestObject<List<Map<String, Object>>> listRawData(
         @RequestParam(required = false) Long monitorId,
         @RequestParam(required = false) Long deviceId,

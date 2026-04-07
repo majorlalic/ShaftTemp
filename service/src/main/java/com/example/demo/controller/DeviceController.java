@@ -9,14 +9,10 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Map;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
+@RequestMapping("/shaft/device")
 public class DeviceController {
 
     private final TerminalDocService terminalDocService;
@@ -27,7 +23,7 @@ public class DeviceController {
         this.queryService = queryService;
     }
 
-    @GetMapping("/api/terminal/statistics")
+    @GetMapping("/statistics")
     public RestObject<Map<String, Object>> statistics(
         @RequestParam(required = false) Long orgId,
         @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startTime,
@@ -36,12 +32,12 @@ public class DeviceController {
         return RestObject.newOk(terminalDocService.statistics(orgId, startTime, endTime));
     }
 
-    @GetMapping("/api/terminal/{id}")
+    @GetMapping("/detail/{id}")
     public RestObject<Map<String, Object>> detail(@PathVariable Long id) {
         return RestObject.newOk(terminalDocService.detail(id));
     }
 
-    @GetMapping("/api/terminal/ledger/list")
+    @GetMapping("/ledger/list")
     public RestObject<PagePayload<Map<String, Object>>> ledgerList(
         @RequestParam(required = false) Integer pageNo,
         @RequestParam(required = false) Integer pageNum,
@@ -59,12 +55,12 @@ public class DeviceController {
         );
     }
 
-    @GetMapping("/api/terminal/stat")
+    @GetMapping("/stat")
     public RestObject<Map<String, Object>> ledgerStat() {
         return RestObject.newOk(terminalDocService.ledgerStat());
     }
 
-    @GetMapping("/api/terminal/access/list")
+    @GetMapping("/access/list")
     public RestObject<PagePayload<Map<String, Object>>> accessList(
         @RequestParam(required = false) Integer pageNo,
         @RequestParam(required = false) Integer pageNum,
@@ -75,12 +71,12 @@ public class DeviceController {
         return RestObject.newOk(terminalDocService.accessList(resolvedPageNo, pageSize, status));
     }
 
-    @PostMapping("/api/terminal/access/confirm")
+    @PostMapping("/access/confirm")
     public RestObject<Map<String, Object>> accessConfirm(@RequestBody TerminalAccessConfirmRequest request) {
         return RestObject.newOk(terminalDocService.accessConfirm(request));
     }
 
-    @GetMapping("/api/devices/{deviceId}/realtime")
+    @GetMapping("/realtime/{deviceId}")
     public RestObject<Map<String, Object>> getRealtime(@PathVariable Long deviceId) {
         return RestObject.newOk(queryService.getRealtimeDeviceState(deviceId));
     }
