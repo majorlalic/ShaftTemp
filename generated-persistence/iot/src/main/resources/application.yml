@@ -1,0 +1,35 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: shaft-temp-iot
+  datasource:
+    url: jdbc:dm://localhost:5236/SHAFT
+    username: root
+    password: 123456
+    driver-class-name: dm.jdbc.driver.DmDriver
+  redis:
+    host: localhost
+    port: 6379
+  data:
+    redis:
+      repositories:
+        enabled: false
+
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true
+
+shaft:
+  mq:
+    enabled: false
+    broker-url: tcp://localhost:1883
+    client-id: shaft-temp-iot-consumer
+    topics:
+      - /TMP/+/Measure
+      - /TMP/+/Alarm
+  iot:
+    service-base-url: http://127.0.0.1:8080
+  cache:
+    partition-binding-refresh-ms: 300000

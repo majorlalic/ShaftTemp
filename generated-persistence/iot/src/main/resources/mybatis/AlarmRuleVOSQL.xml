@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.csg.dgri.szsiom.sysmanage.model.AlarmRuleVO">
+
+    <select id="findAllActive" parameterType="map" resultType="com.csg.dgri.szsiom.sysmanage.model.AlarmRuleVO">
+        <![CDATA[
+        select * from ODS_DWEQ_DM_ALARM_RULE_D where (deleted is null or deleted = 0) order by updated_on desc
+        ]]>
+    </select>
+
+    <select id="findActiveById" parameterType="map" resultType="com.csg.dgri.szsiom.sysmanage.model.AlarmRuleVO">
+        <![CDATA[
+        select * from ODS_DWEQ_DM_ALARM_RULE_D where id = #{id} and (deleted is null or deleted = 0)
+        ]]>
+    </select>
+
+    <insert id="insert" parameterType="com.csg.dgri.szsiom.sysmanage.model.AlarmRuleVO">
+        <![CDATA[
+        insert into ODS_DWEQ_DM_ALARM_RULE_D (
+        id, rule_name, biz_type, alarm_type, scope_type, scope_id, level, threshold_value, threshold_value2,
+        duration_seconds, enabled, remark, deleted, created_on, updated_on
+        ) values (
+        #{id}, #{ruleName}, #{bizType}, #{alarmType}, #{scopeType}, #{scopeId}, #{level}, #{thresholdValue}, #{thresholdValue2},
+        #{durationSeconds}, #{enabled}, #{remark}, #{deleted}, #{createdOn}, #{updatedOn}
+        )
+        ]]>
+    </insert>
+
+    <update id="updateById" parameterType="com.csg.dgri.szsiom.sysmanage.model.AlarmRuleVO">
+        <![CDATA[
+        update ODS_DWEQ_DM_ALARM_RULE_D set
+        rule_name = #{ruleName},
+        biz_type = #{bizType},
+        alarm_type = #{alarmType},
+        scope_type = #{scopeType},
+        scope_id = #{scopeId},
+        level = #{level},
+        threshold_value = #{thresholdValue},
+        threshold_value2 = #{thresholdValue2},
+        duration_seconds = #{durationSeconds},
+        enabled = #{enabled},
+        remark = #{remark},
+        deleted = #{deleted},
+        created_on = #{createdOn},
+        updated_on = #{updatedOn}
+        where id = #{id}
+        ]]>
+    </update>
+
+</mapper>
