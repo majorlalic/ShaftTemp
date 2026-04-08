@@ -12,6 +12,8 @@ import com.example.demo.service.IdGenerator;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Optional;
+import org.apache.ibatis.exceptions.PersistenceException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -82,7 +84,10 @@ public class AlarmMergeService implements AlarmService {
             savedAlarm = alarmRepository.findById(candidate.getId())
                 .orElseThrow(() -> new IllegalStateException("Alarm not found after insert: " + candidate.getId()));
             merged = false;
-        } catch (DuplicateKeyException ex) {
+        } catch (RuntimeException ex) {
+            if (!isPendingMergeConflict(ex)) {
+                throw ex;
+            }
             savedAlarm = alarmRepository.findByMergeKey(mergeKey)
                 .orElseThrow(() -> new IllegalStateException("Alarm not found after duplicate key: " + mergeKey));
             savedAlarm.setSourceType(result.getSourceType());
@@ -122,6 +127,28 @@ public class AlarmMergeService implements AlarmService {
             );
         }
         return savedAlarm;
+    }
+
+    private boolean isPendingMergeConflict(Throwable ex) {
+        Throwable cursor = ex;
+        while (cursor != null) {
+            if (cursor instanceof DuplicateKeyException || cursor instanceof DataIntegrityViolationException || cursor instanceof PersistenceException) {
+                String message = cursor.getMessage();
+                if (message != null) {
+                    String normalized = message.toLowerCase();
+                    boolean hasMergeKey = normalized.contains("merge_key") || normalized.contains("uk_alarm_merge_key");
+                    boolean isUniqueConflict = normalized.contains("unique")
+                        || normalized.contains("duplicate")
+                        || normalized.contains("唯一")
+                        || normalized.contains("约束");
+                    if (hasMergeKey && isUniqueConflict) {
+                        return true;
+                    }
+                }
+            }
+            cursor = cursor.getCause();
+        }
+        return false;
     }
 
     @Override
