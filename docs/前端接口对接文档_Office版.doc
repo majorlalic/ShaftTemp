@@ -81,6 +81,19 @@
   "handleRemark": "已确认"
 }</pre>
 
+  <h3>2.4 /shaft/alarm/list 请求参数</h3>
+  <table>
+    <tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr>
+    <tr><td>pageNo</td><td>int</td><td>否</td><td>页码，优先使用；默认 1</td></tr>
+    <tr><td>pageNum</td><td>int</td><td>否</td><td>兼容参数，pageNo 为空时生效</td></tr>
+    <tr><td>pageSize</td><td>int</td><td>否</td><td>每页条数；默认 20</td></tr>
+    <tr><td>areaId</td><td>long</td><td>否</td><td>按区域筛选</td></tr>
+    <tr><td>deviceId</td><td>long</td><td>否</td><td>按设备筛选</td></tr>
+    <tr><td>startTime</td><td>string</td><td>否</td><td>开始时间，格式 yyyy-MM-dd HH:mm:ss</td></tr>
+    <tr><td>endTime</td><td>string</td><td>否</td><td>结束时间，格式 yyyy-MM-dd HH:mm:ss</td></tr>
+    <tr><td>status</td><td>string</td><td>否</td><td>告警状态码（0/1/2/3/4）</td></tr>
+  </table>
+
   <h3>2.2 批量处理请求体示例</h3>
   <pre>{
   "alarmIds": [1770000000000001, 1770000000000002],

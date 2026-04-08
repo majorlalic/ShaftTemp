@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>前端接口对接文档（全量参数版）</title>
+  <style>
+    body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; line-height: 1.55; color: #222; padding: 24px; }
+    h1, h2, h3 { margin-top: 22px; margin-bottom: 8px; }
+    h1 { font-size: 28px; }
+    h2 { font-size: 22px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
+    h3 { font-size: 17px; }
+    table { border-collapse: collapse; width: 100%; margin: 10px 0 16px 0; table-layout: fixed; word-break: break-all; }
+    th, td { border: 1px solid #ccc; padding: 8px; font-size: 13px; text-align: left; vertical-align: top; }
+    th { background: #f5f5f5; }
+    pre { background: #f7f7f7; border: 1px solid #ddd; padding: 10px; overflow-x: auto; font-size: 12px; white-space: pre-wrap; word-break: break-word; }
+    .api { background: #fafafa; border: 1px solid #e0e0e0; padding: 12px; margin-bottom: 14px; }
+    .mono { font-family: Consolas, Menlo, monospace; }
+  </style>
+</head>
+<body>
+  <h1>前端接口对接文档（全量参数版）</h1>
+  <p>更新时间：2026-04-08</p>
+  <p>服务根路径：<b>http://localhost:8090/api</b>。以下路径均需拼接前缀，例如 <span class="mono">/shaft/alarm/list</span> 实际请求为 <span class="mono">http://localhost:8090/api/shaft/alarm/list</span>。</p>
+
+  <h2>1. 统一返回结构</h2>
+  <p>除文件下载接口外，统一返回 <b>RestObject&lt;T&gt;</b>：</p>
+  <pre>{
+  "code": 200,
+  "message": "success",
+  "success": true,
+  "data": {}
+}</pre>
+
+  <p>分页接口的 data 为 <b>PagePayload&lt;T&gt;</b>：</p>
+  <pre>{
+  "total": 100,
+  "list": [],
+  "pageNo": 1,
+  "totalSize": 100,
+  "dataList": []
+}</pre>
+
+  <p>告警 action 取值：confirm / observe / false_positive / close</p>
+  <p>告警 statusCode 取值：0 待确认，1 已确认，2 持续观察，3 误报，4 自动恢复</p>
+
+  <h2>2. 区域机构接口（AreaOrgController）</h2>
+  <div class="api">
+    <h3>2.1 GET /shaft/areaOrg/tree</h3>
+    <p>说明：获取机构树与区域树。</p>
+    <p>请求参数：无。</p>
+    <p>data 结构：</p>
+    <pre>{
+  "orgTree": [ { "id": 2000001, "name": "机构1", "children": [] } ],
+  "areaTree": [ { "id": 1000001, "name": "区域1", "children": [] } ]
+}</pre>
+  </div>
+
+  <div class="api">
+    <h3>2.2 GET /shaft/areaOrg/template</h3>
+    <p>说明：下载导入模板。</p>
+    <table>
+      <tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr>
+      <tr><td>type</td><td>string</td><td>是</td><td>org 或 area</td></tr>
+    </table>
+    <p>返回：文件流，不是 RestObject。</p>
+    <pre>HTTP 200
+Content-Type: text/csv;charset=UTF-8
+Content-Disposition: attachment; filename="organization-org-template.csv"
+Body: CSV 文件字节流</pre>
+  </div>
+
+  <div class="api">
+    <h3>2.3 POST /shaft/areaOrg/import</h3>
+    <p>说明：导入 CSV。</p>
+    <table>
+      <tr><th>参数</th><th>位置</th><th>类型</th><th>必填</th><th>说明</th></tr>
+      <tr><td>type</td><td>form-data</td><td>string</td><td>是</td><td>org 或 area</td></tr>
+      <tr><td>file</td><td>form-data</td><td>file</td><td>是</td><td>CSV 文件</td></tr>
+    </table>
+    <p>data 结构：</p>
+    <pre>{
+  "total": 100,
+  "success": 98,
+  "failed": 2,
+  "errors": ["第3行：name不能为空"]
+}</pre>
+  </div>
+
+  <h2>3. IoT 接口（IotIngestController）</h2>
+  <div class="api">
+    <h3>3.1 POST /shaft/iot/reports/measure</h3>
+    <p>说明：单条测温上报，包含实时状态更新、原始数据落库、规则判断、告警事件。</p>
+    <table>
+      <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+      <tr><td>topic</td><td>string</td><td>否</td><td>MQ topic</td></tr>
+      <tr><td>iotCode</td><td>string</td><td>否</td><td>设备编码，建议必传</td></tr>
+      <tr><td>PartitionId</td><td>int</td><td>否</td><td>分区ID</td></tr>
+      <tr><td>IedFullPath</td><td>string</td><td>是</td><td>完整路径</td></tr>
+      <tr><td>dataReference</td><td>string</td><td>是</td><td>数据引用，例如 /TMP/shaft-dev-001_TMP_th23</td></tr>
+      <tr><td>MaxTemp</td><td>decimal</td><td>是</td><td>最大温度</td></tr>
+      <tr><td>MinTemp</td><td>decimal</td><td>是</td><td>最小温度</td></tr>
+      <tr><td>AvgTemp</td><td>decimal</td><td>是</td><td>平均温度</td></tr>
+      <tr><td>MaxTempPosition</td><td>decimal</td><td>否</td><td>最大温位置</td></tr>
+      <tr><td>MinTempPosition</td><td>decimal</td><td>否</td><td>最小温位置</td></tr>
+      <tr><td>MaxTempChannel</td><td>int</td><td>否</td><td>最大温通道</td></tr>
+      <tr><td>MinTempChannel</td><td>int</td><td>否</td><td>最小温通道</td></tr>
+      <tr><td>timestamp</td><td>datetime</td><td>否</td><td>采集时间，ISO 格式</td></tr>
+    </table>
+    <p>data 结构（IngestResult）：</p>
+    <pre>{
+  "deviceId": 3000001,
+  "monitorId": 4000001,
+  "partitionCode": "shaft-dev-001_TMP_th23",
+  "rawDataId": 9000001,
+  "alarmCount": 1,
+  "metrics": { "maxTemp": 78.6, "minTemp": 62.3, "avgTemp": 70.1 }
+}</pre>
+  </div>
+
+  <div class="api">
+    <h3>3.2 POST /shaft/iot/reports/alarm</h3>
+    <p>说明：单条告警状态上报，写入 alarm_raw。</p>
+    <table>
+      <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+      <tr><td>topic</td><td>string</td><td>否</td><td>MQ topic</td></tr>
+      <tr><td>iotCode</td><td>string</td><td>否</td><td>设备编码，建议必传</td></tr>
+      <tr><td>PartitionId</td><td>int</td><td>否</td><td>分区ID</td></tr>
+      <tr><td>IedFullPath</td><td>string</td><td>是</td><td>完整路径</td></tr>
+      <tr><td>dataReference</td><td>string</td><td>是</td><td>数据引用</td></tr>
+      <tr><td>AlarmStatus</td><td>boolean</td><td>是</td><td>告警状态</td></tr>
+      <tr><td>FaultStatus</td><td>boolean</td><td>是</td><td>故障状态</td></tr>
+      <tr><td>timestamp</td><td>datetime</td><td>否</td><td>采集时间</td></tr>
+    </table>
+    <p>data 结构（IngestResult）：</p>
+    <pre>{
+  "deviceId": null,
+  "monitorId": null,
+  "partitionCode": null,
+  "rawDataId": 9100001,
+  "alarmCount": 0,
+  "metrics": null
+}</pre>
+  </div>
+
+  <div class="api">
+    <h3>3.3 POST /shaft/iot/data/batch</h3>
+    <p>说明：批量测温处理，不写 raw_data，仅做处理链路。</p>
+    <p>请求体：PartitionMeasureRequest 数组（字段同 3.1）。</p>
+    <p>data 结构：</p>
+    <pre>[
+  {
+    "deviceId": 3000001,
+    "monitorId": 4000001,
+    "partitionCode": "shaft-dev-001_TMP_th01",
+    "alarmCount": 0
+  }
+]</pre>
+  </div>
+
+  <div class="api">
+    <h3>3.4 POST /shaft/iot/alarm/batch</h3>
+    <p>说明：批量告警状态上报，当前返回 ack。</p>
+    <p>请求体：PartitionAlarmRequest 数组（字段同 3.2）。</p>
+    <p>data 结构：字符串，例如 <span class="mono">ack:10</span>。</p>
+  </div>
+
+  <h2>4. 监测对象接口（MonitorController）</h2>
+  <div class="api">
+    <h3>4.1 GET /shaft/monitor/detail/{id}</h3>
+    <p>路径参数：id（long，必填）。</p>
+    <p>data 结构：</p>
+    <pre>{
+  "id": 4000001,
+  "monitorName": "监测对象-001",
+  "shaftType": "VERTICAL_SHAFT",
+  "areaId": 1000001,
+  "areaName": "区域路径/区域1",
+  "deviceCount": 1
+}</pre>
+  </div>
+
+  <div class="api">
+    <h3>4.2 GET /shaft/monitor/statistics</h3>
+    <p>请求参数：无。</p>
+    <p>data 结构：</p>
+    <pre>{
+  "total": 100,
+  "byShaftType": [
+    { "shaftType": "VERTICAL_SHAFT", "alarmCount": 30 },
+    { "shaftType": "TUNNEL", "alarmCount": 40 }
+  ]
+}</pre>
+  </div>
+
+  <div class="api">
+    <h3>4.3 GET /shaft/monitor/raw-data</h3>
+    <table>
+      <tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr>
+      <tr><td>monitorId</td><td>long</td><td>否</td><td>监测对象ID</td></tr>
+      <tr><td>deviceId</td><td>long</td><td>否</td><td>设备ID</td></tr>
+      <tr><td>shaftFloorId</td><td>long</td><td>否</td><td>楼层ID</td></tr>
+      <tr><td>partitionId</td><td>int</td><td>否</td><td>分区ID</td></tr>
+      <tr><td>from</td><td>datetime</td><td>是</td><td>开始时间，ISO 格式：yyyy-MM-ddTHH:mm:ss</td></tr>
+      <tr><td>to</td><td>datetime</td><td>是</td><td>结束时间，ISO 格式：yyyy-MM-ddTHH:mm:ss</td></tr>
+      <tr><td>limit</td><td>int</td><td>否</td><td>返回条数，默认 20</td></tr>
+    </table>
+    <p>data 结构：RawData 列表。</p>
+    <pre>[
+  {
+    "id": 9000001,
+    "deviceId": 3000001,
+    "iotCode": "shaft-dev-001",
+    "partitionId": 23,
+    "monitorId": 4000001,
+    "shaftFloorId": 5000002,
+    "collectTime": "2026-04-08 10:10:00",
+    "maxTemp": 78.6,
+    "minTemp": 62.3,
+    "avgTemp": 70.1
+  }
+]</pre>
+  </div>
+
+  <h2>5. 设备接口（DeviceController）</h2>
+  <div class="api">
+    <h3>5.1 GET /shaft/device/statistics</h3>
+    <table>
+      <tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr>
+      <tr><td>orgId</td><td>long</td><td>否</td><td>机构ID</td></tr>
+      <tr><td>startTime</td><td>datetime</td><td>否</td><td>格式 yyyy-MM-dd HH:mm:ss</td></tr>
+      <tr><td>endTime</td><td>datetime</td><td>否</td><td>格式 yyyy-MM-dd HH:mm:ss</td></tr>
+    </table>
+    <p>data 结构：</p>
+    <pre>{ "total": 100, "online": 90, "offline": 10 }</pre>
+  </div>
+
+  <div class="api">
+    <h3>5.2 GET /shaft/device/detail/{id}</h3>
+    <p>路径参数：id（long，必填）。</p>
+    <p>data 结构：设备详情对象（id、iotCode、name、model、manufacturer、assetStatus、onlineStatus、lastReportTime 等）。</p>
+  </div>
+
+  <div class="api">
+    <h3>5.3 GET /shaft/device/ledger/list</h3>
+    <table>
+      <tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr>
+      <tr><td>pageNo</td><td>int</td><td>否</td><td>页码，优先</td></tr>
+      <tr><td>pageNum</td><td>int</td><td>否</td><td>兼容参数</td></tr>
+      <tr><td>pageSize</td><td>int</td><td>否</td><td>每页条数</td></tr>
+      <tr><td>deviceType</td><td>string</td><td>否</td><td>设备类型</td></tr>
+      <tr><td>company</td><td>string</td><td>否</td><td>厂商</td></tr>
+      <tr><td>model</td><td>string</td><td>否</td><td>型号</td></tr>
+      <tr><td>orgId</td><td>long</td><td>否</td><td>机构ID</td></tr>
+      <tr><td>startDate</td><td>date</td><td>否</td><td>yyyy-MM-dd</td></tr>
+      <tr><td>endDate</td><td>date</td><td>否</td><td>yyyy-MM-dd</td></tr>
+    </table>
+    <p>data 结构：PagePayload&lt;设备台账对象&gt;。</p>
+  </div>
+
+  <div class="api">
+    <h3>5.4 GET /shaft/device/stat</h3>
+    <p>请求参数：无。</p>
+    <p>data 结构：台账统计对象（总数、已接入、待接入、停用等）。</p>
+  </div>
+
+  <div class="api">
+    <h3>5.5 GET /shaft/device/access/list</h3>
+    <table>
+      <tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr>
+      <tr><td>pageNo</td><td>int</td><td>否</td><td>页码，优先</td></tr>
+      <tr><td>pageNum</td><td>int</td><td>否</td><td>兼容参数</td></tr>
+      <tr><td>pageSize</td><td>int</td><td>否</td><td>每页条数</td></tr>
+      <tr><td>status</td><td>string</td><td>否</td><td>接入状态</td></tr>
+    </table>
+    <p>data 结构：PagePayload&lt;接入清单对象&gt;。</p>
+  </div>
+
+  <div class="api">
+    <h3>5.6 POST /shaft/device/access/confirm</h3>
+    <table>
+      <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+      <tr><td>deviceIds</td><td>long[]</td><td>是</td><td>设备ID数组</td></tr>
+      <tr><td>monitorId</td><td>long</td><td>是</td><td>监测对象ID</td></tr>
+      <tr><td>areaId</td><td>long</td><td>是</td><td>区域ID</td></tr>
+      <tr><td>orgId</td><td>long</td><td>是</td><td>机构ID</td></tr>
+    </table>
+    <p>data 结构：</p>
+    <pre>{ "affected": 2, "deviceIds": [3000001, 3000002] }</pre>
+  </div>
+
+  <div class="api">
+    <h3>5.7 GET /shaft/device/realtime/{deviceId}</h3>
+    <p>路径参数：deviceId（long，必填）。</p>
+    <p>data 结构：</p>
+    <pre>{
+  "deviceId": 3000001,
+  "lastReportTime": "2026-04-08 10:10:00",
+  "online": true,
+  "partitions": [
+    { "partitionId": 1, "partitionCode": "shaft-dev-001_TMP_th01", "avgTemp": 68.5 }
+  ]
+}</pre>
+  </div>
+
+  <h2>6. 告警接口（AlarmController）</h2>
+  <div class="api">
+    <h3>6.1 GET /shaft/alarm/statistics</h3>
+    <table>
+      <tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr>
+      <tr><td>areaId</td><td>long</td><td>否</td><td>区域ID</td></tr>
+      <tr><td>deviceId</td><td>long</td><td>否</td><td>设备ID</td></tr>
+      <tr><td>startTime</td><td>datetime</td><td>否</td><td>yyyy-MM-dd HH:mm:ss</td></tr>
+      <tr><td>endTime</td><td>datetime</td><td>否</td><td>yyyy-MM-dd HH:mm:ss</td></tr>
+    </table>
+    <p>data 结构：告警统计对象（total、pendingConfirm、confirmed、observe、falsePositive 等）。</p>
+  </div>
+
+  <div class="api">
+    <h3>6.2 GET /shaft/alarm/list</h3>
+    <table>
+      <tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr>
+      <tr><td>pageNo</td><td>int</td><td>否</td><td>页码，优先</td></tr>
+      <tr><td>pageNum</td><td>int</td><td>否</td><td>兼容参数</td></tr>
+      <tr><td>pageSize</td><td>int</td><td>否</td><td>每页条数</td></tr>
+      <tr><td>areaId</td><td>long</td><td>否</td><td>区域ID</td></tr>
+      <tr><td>deviceId</td><td>long</td><td>否</td><td>设备ID</td></tr>
+      <tr><td>startTime</td><td>datetime</td><td>否</td><td>yyyy-MM-dd HH:mm:ss</td></tr>
+      <tr><td>endTime</td><td>datetime</td><td>否</td><td>yyyy-MM-dd HH:mm:ss</td></tr>
+      <tr><td>status</td><td>string</td><td>否</td><td>状态码 0/1/2/3/4</td></tr>
+    </table>
+    <p>data 结构：PagePayload&lt;告警对象&gt;，单条含 id、alarmType、statusCode、firstAlarmTime、lastAlarmTime、mergeCount、eventCount、content、partitionCode、shaftFloorId 等。</p>
+  </div>
+
+  <div class="api">
+    <h3>6.3 GET /shaft/alarm/merge/list</h3>
+    <table>
+      <tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr>
+      <tr><td>alarmId</td><td>long</td><td>是</td><td>告警ID</td></tr>
+      <tr><td>pageNo</td><td>int</td><td>否</td><td>页码，优先</td></tr>
+      <tr><td>pageNum</td><td>int</td><td>否</td><td>兼容参数</td></tr>
+      <tr><td>pageSize</td><td>int</td><td>是</td><td>每页条数</td></tr>
+    </table>
+    <p>data 结构：PagePayload&lt;事件对象&gt;。</p>
+  </div>
+
+  <div class="api">
+    <h3>6.4 GET /shaft/alarm/detail</h3>
+    <table>
+      <tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr>
+      <tr><td>id</td><td>long</td><td>是</td><td>告警ID</td></tr>
+    </table>
+    <p>data 结构：告警详情对象（字段同告警列表单条，附 handler、handleTime、handleRemark）。</p>
+  </div>
+
+  <div class="api">
+    <h3>6.5 POST /shaft/alarm/handle</h3>
+    <p>说明：监测对象告警单条处理。</p>
+    <table>
+      <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+      <tr><td>id</td><td>long</td><td>是</td><td>告警ID</td></tr>
+      <tr><td>action</td><td>string</td><td>是</td><td>confirm/observe/false_positive/close</td></tr>
+      <tr><td>handler</td><td>long</td><td>否</td><td>处理人，confirm 建议传</td></tr>
+      <tr><td>handleRemark</td><td>string</td><td>否</td><td>处理备注</td></tr>
+    </table>
+    <p>data 结构：处理结果对象（affected、updatedAlarmIds、action）。</p>
+  </div>
+
+  <div class="api">
+    <h3>6.6 POST /shaft/alarm/batchHandle</h3>
+    <p>说明：监测对象告警批量处理。</p>
+    <table>
+      <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+      <tr><td>alarmIds</td><td>long[]</td><td>是</td><td>告警ID数组</td></tr>
+      <tr><td>action</td><td>string</td><td>是</td><td>confirm/observe/false_positive/close</td></tr>
+      <tr><td>handler</td><td>long</td><td>否</td><td>处理人</td></tr>
+      <tr><td>handleRemark</td><td>string</td><td>否</td><td>处理备注</td></tr>
+    </table>
+    <p>data 结构：处理结果对象（affected、updatedAlarmIds、action）。</p>
+  </div>
+
+  <div class="api">
+    <h3>6.7 GET /shaft/alarm/stat</h3>
+    <p>说明：终端告警统计。</p>
+    <p>请求参数：无。</p>
+    <p>data 结构：终端告警统计对象。</p>
+  </div>
+
+  <div class="api">
+    <h3>6.8 GET /shaft/alarm/device/alarms</h3>
+    <table>
+      <tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr>
+      <tr><td>pageNo</td><td>int</td><td>否</td><td>页码，优先</td></tr>
+      <tr><td>pageNum</td><td>int</td><td>否</td><td>兼容参数</td></tr>
+      <tr><td>pageSize</td><td>int</td><td>否</td><td>每页条数</td></tr>
+      <tr><td>status</td><td>string</td><td>否</td><td>状态码</td></tr>
+    </table>
+    <p>data 结构：PagePayload&lt;终端告警对象&gt;。</p>
+  </div>
+
+  <div class="api">
+    <h3>6.9 PUT /shaft/alarm/handle</h3>
+    <p>说明：终端告警单条处理，请求体字段与 6.5 相同。</p>
+    <p>data 结构：处理结果对象。</p>
+  </div>
+
+  <div class="api">
+    <h3>6.10 PUT /shaft/alarm/batchHandle</h3>
+    <p>说明：终端告警批量处理，请求体字段与 6.6 相同。</p>
+    <p>data 结构：处理结果对象。</p>
+  </div>
+
+  <div class="api">
+    <h3>6.11 GET /shaft/alarm/detail/{id}</h3>
+    <p>路径参数：id（long，必填）。</p>
+    <p>data 结构：终端告警详情对象。</p>
+  </div>
+
+  <div class="api">
+    <h3>6.12 GET /shaft/alarm/events</h3>
+    <table>
+      <tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr>
+      <tr><td>alarmId</td><td>long</td><td>否</td><td>告警ID</td></tr>
+      <tr><td>shaftFloorId</td><td>long</td><td>否</td><td>楼层ID</td></tr>
+      <tr><td>partitionCode</td><td>string</td><td>否</td><td>分区编码</td></tr>
+    </table>
+    <p>data 结构：事件列表，单条含 id、alarmId、eventType、eventTime、content、partitionCode、detailJson 等。</p>
+  </div>
+
+  <div class="api">
+    <h3>6.13 GET /shaft/alarm/alarm-rules</h3>
+    <table>
+      <tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr>
+      <tr><td>bizType</td><td>string</td><td>否</td><td>MONITOR/DEVICE</td></tr>
+      <tr><td>alarmType</td><td>string</td><td>否</td><td>告警类型</td></tr>
+      <tr><td>scopeType</td><td>string</td><td>否</td><td>当前为 GLOBAL</td></tr>
+      <tr><td>enabled</td><td>int</td><td>否</td><td>0/1</td></tr>
+    </table>
+    <p>data 结构：规则列表。</p>
+  </div>
+
+  <div class="api">
+    <h3>6.14 GET /shaft/alarm/alarm-rules/{id}</h3>
+    <p>路径参数：id（long，必填）。</p>
+    <p>data 结构：规则详情对象（ruleName、bizType、alarmType、thresholdValue、enabled 等）。</p>
+  </div>
+
+  <div class="api">
+    <h3>6.15 POST /shaft/alarm/alarm-rules</h3>
+    <p>说明：新增规则。</p>
+    <table>
+      <tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr>
+      <tr><td>ruleName</td><td>string</td><td>是</td><td>规则名</td></tr>
+      <tr><td>bizType</td><td>string</td><td>是</td><td>MONITOR/DEVICE</td></tr>
+      <tr><td>alarmType</td><td>string</td><td>是</td><td>告警类型</td></tr>
+      <tr><td>scopeType</td><td>string</td><td>是</td><td>GLOBAL</td></tr>
+      <tr><td>scopeId</td><td>long</td><td>否</td><td>全局规则可空</td></tr>
+      <tr><td>level</td><td>int</td><td>否</td><td>等级</td></tr>
+      <tr><td>thresholdValue</td><td>decimal</td><td>否</td><td>阈值1</td></tr>
+      <tr><td>thresholdValue2</td><td>decimal</td><td>否</td><td>阈值2</td></tr>
+      <tr><td>durationSeconds</td><td>int</td><td>否</td><td>持续时长秒</td></tr>
+      <tr><td>enabled</td><td>int</td><td>否</td><td>0/1</td></tr>
+      <tr><td>remark</td><td>string</td><td>否</td><td>备注</td></tr>
+    </table>
+    <p>data 结构：新增后的规则对象。</p>
+  </div>
+
+  <div class="api">
+    <h3>6.16 PUT /shaft/alarm/alarm-rules/{id}</h3>
+    <p>说明：修改规则。路径参数 id（long，必填）。请求体字段同 6.15。</p>
+    <p>data 结构：更新后的规则对象。</p>
+  </div>
+
+  <div class="api">
+    <h3>6.17 POST /shaft/alarm/alarm-rules/{id}/enable</h3>
+    <p>路径参数：id（long，必填）。</p>
+    <p>data 结构：操作结果对象（id、enabled）。</p>
+  </div>
+
+  <div class="api">
+    <h3>6.18 POST /shaft/alarm/alarm-rules/{id}/disable</h3>
+    <p>路径参数：id（long，必填）。</p>
+    <p>data 结构：操作结果对象（id、enabled）。</p>
+  </div>
+
+  <div class="api">
+    <h3>6.19 DELETE /shaft/alarm/alarm-rules/{id}</h3>
+    <p>路径参数：id（long，必填）。</p>
+    <p>data 结构：删除结果对象（id、deleted）。</p>
+  </div>
+
+  <h2>7. 联调建议</h2>
+  <p>1) 先导入“达梦联调初始化_千级数据.sql”。</p>
+  <p>2) 再用 Postman 集合按顺序执行：IoT 上报 -> 告警查询 -> 事件查询。</p>
+  <p>3) 分区编码必须大小写一致，建议使用示例：<span class="mono">shaft-dev-001_TMP_th23</span>。</p>
+</body>
+</html>
