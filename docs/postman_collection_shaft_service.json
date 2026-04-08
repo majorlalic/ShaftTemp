@@ -1,0 +1,980 @@
+{
+  "info": {
+    "_postman_id": "f227cf2f-61ee-4f1b-89df-4c4f333f7f3a",
+    "name": "Shaft Service API Collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "服务基地址为 http://localhost:8090/api，接口路径按 controller mapping 拼接。"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8090/api"
+    }
+  ],
+  "item": [
+    {
+      "name": "AreaOrgController",
+      "item": [
+        {
+          "name": "tree",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/shaft/areaOrg/tree",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shaft",
+                "areaOrg",
+                "tree"
+              ]
+            }
+          }
+        },
+        {
+          "name": "template",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/shaft/areaOrg/template?type=org",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shaft",
+                "areaOrg",
+                "template"
+              ],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "org"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "import",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "type",
+                  "value": "org",
+                  "type": "text"
+                },
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/shaft/areaOrg/import",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shaft",
+                "areaOrg",
+                "import"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "IotIngestController",
+      "item": [
+        {
+          "name": "reports/measure",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"topic\": \"/TMP/shaft-dev-001_TMP_th23/Measure\",\n  \"iotCode\": \"shaft-dev-001\",\n  \"PartitionId\": 23,\n  \"IedFullPath\": \"/IED/shaft-dev-001\",\n  \"dataReference\": \"/TMP/shaft-dev-001_TMP_th23\",\n  \"MaxTemp\": 78.6,\n  \"MinTemp\": 62.3,\n  \"AvgTemp\": 70.1,\n  \"MaxTempPosition\": 101.0,\n  \"MinTempPosition\": 18.0,\n  \"MaxTempChannel\": 1,\n  \"MinTempChannel\": 2,\n  \"timestamp\": \"2026-04-08T10:10:00\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/shaft/iot/reports/measure",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shaft",
+                "iot",
+                "reports",
+                "measure"
+              ]
+            }
+          }
+        },
+        {
+          "name": "reports/alarm",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"topic\": \"/TMP/shaft-dev-001_TMP_th23/Alarm\",\n  \"iotCode\": \"shaft-dev-001\",\n  \"PartitionId\": 23,\n  \"IedFullPath\": \"/IED/shaft-dev-001\",\n  \"dataReference\": \"/TMP/shaft-dev-001_TMP_th23\",\n  \"AlarmStatus\": true,\n  \"FaultStatus\": false,\n  \"timestamp\": \"2026-04-08T10:10:00\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/shaft/iot/reports/alarm",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shaft",
+                "iot",
+                "reports",
+                "alarm"
+              ]
+            }
+          }
+        },
+        {
+          "name": "data/batch",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"topic\": \"/TMP/shaft-dev-001_TMP_th01/Measure\",\n    \"iotCode\": \"shaft-dev-001\",\n    \"PartitionId\": 1,\n    \"IedFullPath\": \"/IED/shaft-dev-001\",\n    \"dataReference\": \"/TMP/shaft-dev-001_TMP_th01\",\n    \"MaxTemp\": 75.0,\n    \"MinTemp\": 62.0,\n    \"AvgTemp\": 68.5,\n    \"MaxTempPosition\": 90.0,\n    \"MinTempPosition\": 10.0,\n    \"MaxTempChannel\": 1,\n    \"MinTempChannel\": 2,\n    \"timestamp\": \"2026-04-08T10:11:00\"\n  }\n]"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/shaft/iot/data/batch",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shaft",
+                "iot",
+                "data",
+                "batch"
+              ]
+            }
+          }
+        },
+        {
+          "name": "alarm/batch",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"topic\": \"/TMP/shaft-dev-001_TMP_th01/Alarm\",\n    \"iotCode\": \"shaft-dev-001\",\n    \"PartitionId\": 1,\n    \"IedFullPath\": \"/IED/shaft-dev-001\",\n    \"dataReference\": \"/TMP/shaft-dev-001_TMP_th01\",\n    \"AlarmStatus\": true,\n    \"FaultStatus\": false,\n    \"timestamp\": \"2026-04-08T10:12:00\"\n  }\n]"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/shaft/iot/alarm/batch",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shaft",
+                "iot",
+                "alarm",
+                "batch"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "MonitorController",
+      "item": [
+        {
+          "name": "detail/{id}",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/shaft/monitor/detail/4000001",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shaft",
+                "monitor",
+                "detail",
+                "4000001"
+              ]
+            }
+          }
+        },
+        {
+          "name": "statistics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/shaft/monitor/statistics",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shaft",
+                "monitor",
+                "statistics"
+              ]
+            }
+          }
+        },
+        {
+          "name": "raw-data",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/shaft/monitor/raw-data?monitorId=4000001&deviceId=3000001&shaftFloorId=5000001&partitionId=23&from=2026-04-08T00:00:00&to=2026-04-08T23:59:59&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shaft",
+                "monitor",
+                "raw-data"
+              ],
+              "query": [
+                {
+                  "key": "monitorId",
+                  "value": "4000001"
+                },
+                {
+                  "key": "deviceId",
+                  "value": "3000001"
+                },
+                {
+                  "key": "shaftFloorId",
+                  "value": "5000001"
+                },
+                {
+                  "key": "partitionId",
+                  "value": "23"
+                },
+                {
+                  "key": "from",
+                  "value": "2026-04-08T00:00:00"
+                },
+                {
+                  "key": "to",
+                  "value": "2026-04-08T23:59:59"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "DeviceController",
+      "item": [
+        {
+          "name": "statistics",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/shaft/device/statistics?orgId=2000001&startTime=2026-04-08 00:00:00&endTime=2026-04-08 23:59:59",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shaft",
+                "device",
+                "statistics"
+              ],
+              "query": [
+                {
+                  "key": "orgId",
+                  "value": "2000001"
+                },
+                {
+                  "key": "startTime",
+                  "value": "2026-04-08 00:00:00"
+                },
+                {
+                  "key": "endTime",
+                  "value": "2026-04-08 23:59:59"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "detail/{id}",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/shaft/device/detail/3000001",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shaft",
+                "device",
+                "detail",
+                "3000001"
+              ]
+            }
+          }
+        },
+        {
+          "name": "ledger/list",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/shaft/device/ledger/list?pageNo=1&pageSize=20&orgId=2000001",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shaft",
+                "device",
+                "ledger",
+                "list"
+              ],
+              "query": [
+                {
+                  "key": "pageNo",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                },
+                {
+                  "key": "orgId",
+                  "value": "2000001"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "stat",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/shaft/device/stat",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shaft",
+                "device",
+                "stat"
+              ]
+            }
+          }
+        },
+        {
+          "name": "access/list",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/shaft/device/access/list?pageNo=1&pageSize=20&status=%E5%B7%B2%E6%8E%A5%E5%85%A5",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shaft",
+                "device",
+                "access",
+                "list"
+              ],
+              "query": [
+                {
+                  "key": "pageNo",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                },
+                {
+                  "key": "status",
+                  "value": "已接入"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "access/confirm",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deviceIds\": [3000001, 3000002],\n  \"monitorId\": 4000001,\n  \"areaId\": 1000001,\n  \"orgId\": 2000001\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/shaft/device/access/confirm",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shaft",
+                "device",
+                "access",
+                "confirm"
+              ]
+            }
+          }
+        },
+        {
+          "name": "realtime/{deviceId}",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/shaft/device/realtime/3000001",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shaft",
+                "device",
+                "realtime",
+                "3000001"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "AlarmController",
+      "item": [
+        {
+          "name": "statistics",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/shaft/alarm/statistics?areaId=1000001&deviceId=3000001&startTime=2026-04-08 00:00:00&endTime=2026-04-08 23:59:59",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shaft",
+                "alarm",
+                "statistics"
+              ],
+              "query": [
+                {
+                  "key": "areaId",
+                  "value": "1000001"
+                },
+                {
+                  "key": "deviceId",
+                  "value": "3000001"
+                },
+                {
+                  "key": "startTime",
+                  "value": "2026-04-08 00:00:00"
+                },
+                {
+                  "key": "endTime",
+                  "value": "2026-04-08 23:59:59"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "list",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/shaft/alarm/list?pageNo=1&pageSize=20&status=0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shaft",
+                "alarm",
+                "list"
+              ],
+              "query": [
+                {
+                  "key": "pageNo",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                },
+                {
+                  "key": "status",
+                  "value": "0"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "merge/list",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/shaft/alarm/merge/list?alarmId=9200001&pageNo=1&pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shaft",
+                "alarm",
+                "merge",
+                "list"
+              ],
+              "query": [
+                {
+                  "key": "alarmId",
+                  "value": "9200001"
+                },
+                {
+                  "key": "pageNo",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "detail(query)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/shaft/alarm/detail?id=9200001",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shaft",
+                "alarm",
+                "detail"
+              ],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "9200001"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "handle(POST)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 9200001,\n  \"action\": \"confirm\",\n  \"handler\": 10001,\n  \"handleRemark\": \"人工确认\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/shaft/alarm/handle",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shaft",
+                "alarm",
+                "handle"
+              ]
+            }
+          }
+        },
+        {
+          "name": "batchHandle(POST)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"alarmIds\": [9200002, 9200003],\n  \"action\": \"observe\",\n  \"handler\": 10001,\n  \"handleRemark\": \"批量观察\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/shaft/alarm/batchHandle",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shaft",
+                "alarm",
+                "batchHandle"
+              ]
+            }
+          }
+        },
+        {
+          "name": "stat",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/shaft/alarm/stat",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shaft",
+                "alarm",
+                "stat"
+              ]
+            }
+          }
+        },
+        {
+          "name": "device/alarms",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/shaft/alarm/device/alarms?pageNo=1&pageSize=20&status=0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shaft",
+                "alarm",
+                "device",
+                "alarms"
+              ],
+              "query": [
+                {
+                  "key": "pageNo",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                },
+                {
+                  "key": "status",
+                  "value": "0"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "handle(PUT)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": 9200004,\n  \"action\": \"false_positive\",\n  \"handler\": 10001,\n  \"handleRemark\": \"终端误报\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/shaft/alarm/handle",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shaft",
+                "alarm",
+                "handle"
+              ]
+            }
+          }
+        },
+        {
+          "name": "batchHandle(PUT)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"alarmIds\": [9200005, 9200006],\n  \"action\": \"close\",\n  \"handler\": 10001,\n  \"handleRemark\": \"批量关闭\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/shaft/alarm/batchHandle",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shaft",
+                "alarm",
+                "batchHandle"
+              ]
+            }
+          }
+        },
+        {
+          "name": "detail/{id}",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/shaft/alarm/detail/9200001",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shaft",
+                "alarm",
+                "detail",
+                "9200001"
+              ]
+            }
+          }
+        },
+        {
+          "name": "events",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/shaft/alarm/events?alarmId=9200001&shaftFloorId=5000001&partitionCode=shaft-dev-001_TMP_th23",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shaft",
+                "alarm",
+                "events"
+              ],
+              "query": [
+                {
+                  "key": "alarmId",
+                  "value": "9200001"
+                },
+                {
+                  "key": "shaftFloorId",
+                  "value": "5000001"
+                },
+                {
+                  "key": "partitionCode",
+                  "value": "shaft-dev-001_TMP_th23"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "alarm-rules(list)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/shaft/alarm/alarm-rules?bizType=MONITOR&alarmType=TEMP_THRESHOLD&scopeType=GLOBAL&enabled=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shaft",
+                "alarm",
+                "alarm-rules"
+              ],
+              "query": [
+                {
+                  "key": "bizType",
+                  "value": "MONITOR"
+                },
+                {
+                  "key": "alarmType",
+                  "value": "TEMP_THRESHOLD"
+                },
+                {
+                  "key": "scopeType",
+                  "value": "GLOBAL"
+                },
+                {
+                  "key": "enabled",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "alarm-rules/{id}",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/shaft/alarm/alarm-rules/8100001",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shaft",
+                "alarm",
+                "alarm-rules",
+                "8100001"
+              ]
+            }
+          }
+        },
+        {
+          "name": "alarm-rules(create)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ruleName\": \"测试规则\",\n  \"bizType\": \"MONITOR\",\n  \"alarmType\": \"TEMP_THRESHOLD\",\n  \"scopeType\": \"GLOBAL\",\n  \"scopeId\": null,\n  \"level\": 2,\n  \"thresholdValue\": 70.0,\n  \"thresholdValue2\": null,\n  \"durationSeconds\": null,\n  \"enabled\": 1,\n  \"remark\": \"postman创建\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/shaft/alarm/alarm-rules",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shaft",
+                "alarm",
+                "alarm-rules"
+              ]
+            }
+          }
+        },
+        {
+          "name": "alarm-rules/{id}(update)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ruleName\": \"测试规则-更新\",\n  \"bizType\": \"MONITOR\",\n  \"alarmType\": \"TEMP_THRESHOLD\",\n  \"scopeType\": \"GLOBAL\",\n  \"scopeId\": null,\n  \"level\": 2,\n  \"thresholdValue\": 75.0,\n  \"thresholdValue2\": null,\n  \"durationSeconds\": null,\n  \"enabled\": 1,\n  \"remark\": \"postman更新\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/shaft/alarm/alarm-rules/8100001",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shaft",
+                "alarm",
+                "alarm-rules",
+                "8100001"
+              ]
+            }
+          }
+        },
+        {
+          "name": "alarm-rules/{id}/enable",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/shaft/alarm/alarm-rules/8100001/enable",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shaft",
+                "alarm",
+                "alarm-rules",
+                "8100001",
+                "enable"
+              ]
+            }
+          }
+        },
+        {
+          "name": "alarm-rules/{id}/disable",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/shaft/alarm/alarm-rules/8100001/disable",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shaft",
+                "alarm",
+                "alarm-rules",
+                "8100001",
+                "disable"
+              ]
+            }
+          }
+        },
+        {
+          "name": "alarm-rules/{id}(delete)",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/shaft/alarm/alarm-rules/8100001",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "shaft",
+                "alarm",
+                "alarm-rules",
+                "8100001"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
