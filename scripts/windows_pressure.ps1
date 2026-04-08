@@ -5,7 +5,7 @@ param(
   [int]$Total = 5000,
   [int]$Concurrency = 50,
   [int]$PartitionCount = 50,
-  [string]$IotCode = "shaft-dev-01",
+  [string]$IotCode = "shaft-dev-001",
   [double]$MaxTemp = 82.0,
   [double]$MinTemp = 75.0,
   [double]$AvgTemp = 78.0,
@@ -106,14 +106,36 @@ for ($batch = 0; $batch -lt $batchCount; $batch++) {
 
         $json = $bodyObj | ConvertTo-Json -Depth 5 -Compress
         $resp = Invoke-WebRequest -Uri $uri -Method POST -ContentType "application/json" -Body $json -TimeoutSec $timeoutSec
+        $respBody = $resp.Content
+        $bizSuccess = $false
+        $bizCode = $null
+        if (-not [string]::IsNullOrWhiteSpace($respBody)) {
+          try {
+            $obj = $respBody | ConvertFrom-Json
+            if ($null -ne $obj.success) {
+              $bizSuccess = [bool]$obj.success
+            }
+            if ($null -ne $obj.code) {
+              $bizCode = [int]$obj.code
+            }
+          } catch {
+            # 非JSON响应保持默认失败，交由错误打印排查
+          }
+        }
+        $isHttpOk = ($resp.StatusCode -eq 200)
+        $isBizOk = $bizSuccess -or ($bizCode -eq 200)
+        $isOk = $isHttpOk -and $isBizOk
         $requestSw.Stop()
         return [pscustomobject]@{
           index = $index
           mode = $realMode
           partition = $part
-          ok = ($resp.StatusCode -eq 200)
+          ok = $isOk
           statusCode = [int]$resp.StatusCode
-          error = $null
+          bizCode = $bizCode
+          bizSuccess = $bizSuccess
+          error = $(if ($isOk) { $null } else { "business failed" })
+          response = $(if ([string]::IsNullOrWhiteSpace($respBody)) { $null } elseif ($respBody.Length -gt 500) { $respBody.Substring(0, 500) } else { $respBody })
           elapsedMs = $requestSw.ElapsedMilliseconds
         }
       }
@@ -125,13 +147,27 @@ for ($batch = 0; $batch -lt $batchCount; $batch++) {
         if ($_.Exception -and $_.Exception.Response -and $_.Exception.Response.StatusCode) {
           try { $statusCode = [int]$_.Exception.Response.StatusCode.value__ } catch { $statusCode = 0 }
         }
+        $errorDetail = $null
+        try {
+          if ($_.ErrorDetails -and $_.ErrorDetails.Message) {
+            $errorDetail = $_.ErrorDetails.Message
+          }
+        } catch {
+          $errorDetail = $null
+        }
+        if ([string]::IsNullOrWhiteSpace($errorDetail)) {
+          $errorDetail = $_.Exception.Message
+        }
         return [pscustomobject]@{
           index = $index
           mode = $realModeForError
           partition = $part
           ok = $false
           statusCode = $statusCode
-          error = $_.Exception.Message
+          bizCode = $null
+          bizSuccess = $false
+          error = $errorDetail
+          response = $(if ([string]::IsNullOrWhiteSpace($errorDetail)) { $null } elseif ($errorDetail.Length -gt 500) { $errorDetail.Substring(0, 500) } else { $errorDetail })
           elapsedMs = $requestSw.ElapsedMilliseconds
         }
       }
@@ -152,7 +188,11 @@ for ($batch = 0; $batch -lt $batchCount; $batch++) {
         $printedError++
         $errorMsg = $r.error
         if ([string]::IsNullOrEmpty($errorMsg)) { $errorMsg = "request failed without exception message" }
-        Write-Host ("[ERROR] idx={0} mode={1} part={2} status={3} elapsedMs={4} msg={5}" -f $r.index, $r.mode, $r.partition, $r.statusCode, $r.elapsedMs, $errorMsg) -ForegroundColor Red
+        $bizCodeText = $(if ($null -eq $r.bizCode) { "null" } else { [string]$r.bizCode })
+        Write-Host ("[ERROR] idx={0} mode={1} part={2} status={3} bizCode={4} elapsedMs={5} msg={6}" -f $r.index, $r.mode, $r.partition, $r.statusCode, $bizCodeText, $r.elapsedMs, $errorMsg) -ForegroundColor Red
+        if (-not [string]::IsNullOrWhiteSpace($r.response)) {
+          Write-Host ("[ERROR_RESPONSE] {0}" -f $r.response) -ForegroundColor DarkRed
+        }
       }
     }
   }
