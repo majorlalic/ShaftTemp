@@ -304,9 +304,9 @@ Body: CSV 文件字节流</pre>
 
   <h2>6. 告警接口（AlarmController）</h2>
   <p><b>口径说明：</b></p>
-  <p>1) <span class="mono">/shaft/alarm/list</span> 当前实现会查询告警主表全部类型，包含“监测对象告警 + 终端告警”。</p>
-  <p>2) <span class="mono">/shaft/alarm/device/alarms</span> 仅查询终端告警，类型固定为 DEVICE_OFFLINE、PARTITION_FAULT。</p>
-  <p>3) 如需“仅监测对象告警”分页，当前没有独立接口，建议后续新增或在 /list 增加类型过滤参数。</p>
+  <p>1) <span class="mono">/shaft/alarm/list</span> 通过 type 参数区分告警域。</p>
+  <p>2) type=0：终端告警（DEVICE_OFFLINE、PARTITION_FAULT）；type=1：监测对象告警（TEMP_THRESHOLD、TEMP_DIFFERENCE、TEMP_RISE_RATE）。</p>
+  <p>3) <span class="mono">/shaft/alarm/device/alarms</span> 仍保留为终端告警专用分页接口。</p>
 
   <div class="api">
     <h3>6.1 GET /shaft/alarm/statistics</h3>
@@ -331,11 +331,13 @@ Body: CSV 文件字节流</pre>
       <tr><td>pageNum</td><td>int</td><td>否</td><td>兼容参数</td></tr>
       <tr><td>pageSize</td><td>int</td><td>否</td><td>每页条数</td></tr>
       <tr><td>areaId</td><td>long</td><td>否</td><td>区域ID</td></tr>
+      <tr><td>areaName</td><td>string</td><td>否</td><td>小区名称，模糊匹配</td></tr>
       <tr><td>deviceId</td><td>long</td><td>否</td><td>设备ID</td></tr>
       <tr><td>startTime</td><td>datetime</td><td>否</td><td>yyyy-MM-dd HH:mm:ss</td></tr>
       <tr><td>endTime</td><td>datetime</td><td>否</td><td>yyyy-MM-dd HH:mm:ss</td></tr>
       <tr><td>status</td><td>string</td><td>否</td><td>状态码 0/1/2/3/4</td></tr>
-      <tr><td>domain</td><td>string</td><td>否</td><td>告警域：monitor/device/all（不传等价 all）</td></tr>
+      <tr><td>alarmTypeBig</td><td>int</td><td>否</td><td>告警大类，当前 0=竖井测温</td></tr>
+      <tr><td>type</td><td>int</td><td>否</td><td>告警域分组：0=终端告警，1=监测对象告警</td></tr>
     </table>
     <p>data 结构：PagePayload&lt;告警对象&gt;，单条含 id、alarmType、statusCode、firstAlarmTime、lastAlarmTime、mergeCount、eventCount、content、partitionCode、shaftFloorId 等。</p>
   </div>

@@ -349,7 +349,7 @@ public class TerminalDocService {
             .filter(this::notDeleted)
             .filter(alarm -> TERMINAL_ALARM_TYPES.contains(alarm.getAlarmType()))
             .filter(alarm -> statusCode == null || statusCode.equals(alarm.getStatus()))
-            .filter(alarm -> deviceId == null || deviceId.equals(alarm.getDeviceId()))
+            .filter(alarm -> deviceId == null || deviceId.equals(parseLong(alarm.getDeviceId())))
             .collect(Collectors.toList());
     }
 
@@ -361,7 +361,8 @@ public class TerminalDocService {
     }
 
     private Map<String, Object> toAlarmRow(AlarmEntity alarm) {
-        DeviceEntity device = alarm.getDeviceId() == null ? null : deviceRepository.findActiveById(alarm.getDeviceId()).orElse(null);
+        Long deviceId = parseLong(alarm.getDeviceId());
+        DeviceEntity device = deviceId == null ? null : deviceRepository.findActiveById(deviceId).orElse(null);
         Map<String, Object> row = new LinkedHashMap<String, Object>();
         row.put("id", alarm.getId());
         row.put("deviceId", alarm.getDeviceId());
@@ -377,7 +378,8 @@ public class TerminalDocService {
     }
 
     private Map<String, Object> toAlarmDetail(AlarmEntity alarm) {
-        DeviceEntity device = alarm.getDeviceId() == null ? null : deviceRepository.findActiveById(alarm.getDeviceId()).orElse(null);
+        Long deviceId = parseLong(alarm.getDeviceId());
+        DeviceEntity device = deviceId == null ? null : deviceRepository.findActiveById(deviceId).orElse(null);
         Map<String, Object> row = new LinkedHashMap<String, Object>();
         row.put("id", alarm.getId());
         row.put("alarmCode", alarm.getAlarmCode());
@@ -397,6 +399,13 @@ public class TerminalDocService {
         row.put("handleTime", alarm.getHandleTime());
         row.put("handleRemark", alarm.getHandleRemark());
         return row;
+    }
+
+    private Long parseLong(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+        return Long.valueOf(value);
     }
 
     private Map<String, Object> toEventRow(EventEntity event) {

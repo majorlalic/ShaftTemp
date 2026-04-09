@@ -51,9 +51,10 @@ public class AlarmMergeService implements AlarmService {
     ) {
         String mergeKey = buildMergeKey(resolved.getMonitor().getId(), result.getAlarmType());
         AlarmEntity candidate = new AlarmEntity();
-        candidate.setId(idGenerator.nextId());
+        candidate.setId(String.valueOf(idGenerator.nextId()));
         candidate.setAlarmCode(result.getAlarmType() + "-" + CODE_FORMATTER.format(eventTime) + "-" + candidate.getId());
         candidate.setAlarmType(result.getAlarmType());
+        candidate.setAlarmTypeBig(Integer.valueOf(AlarmTypeBig.SHAFT_TEMP));
         candidate.setStatus(AlarmStatus.PENDING_CONFIRM);
         candidate.setFirstAlarmTime(eventTime);
         candidate.setMergeCount(1);
@@ -61,8 +62,8 @@ public class AlarmMergeService implements AlarmService {
         candidate.setDeleted(0);
         candidate.setCreatedOn(eventTime);
         candidate.setSourceType(result.getSourceType());
-        candidate.setMonitorId(resolved.getMonitor().getId());
-        candidate.setDeviceId(resolved.getDevice().getId());
+        candidate.setMonitorId(String.valueOf(resolved.getMonitor().getId()));
+        candidate.setDeviceId(String.valueOf(resolved.getDevice().getId()));
         candidate.setShaftFloorId(resolved.getShaftFloorId());
         candidate.setPartitionCode(resolved.getPartitionCode());
         candidate.setPartitionName(resolved.getPartitionName());
@@ -70,10 +71,17 @@ public class AlarmMergeService implements AlarmService {
         candidate.setDeviceToken(resolved.getDeviceToken());
         candidate.setPartitionNo(resolved.getPartitionNo());
         candidate.setSourceFormat(resolved.getSourceFormat());
+        candidate.setAreaName(resolved.getMonitor().getAreaName());
+        candidate.setMonitorName(resolved.getMonitor().getName());
+        candidate.setDeviceName(resolved.getDevice().getName());
+        candidate.setManufacturer(resolved.getDevice().getManufacturer());
+        candidate.setDeviceModel(resolved.getDevice().getModel());
         candidate.setMergeKey(mergeKey);
         candidate.setAlarmLevel(result.getAlarmLevel());
         candidate.setTitle(result.getTitle());
         candidate.setContent(result.getContent());
+        candidate.setPushStatus(0);
+        candidate.setPushTime(null);
         candidate.setLastAlarmTime(eventTime);
         candidate.setUpdatedOn(eventTime);
 
@@ -81,7 +89,7 @@ public class AlarmMergeService implements AlarmService {
         boolean merged;
         try {
             alarmRepository.upsertPendingAlarm(candidate);
-            savedAlarm = alarmRepository.findById(candidate.getId())
+            savedAlarm = alarmRepository.findById(parseLongId(candidate.getId()))
                 .orElseThrow(() -> new IllegalStateException("Alarm not found after insert: " + candidate.getId()));
             merged = false;
         } catch (RuntimeException ex) {
@@ -91,7 +99,7 @@ public class AlarmMergeService implements AlarmService {
             savedAlarm = alarmRepository.findByMergeKey(mergeKey)
                 .orElseThrow(() -> new IllegalStateException("Alarm not found after duplicate key: " + mergeKey));
             savedAlarm.setSourceType(result.getSourceType());
-            savedAlarm.setDeviceId(resolved.getDevice().getId());
+            savedAlarm.setDeviceId(String.valueOf(resolved.getDevice().getId()));
             savedAlarm.setShaftFloorId(resolved.getShaftFloorId());
             savedAlarm.setPartitionCode(resolved.getPartitionCode());
             savedAlarm.setPartitionName(resolved.getPartitionName());
@@ -99,6 +107,11 @@ public class AlarmMergeService implements AlarmService {
             savedAlarm.setDeviceToken(resolved.getDeviceToken());
             savedAlarm.setPartitionNo(resolved.getPartitionNo());
             savedAlarm.setSourceFormat(resolved.getSourceFormat());
+            savedAlarm.setAreaName(resolved.getMonitor().getAreaName());
+            savedAlarm.setMonitorName(resolved.getMonitor().getName());
+            savedAlarm.setDeviceName(resolved.getDevice().getName());
+            savedAlarm.setManufacturer(resolved.getDevice().getManufacturer());
+            savedAlarm.setDeviceModel(resolved.getDevice().getModel());
             savedAlarm.setLastAlarmTime(eventTime);
             savedAlarm.setMergeCount(savedAlarm.getMergeCount() == null ? 1 : savedAlarm.getMergeCount() + 1);
             savedAlarm.setAlarmLevel(result.getAlarmLevel());
@@ -108,7 +121,11 @@ public class AlarmMergeService implements AlarmService {
             alarmRepository.updateById(savedAlarm);
             merged = true;
         }
-        realtimeStateService.setActiveAlarmId(result.getAlarmType(), String.valueOf(resolved.getMonitor().getId()), savedAlarm.getId());
+        realtimeStateService.setActiveAlarmId(
+            result.getAlarmType(),
+            String.valueOf(resolved.getMonitor().getId()),
+            parseLongId(savedAlarm.getId())
+        );
 
         if (!merged || realtimeStateService.shouldWriteMergedEvent(result.getAlarmType(), String.valueOf(resolved.getMonitor().getId()), eventTime)) {
             createEvent(
@@ -195,7 +212,8 @@ public class AlarmMergeService implements AlarmService {
             .orElseThrow(() -> new IllegalArgumentException("Alarm not found: " + alarmId));
         alarm.setMergeKey(null);
         alarm.setStatus(AlarmStatus.CONFIRMED);
-        alarm.setHandler(handler);
+        alarm.setHandler(handler == null ? null : String.valueOf(handler));
+        alarm.setHandlerName(handler == null ? null : String.valueOf(handler));
         alarm.setHandleTime(LocalDateTime.now());
         alarm.setHandleRemark(remark);
         alarm.setUpdatedOn(LocalDateTime.now());
@@ -260,9 +278,9 @@ public class AlarmMergeService implements AlarmService {
 
     private void createLifecycleEvent(AlarmEntity alarm, String sourceType, Integer eventType, String remark) {
         DeviceEntity device = new DeviceEntity();
-        device.setId(alarm.getDeviceId());
+        device.setId(parseLongId(alarm.getDeviceId()));
         com.example.demo.entity.MonitorEntity monitor = new com.example.demo.entity.MonitorEntity();
-        monitor.setId(alarm.getMonitorId());
+        monitor.setId(parseLongId(alarm.getMonitorId()));
         DeviceResolverService.ResolvedTarget resolved = new DeviceResolverService.ResolvedTarget(
             device,
             monitor,
@@ -307,7 +325,7 @@ public class AlarmMergeService implements AlarmService {
     ) {
         EventEntity event = new EventEntity();
         event.setId(idGenerator.nextId());
-        event.setAlarmId(alarm.getId());
+        event.setAlarmId(parseLongId(alarm.getId()));
         event.setAlarmType(alarmType);
         event.setSourceType(sourceType);
         event.setMonitorId(resolved.getMonitor().getId());
@@ -338,5 +356,12 @@ public class AlarmMergeService implements AlarmService {
 
     private String buildMergeKey(Long monitorId, String alarmType) {
         return monitorId + ":" + alarmType;
+    }
+
+    private Long parseLongId(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+        return Long.valueOf(value);
     }
 }

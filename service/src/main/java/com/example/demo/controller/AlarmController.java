@@ -52,15 +52,28 @@ public class AlarmController {
         @RequestParam(required = false) Integer pageNum,
         @RequestParam(required = false) Integer pageSize,
         @RequestParam(required = false) Long areaId,
+        @RequestParam(required = false) String areaName,
         @RequestParam(required = false) Long deviceId,
         @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startTime,
         @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime,
         @RequestParam(required = false) String status,
+        @RequestParam(required = false) Integer alarmTypeBig,
         @RequestParam(required = false) Integer type
     ) {
         Integer resolvedPageNo = pageNo == null ? pageNum : pageNo;
         return RestObject.newOk(
-            alarmViewService.list(resolvedPageNo, pageSize, areaId, deviceId, startTime, endTime, status, type)
+            alarmViewService.list(
+                resolvedPageNo,
+                pageSize,
+                areaId,
+                areaName,
+                deviceId,
+                startTime,
+                endTime,
+                status,
+                alarmTypeBig,
+                type
+            )
         );
     }
 

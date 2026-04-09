@@ -52,6 +52,7 @@ com/example/demo/config/AppProperties$Alarm.class
 com/example/demo/vo/AlarmActionRequest.class
 com/example/demo/service/IdGenerator.class
 com/example/demo/dao/MonitorRepository.class
+com/example/demo/service/AlarmTypeBig.class
 com/example/demo/service/RedisKeyBuilder.class
 com/example/demo/service/ReportIngestService$IngestResult.class
 com/example/demo/vo/PartitionAlarmRequest.class

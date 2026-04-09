@@ -2,6 +2,7 @@ package com.example.demo.dao;
 
 import com.example.demo.service.AlarmEventType;
 import com.example.demo.service.AlarmStatus;
+import com.example.demo.service.AlarmTypeBig;
 import com.example.demo.entity.AlarmEntity;
 import com.example.demo.entity.EventEntity;
 import com.example.demo.entity.RawDataEntity;
@@ -18,6 +19,8 @@ public class QueryMapper {
         payload.put("id", alarm.getId());
         payload.put("alarmCode", alarm.getAlarmCode());
         payload.put("alarmType", alarm.getAlarmType());
+        payload.put("alarmTypeBig", alarm.getAlarmTypeBig());
+        payload.put("alarmTypeBigName", AlarmTypeBig.nameOf(alarm.getAlarmTypeBig()));
         payload.put("sourceType", alarm.getSourceType());
         payload.put("monitorId", alarm.getMonitorId());
         payload.put("deviceId", alarm.getDeviceId());
@@ -35,6 +38,10 @@ public class QueryMapper {
         payload.put("title", alarm.getTitle());
         payload.put("content", alarm.getContent());
         payload.put("handler", alarm.getHandler());
+        payload.put("handlerName", alarm.getHandlerName());
+        payload.put("manufacturer", alarm.getManufacturer());
+        payload.put("deviceModel", alarm.getDeviceModel());
+        payload.put("pushTime", alarm.getPushTime());
         payload.put("handleTime", alarm.getHandleTime());
         payload.put("handleRemark", alarm.getHandleRemark());
         payload.put("pushStatus", alarm.getPushStatus());

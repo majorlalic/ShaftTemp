@@ -11,7 +11,7 @@ import javax.persistence.Table;
 public class AlarmEntity {
 
     @Id
-    private Long id;
+    private String id;
 
     @Column(name = "alarm_code")
     private String alarmCode;
@@ -23,10 +23,10 @@ public class AlarmEntity {
     private String sourceType;
 
     @Column(name = "monitor_id")
-    private Long monitorId;
+    private String monitorId;
 
     @Column(name = "device_id")
-    private Long deviceId;
+    private String deviceId;
 
     @Column(name = "shaft_floor_id")
     private Long shaftFloorId;
@@ -73,7 +73,30 @@ public class AlarmEntity {
     private String content;
 
     @Column(name = "handler")
-    private Long handler;
+    private String handler;
+
+    @Column(name = "alarm_type_big")
+    private Integer alarmTypeBig;
+
+    @Column(name = "area_name")
+    private String areaName;
+
+    @Column(name = "monitor_name")
+    private String monitorName;
+
+    @Column(name = "device_name")
+    private String deviceName;
+
+    @Column(name = "handler_name")
+    private String handlerName;
+
+    private String manufacturer;
+
+    @Column(name = "device_model")
+    private String deviceModel;
+
+    @Column(name = "push_time")
+    private LocalDateTime pushTime;
 
     @Column(name = "handle_time")
     private LocalDateTime handleTime;
@@ -92,11 +115,11 @@ public class AlarmEntity {
     @Column(name = "updated_on")
     private LocalDateTime updatedOn;
 
-    public Long getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(String id) {
         this.id = id;
     }
 
@@ -124,19 +147,19 @@ public class AlarmEntity {
         this.sourceType = sourceType;
     }
 
-    public Long getMonitorId() {
+    public String getMonitorId() {
         return monitorId;
     }
 
-    public void setMonitorId(Long monitorId) {
+    public void setMonitorId(String monitorId) {
         this.monitorId = monitorId;
     }
 
-    public Long getDeviceId() {
+    public String getDeviceId() {
         return deviceId;
     }
 
-    public void setDeviceId(Long deviceId) {
+    public void setDeviceId(String deviceId) {
         this.deviceId = deviceId;
     }
 
@@ -268,11 +291,11 @@ public class AlarmEntity {
         this.content = content;
     }
 
-    public Long getHandler() {
+    public String getHandler() {
         return handler;
     }
 
-    public void setHandler(Long handler) {
+    public void setHandler(String handler) {
         this.handler = handler;
     }
 
@@ -290,6 +313,70 @@ public class AlarmEntity {
 
     public void setHandleRemark(String handleRemark) {
         this.handleRemark = handleRemark;
+    }
+
+    public Integer getAlarmTypeBig() {
+        return alarmTypeBig;
+    }
+
+    public void setAlarmTypeBig(Integer alarmTypeBig) {
+        this.alarmTypeBig = alarmTypeBig;
+    }
+
+    public String getAreaName() {
+        return areaName;
+    }
+
+    public void setAreaName(String areaName) {
+        this.areaName = areaName;
+    }
+
+    public String getMonitorName() {
+        return monitorName;
+    }
+
+    public void setMonitorName(String monitorName) {
+        this.monitorName = monitorName;
+    }
+
+    public String getDeviceName() {
+        return deviceName;
+    }
+
+    public void setDeviceName(String deviceName) {
+        this.deviceName = deviceName;
+    }
+
+    public String getHandlerName() {
+        return handlerName;
+    }
+
+    public void setHandlerName(String handlerName) {
+        this.handlerName = handlerName;
+    }
+
+    public String getManufacturer() {
+        return manufacturer;
+    }
+
+    public void setManufacturer(String manufacturer) {
+        this.manufacturer = manufacturer;
+    }
+
+    public String getDeviceModel() {
+        return deviceModel;
+    }
+
+    public void setDeviceModel(String deviceModel) {
+        this.deviceModel = deviceModel;
+    }
+
+    public LocalDateTime getPushTime() {
+        return pushTime;
+    }
+
+    public void setPushTime(LocalDateTime pushTime) {
+        this.pushTime = pushTime;
     }
 
     public Integer getPushStatus() {
