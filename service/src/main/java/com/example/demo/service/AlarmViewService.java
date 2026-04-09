@@ -20,6 +20,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
@@ -27,9 +28,18 @@ import org.springframework.stereotype.Service;
 @Service
 public class AlarmViewService {
 
-    private static final java.util.Set<String> TERMINAL_ALARM_TYPES = new HashSet<String>(
+    private static final Set<String> TERMINAL_ALARM_TYPES = new HashSet<String>(
         Arrays.asList("DEVICE_OFFLINE", "PARTITION_FAULT")
     );
+    private static final Set<String> MONITOR_ALARM_TYPES = new HashSet<String>(
+        Arrays.asList("TEMP_THRESHOLD", "TEMP_DIFFERENCE", "TEMP_RISE_RATE")
+    );
+    private static final Map<Integer, Set<String>> ALARM_TYPE_GROUPS = new LinkedHashMap<Integer, Set<String>>();
+
+    static {
+        ALARM_TYPE_GROUPS.put(Integer.valueOf(0), TERMINAL_ALARM_TYPES);
+        ALARM_TYPE_GROUPS.put(Integer.valueOf(1), MONITOR_ALARM_TYPES);
+    }
 
     private final AlarmRepository alarmRepository;
     private final EventRepository eventRepository;
@@ -70,10 +80,11 @@ public class AlarmViewService {
         LocalDateTime startTime,
         LocalDateTime endTime,
         String status,
-        String domain
+        Integer type
     ) {
         Integer statusCode = parseStatus(status);
-        List<Map<String, Object>> rows = filterAlarms(areaId, deviceId, startTime, endTime, statusCode, domain).stream()
+        List<Map<String, Object>> rows = filterAlarms(areaId, deviceId, startTime, endTime, statusCode, null).stream()
+            .filter(withType(type))
             .sorted(Comparator.comparing(AlarmEntity::getLastAlarmTime, Comparator.nullsLast(Comparator.reverseOrder())))
             .map(this::toAlarmListRow)
             .collect(Collectors.toList());
@@ -190,6 +201,19 @@ public class AlarmViewService {
             return alarm -> !TERMINAL_ALARM_TYPES.contains(alarm.getAlarmType());
         }
         throw new IllegalArgumentException("Invalid domain: " + domain + ", supported values: monitor, device, all");
+    }
+
+    private Predicate<AlarmEntity> withType(Integer type) {
+        if (type == null) {
+            return alarm -> true;
+        }
+        Set<String> alarmTypes = ALARM_TYPE_GROUPS.get(type);
+        if (alarmTypes == null) {
+            throw new IllegalArgumentException(
+                "Invalid type: " + type + ", supported values: " + ALARM_TYPE_GROUPS.keySet()
+            );
+        }
+        return alarm -> alarmTypes.contains(alarm.getAlarmType());
     }
 
     private Predicate<AlarmEntity> withArea(Long areaId, Map<Long, MonitorEntity> monitorMap) {
