@@ -57,8 +57,7 @@ public class AlarmController {
         @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startTime,
         @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime,
         @RequestParam(required = false) String status,
-        @RequestParam(required = false) Integer alarmTypeBig,
-        @RequestParam(required = false) Integer type
+        @RequestParam(required = false) Integer alarmTypeBig
     ) {
         Integer resolvedPageNo = pageNo == null ? pageNum : pageNo;
         return RestObject.newOk(
@@ -71,8 +70,7 @@ public class AlarmController {
                 startTime,
                 endTime,
                 status,
-                alarmTypeBig,
-                type
+                alarmTypeBig
             )
         );
     }

@@ -51,7 +51,7 @@ class AlarmMergeServiceTest {
     void shouldCreateNewAlarmWhenNoActiveAlarmExists() {
         when(alarmRepository.upsertPendingAlarm(any(AlarmEntity.class))).thenReturn(1);
         AlarmEntity persisted = new AlarmEntity();
-        persisted.setId(1001L);
+        persisted.setId("1001");
         persisted.setMergeCount(1);
         persisted.setEventCount(0);
         persisted.setStatus(AlarmStatus.PENDING_CONFIRM);
@@ -95,7 +95,7 @@ class AlarmMergeServiceTest {
     @Test
     void shouldMergeIntoExistingAlarm() {
         AlarmEntity existing = new AlarmEntity();
-        existing.setId(500L);
+        existing.setId("500");
         existing.setMergeCount(3);
         existing.setEventCount(3);
         existing.setMergeKey("10:TEMP_THRESHOLD");
@@ -145,7 +145,7 @@ class AlarmMergeServiceTest {
     @Test
     void shouldSkipMergedEventWhenThrottled() {
         AlarmEntity existing = new AlarmEntity();
-        existing.setId(500L);
+        existing.setId("500");
         existing.setMergeCount(2);
         existing.setEventCount(2);
         existing.setMergeKey("10:TEMP_THRESHOLD");
@@ -185,7 +185,7 @@ class AlarmMergeServiceTest {
     @Test
     void shouldCreateSinglePendingAlarmUnderConcurrentUpserts() throws InterruptedException {
         AlarmEntity stored = new AlarmEntity();
-        stored.setId(500L);
+        stored.setId("500");
         stored.setMergeKey("10:TEMP_THRESHOLD");
         stored.setStatus(AlarmStatus.PENDING_CONFIRM);
         stored.setMergeCount(0);
@@ -254,10 +254,10 @@ class AlarmMergeServiceTest {
     @Test
     void shouldConfirmAlarm() {
         AlarmEntity existing = new AlarmEntity();
-        existing.setId(500L);
+        existing.setId("500");
         existing.setAlarmType("TEMP_THRESHOLD");
-        existing.setMonitorId(10L);
-        existing.setDeviceId(1L);
+        existing.setMonitorId("10");
+        existing.setDeviceId("1");
         existing.setMergeCount(1);
         existing.setEventCount(1);
         existing.setAlarmLevel(2);
@@ -268,7 +268,7 @@ class AlarmMergeServiceTest {
         AlarmEntity alarm = alarmMergeService.confirm(500L, 99L, "checked");
 
         assertEquals(AlarmStatus.CONFIRMED, alarm.getStatus().intValue());
-        assertEquals(99L, alarm.getHandler().longValue());
+        assertEquals("99", alarm.getHandler());
         assertNotNull(alarm.getHandleTime());
         assertEquals(2, alarm.getEventCount().intValue());
         verify(realtimeStateService).clearActiveAlarmId("TEMP_THRESHOLD", "10");
@@ -278,10 +278,10 @@ class AlarmMergeServiceTest {
     @Test
     void shouldCloseAlarm() {
         AlarmEntity existing = new AlarmEntity();
-        existing.setId(500L);
+        existing.setId("500");
         existing.setAlarmType("TEMP_THRESHOLD");
-        existing.setMonitorId(10L);
-        existing.setDeviceId(1L);
+        existing.setMonitorId("10");
+        existing.setDeviceId("1");
         existing.setMergeCount(1);
         existing.setEventCount(1);
         existing.setAlarmLevel(2);

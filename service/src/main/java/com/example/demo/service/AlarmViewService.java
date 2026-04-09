@@ -14,32 +14,16 @@ import com.example.demo.vo.AlarmHandleRequest;
 import com.example.demo.vo.PagePayload;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 
 @Service
 public class AlarmViewService {
-
-    private static final Set<String> TERMINAL_ALARM_TYPES = new HashSet<String>(
-        Arrays.asList("DEVICE_OFFLINE", "PARTITION_FAULT")
-    );
-    private static final Set<String> MONITOR_ALARM_TYPES = new HashSet<String>(
-        Arrays.asList("TEMP_THRESHOLD", "TEMP_DIFFERENCE", "TEMP_RISE_RATE")
-    );
-    private static final Map<Integer, Set<String>> ALARM_TYPE_GROUPS = new LinkedHashMap<Integer, Set<String>>();
-
-    static {
-        ALARM_TYPE_GROUPS.put(Integer.valueOf(0), TERMINAL_ALARM_TYPES);
-        ALARM_TYPE_GROUPS.put(Integer.valueOf(1), MONITOR_ALARM_TYPES);
-    }
 
     private final AlarmRepository alarmRepository;
     private final EventRepository eventRepository;
@@ -62,7 +46,7 @@ public class AlarmViewService {
     }
 
     public Map<String, Object> statistics(Long areaId, Long deviceId, LocalDateTime startTime, LocalDateTime endTime, String domain) {
-        List<AlarmEntity> alarms = filterAlarms(areaId, null, deviceId, startTime, endTime, null, null, domain);
+        List<AlarmEntity> alarms = filterAlarms(areaId, null, deviceId, startTime, endTime, null, null, null);
         Map<String, Object> data = new LinkedHashMap<String, Object>();
         data.put("pendingConfirm", countStatus(alarms, AlarmStatus.PENDING_CONFIRM));
         data.put("confirmed", countStatus(alarms, AlarmStatus.CONFIRMED));
@@ -81,12 +65,10 @@ public class AlarmViewService {
         LocalDateTime startTime,
         LocalDateTime endTime,
         String status,
-        Integer alarmTypeBig,
-        Integer type
+        Integer alarmTypeBig
     ) {
         Integer statusCode = parseStatus(status);
         List<Map<String, Object>> rows = filterAlarms(areaId, areaName, deviceId, startTime, endTime, statusCode, alarmTypeBig, null).stream()
-            .filter(withType(type))
             .sorted(Comparator.comparing(AlarmEntity::getLastAlarmTime, Comparator.nullsLast(Comparator.reverseOrder())))
             .map(this::toAlarmListRow)
             .collect(Collectors.toList());
@@ -187,7 +169,6 @@ public class AlarmViewService {
             .filter(this::notDeleted)
             .filter(alarm -> statusCode == null || statusCode.equals(alarm.getStatus()))
             .filter(alarm -> alarmTypeBig == null || alarmTypeBig.equals(alarm.getAlarmTypeBig()))
-            .filter(withDomain(domain))
             .filter(withDeviceId(deviceId))
             .filter(withArea(areaId, monitorMap))
             .filter(withAreaNameLike(areaName))
@@ -212,32 +193,6 @@ public class AlarmViewService {
             Long alarmDeviceId = parseLong(alarm.getDeviceId());
             return alarmDeviceId != null && deviceId.equals(alarmDeviceId);
         };
-    }
-
-    private Predicate<AlarmEntity> withDomain(String domain) {
-        if (domain == null || domain.trim().isEmpty() || "all".equalsIgnoreCase(domain)) {
-            return alarm -> true;
-        }
-        if ("device".equalsIgnoreCase(domain)) {
-            return alarm -> TERMINAL_ALARM_TYPES.contains(alarm.getAlarmType());
-        }
-        if ("monitor".equalsIgnoreCase(domain)) {
-            return alarm -> !TERMINAL_ALARM_TYPES.contains(alarm.getAlarmType());
-        }
-        throw new IllegalArgumentException("Invalid domain: " + domain + ", supported values: monitor, device, all");
-    }
-
-    private Predicate<AlarmEntity> withType(Integer type) {
-        if (type == null) {
-            return alarm -> true;
-        }
-        Set<String> alarmTypes = ALARM_TYPE_GROUPS.get(type);
-        if (alarmTypes == null) {
-            throw new IllegalArgumentException(
-                "Invalid type: " + type + ", supported values: " + ALARM_TYPE_GROUPS.keySet()
-            );
-        }
-        return alarm -> alarmTypes.contains(alarm.getAlarmType());
     }
 
     private Predicate<AlarmEntity> withArea(Long areaId, Map<Long, MonitorEntity> monitorMap) {

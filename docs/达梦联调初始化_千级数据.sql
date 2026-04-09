@@ -359,16 +359,18 @@ WHERE t.rn <= 1200;
 -- =========================
 -- 11) 告警 alarm（600）
 -- - 前 200 条待确认（merge_key 唯一）
--- - 其余为已确认/观察/误报/自动恢复
+-- - 其余按新状态流转（持续观察/待消缺/待复测/已确认/闭环）
 -- =========================
 INSERT INTO ODS_DWEQ_DM_ALARM_D (
     id, alarm_code, alarm_type, source_type, monitor_id, device_id, shaft_floor_id,
     partition_code, partition_name, data_reference, device_token, partition_no, source_format,
     merge_key, status, first_alarm_time, last_alarm_time, merge_count, event_count,
-    alarm_level, title, content, handler, handle_time, handle_remark, push_status, deleted, created_on, updated_on
+    alarm_level, title, content, handler, handle_time, handle_remark, push_status,
+    alarm_type_big, area_name, monitor_name, device_name, handler_name, manufacturer, device_model, push_time,
+    deleted, created_on, updated_on
 )
 SELECT
-    9200000 + t.rn AS id,
+    TO_CHAR(9200000 + t.rn) AS id,
     'ALM-' || TO_CHAR(9200000 + t.rn) AS alarm_code,
     CASE MOD(t.rn, 5)
         WHEN 0 THEN 'TEMP_THRESHOLD'
@@ -378,8 +380,8 @@ SELECT
         ELSE 'PARTITION_FAULT'
     END AS alarm_type,
     CASE WHEN MOD(t.rn, 5) IN (3, 4) THEN 'DEVICE_REPORT' ELSE 'MEASURE_REPORT' END AS source_type,
-    t.monitor_id,
-    t.device_id,
+    TO_CHAR(t.monitor_id),
+    TO_CHAR(t.device_id),
     t.shaft_floor_id,
     t.partition_code,
     t.partition_name,
@@ -402,10 +404,11 @@ SELECT
     END AS merge_key,
     CASE
         WHEN t.rn <= 200 THEN 0
-        WHEN MOD(t.rn, 4) = 0 THEN 1
-        WHEN MOD(t.rn, 4) = 1 THEN 2
-        WHEN MOD(t.rn, 4) = 2 THEN 3
-        ELSE 4
+        WHEN MOD(t.rn, 5) = 0 THEN 1
+        WHEN MOD(t.rn, 5) = 1 THEN 2
+        WHEN MOD(t.rn, 5) = 2 THEN 3
+        WHEN MOD(t.rn, 5) = 3 THEN 4
+        ELSE 5
     END AS status,
     SYSDATE - (t.rn / 1000) AS first_alarm_time,
     SYSDATE - (t.rn / 2000) AS last_alarm_time,
@@ -414,20 +417,35 @@ SELECT
     CASE WHEN MOD(t.rn, 3) = 0 THEN 1 ELSE 2 END AS alarm_level,
     '联调告警-' || TO_CHAR(t.rn) AS title,
     t.partition_name || ' 温度告警，联调样例 #' || TO_CHAR(t.rn) AS content,
-    CASE WHEN t.rn <= 200 THEN NULL ELSE 10001 END AS handler,
+    CASE WHEN t.rn <= 200 THEN NULL ELSE '10001' END AS handler,
     CASE WHEN t.rn <= 200 THEN NULL ELSE SYSDATE - (t.rn / 3000) END AS handle_time,
     CASE WHEN t.rn <= 200 THEN NULL ELSE '联调处理' END AS handle_remark,
     CASE WHEN MOD(t.rn, 3) = 0 THEN 1 ELSE 0 END AS push_status,
+    0 AS alarm_type_big,
+    t.area_name,
+    t.monitor_name,
+    t.device_name,
+    CASE WHEN t.rn <= 200 THEN NULL ELSE '运维值班员A' END AS handler_name,
+    t.manufacturer,
+    t.device_model,
+    CASE WHEN MOD(t.rn, 3) = 0 THEN SYSDATE - (t.rn / 2500) ELSE NULL END AS push_time,
     0 AS deleted,
     SYSDATE AS created_on,
     SYSDATE AS updated_on
 FROM (
     SELECT
-        ROW_NUMBER() OVER (ORDER BY id) rn,
-        monitor_id, device_id, shaft_floor_id, partition_id,
-        partition_code, partition_name, data_reference, device_token
-    FROM ODS_DWEQ_DM_MONITOR_PARTITION_BIND_D
-    WHERE deleted = 0
+        ROW_NUMBER() OVER (ORDER BY b.id) rn,
+        b.monitor_id, b.device_id, b.shaft_floor_id, b.partition_id,
+        b.partition_code, b.partition_name, b.data_reference, b.device_token,
+        m.area_name AS area_name,
+        m.name AS monitor_name,
+        d.name AS device_name,
+        d.manufacturer AS manufacturer,
+        d.model AS device_model
+    FROM ODS_DWEQ_DM_MONITOR_PARTITION_BIND_D b
+    JOIN ODS_DWEQ_DM_MONITOR_D m ON m.id = b.monitor_id AND m.deleted = 0
+    JOIN ODS_DWEQ_DM_DEVICE_D d ON d.id = b.device_id AND d.deleted = 0
+    WHERE b.deleted = 0
 ) t
 WHERE t.rn <= 600;
 
@@ -468,12 +486,12 @@ SELECT
     SYSDATE AS updated_on
 FROM (
     SELECT
-        ROW_NUMBER() OVER (ORDER BY a.id, e.seq_no) rn,
-        a.id AS alarm_id,
+        ROW_NUMBER() OVER (ORDER BY TO_NUMBER(a.id), e.seq_no) rn,
+        TO_NUMBER(a.id) AS alarm_id,
         a.alarm_type,
         a.source_type,
-        a.monitor_id,
-        a.device_id,
+        TO_NUMBER(a.monitor_id) AS monitor_id,
+        TO_NUMBER(a.device_id) AS device_id,
         a.shaft_floor_id,
         a.partition_code,
         a.partition_name,
@@ -484,7 +502,7 @@ FROM (
         CASE e.seq_no
             WHEN 1 THEN 0
             WHEN 2 THEN 1
-            ELSE CASE WHEN a.status IN (1,2,3,4) THEN 2 ELSE 0 END
+            ELSE CASE WHEN a.status IN (1,2,3,4,5) THEN 2 ELSE 0 END
         END AS event_type,
         a.last_alarm_time - (e.seq_no / 86400) AS event_time,
         e.seq_no AS event_no,
