@@ -3,6 +3,7 @@ package com.example.demo.dao;
 import com.example.demo.entity.DeviceEntity;
 import java.util.List;
 import java.util.Optional;
+import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
@@ -21,6 +22,17 @@ public interface DeviceRepository {
 
     @Select("select * from ODS_DWEQ_DM_DEVICE_D where asset_status = #{assetStatus} and (deleted is null or deleted = 0)")
     List<DeviceEntity> findAllActiveByAssetStatus(String assetStatus);
+
+    @Insert({
+        "insert into ODS_DWEQ_DM_DEVICE_D (",
+        "id, iot_code, name, device_type, model, manufacturer, factory_date, run_date, asset_status, area_id, org_id, ",
+        "online_status, last_report_time, last_offline_time, deleted, created_on, updated_on, remark",
+        ") values (",
+        "#{id}, #{iotCode}, #{name}, #{deviceType}, #{model}, #{manufacturer}, #{factoryDate}, #{runDate}, #{assetStatus}, #{areaId}, #{orgId}, ",
+        "#{onlineStatus}, #{lastReportTime}, #{lastOfflineTime}, #{deleted}, #{createdOn}, #{updatedOn}, #{remark}",
+        ")"
+    })
+    int insert(DeviceEntity entity);
 
     @Update({
         "update ODS_DWEQ_DM_DEVICE_D set",

@@ -1,4 +1,5 @@
 com/example/demo/service/AlarmViewService.class
+com/example/demo/vo/DeviceCreateRequest.class
 com/example/demo/dao/RawDataQueryRepository$1.class
 com/example/demo/service/RealtimeStateService$RealtimeSummary.class
 com/example/demo/service/ReportIngestService$ReportMetrics.class

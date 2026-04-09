@@ -2,6 +2,7 @@ package com.example.demo.controller;
 
 import com.example.demo.service.QueryService;
 import com.example.demo.service.TerminalDocService;
+import com.example.demo.vo.DeviceCreateRequest;
 import com.example.demo.vo.PagePayload;
 import com.example.demo.vo.RestObject;
 import com.example.demo.vo.TerminalAccessConfirmRequest;
@@ -74,6 +75,11 @@ public class DeviceController {
     @PostMapping("/access/confirm")
     public RestObject<Map<String, Object>> accessConfirm(@RequestBody TerminalAccessConfirmRequest request) {
         return RestObject.newOk(terminalDocService.accessConfirm(request));
+    }
+
+    @PostMapping("/create")
+    public RestObject<Map<String, Object>> create(@RequestBody DeviceCreateRequest request) {
+        return RestObject.newOk(terminalDocService.createDevice(request));
     }
 
     @GetMapping("/realtime/{deviceId}")

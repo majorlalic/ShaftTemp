@@ -17,6 +17,7 @@ import com.example.demo.dao.MonitorRepository;
 import com.example.demo.dao.ShaftFloorRepository;
 import com.example.demo.service.IdGenerator;
 import com.example.demo.vo.PagePayload;
+import com.example.demo.vo.DeviceCreateRequest;
 import com.example.demo.vo.TerminalAccessConfirmRequest;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -150,6 +151,56 @@ public class TerminalDocService {
         data.put("basicInfo", toDeviceInfo(device));
         data.put("monitorBindings", monitors.stream().map(this::toMonitorInfo).collect(Collectors.toList()));
         data.put("floors", shaftFloorRepository.findAllActiveByDeviceId(deviceId).stream().map(this::toFloorRow).collect(Collectors.toList()));
+        return data;
+    }
+
+    @Transactional
+    public Map<String, Object> createDevice(DeviceCreateRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("request is required");
+        }
+        if (request.getIotCode() == null || request.getIotCode().trim().isEmpty()) {
+            throw new IllegalArgumentException("iotCode is required");
+        }
+        if (request.getName() == null || request.getName().trim().isEmpty()) {
+            throw new IllegalArgumentException("name is required");
+        }
+        String iotCode = request.getIotCode().trim();
+        if (deviceRepository.findActiveByIotCode(iotCode).isPresent()) {
+            throw new IllegalArgumentException("iotCode already exists: " + iotCode);
+        }
+        LocalDateTime now = LocalDateTime.now();
+        DeviceEntity entity = new DeviceEntity();
+        entity.setId(idGenerator.nextId());
+        entity.setIotCode(iotCode);
+        entity.setName(request.getName().trim());
+        entity.setDeviceType(request.getDeviceType());
+        entity.setModel(request.getModel());
+        entity.setManufacturer(request.getManufacturer());
+        entity.setFactoryDate(request.getFactoryDate());
+        entity.setRunDate(request.getRunDate());
+        entity.setAssetStatus(
+            request.getAssetStatus() == null || request.getAssetStatus().trim().isEmpty()
+                ? "待接入"
+                : request.getAssetStatus().trim()
+        );
+        entity.setAreaId(request.getAreaId());
+        entity.setOrgId(request.getOrgId());
+        entity.setOnlineStatus(0);
+        entity.setLastReportTime(null);
+        entity.setLastOfflineTime(null);
+        entity.setDeleted(0);
+        entity.setCreatedOn(now);
+        entity.setUpdatedOn(now);
+        entity.setRemark(request.getRemark());
+        deviceRepository.insert(entity);
+
+        Map<String, Object> data = new LinkedHashMap<String, Object>();
+        data.put("id", entity.getId());
+        data.put("iotCode", entity.getIotCode());
+        data.put("name", entity.getName());
+        data.put("assetStatus", entity.getAssetStatus());
+        data.put("onlineStatus", entity.getOnlineStatus());
         return data;
     }
 
