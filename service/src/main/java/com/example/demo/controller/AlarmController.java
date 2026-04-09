@@ -40,9 +40,10 @@ public class AlarmController {
         @RequestParam(required = false) Long areaId,
         @RequestParam(required = false) Long deviceId,
         @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startTime,
-        @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime
+        @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime,
+        @RequestParam(required = false) String domain
     ) {
-        return RestObject.newOk(alarmViewService.statistics(areaId, deviceId, startTime, endTime));
+        return RestObject.newOk(alarmViewService.statistics(areaId, deviceId, startTime, endTime, domain));
     }
 
     @GetMapping("/list")
@@ -54,10 +55,13 @@ public class AlarmController {
         @RequestParam(required = false) Long deviceId,
         @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startTime,
         @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime,
-        @RequestParam(required = false) String status
+        @RequestParam(required = false) String status,
+        @RequestParam(required = false) String domain
     ) {
         Integer resolvedPageNo = pageNo == null ? pageNum : pageNo;
-        return RestObject.newOk(alarmViewService.list(resolvedPageNo, pageSize, areaId, deviceId, startTime, endTime, status));
+        return RestObject.newOk(
+            alarmViewService.list(resolvedPageNo, pageSize, areaId, deviceId, startTime, endTime, status, domain)
+        );
     }
 
     @GetMapping("/merge/list")

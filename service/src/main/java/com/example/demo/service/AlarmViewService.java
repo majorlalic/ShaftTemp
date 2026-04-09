@@ -14,7 +14,9 @@ import com.example.demo.vo.AlarmHandleRequest;
 import com.example.demo.vo.PagePayload;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +26,10 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class AlarmViewService {
+
+    private static final java.util.Set<String> TERMINAL_ALARM_TYPES = new HashSet<String>(
+        Arrays.asList("DEVICE_OFFLINE", "PARTITION_FAULT")
+    );
 
     private final AlarmRepository alarmRepository;
     private final EventRepository eventRepository;
@@ -45,8 +51,8 @@ public class AlarmViewService {
         this.alarmService = alarmService;
     }
 
-    public Map<String, Object> statistics(Long areaId, Long deviceId, LocalDateTime startTime, LocalDateTime endTime) {
-        List<AlarmEntity> alarms = filterAlarms(areaId, deviceId, startTime, endTime, null);
+    public Map<String, Object> statistics(Long areaId, Long deviceId, LocalDateTime startTime, LocalDateTime endTime, String domain) {
+        List<AlarmEntity> alarms = filterAlarms(areaId, deviceId, startTime, endTime, null, domain);
         Map<String, Object> data = new LinkedHashMap<String, Object>();
         data.put("pendingConfirm", countStatus(alarms, AlarmStatus.PENDING_CONFIRM));
         data.put("confirmed", countStatus(alarms, AlarmStatus.CONFIRMED));
@@ -63,10 +69,11 @@ public class AlarmViewService {
         Long deviceId,
         LocalDateTime startTime,
         LocalDateTime endTime,
-        String status
+        String status,
+        String domain
     ) {
         Integer statusCode = parseStatus(status);
-        List<Map<String, Object>> rows = filterAlarms(areaId, deviceId, startTime, endTime, statusCode).stream()
+        List<Map<String, Object>> rows = filterAlarms(areaId, deviceId, startTime, endTime, statusCode, domain).stream()
             .sorted(Comparator.comparing(AlarmEntity::getLastAlarmTime, Comparator.nullsLast(Comparator.reverseOrder())))
             .map(this::toAlarmListRow)
             .collect(Collectors.toList());
@@ -151,17 +158,38 @@ public class AlarmViewService {
         }
     }
 
-    private List<AlarmEntity> filterAlarms(Long areaId, Long deviceId, LocalDateTime startTime, LocalDateTime endTime, Integer statusCode) {
+    private List<AlarmEntity> filterAlarms(
+        Long areaId,
+        Long deviceId,
+        LocalDateTime startTime,
+        LocalDateTime endTime,
+        Integer statusCode,
+        String domain
+    ) {
         Map<Long, MonitorEntity> monitorMap = monitorRepository.findAllActive().stream()
             .collect(Collectors.toMap(MonitorEntity::getId, monitor -> monitor));
         return alarmRepository.findAll().stream()
             .filter(this::notDeleted)
             .filter(alarm -> statusCode == null || statusCode.equals(alarm.getStatus()))
+            .filter(withDomain(domain))
             .filter(alarm -> deviceId == null || deviceId.equals(alarm.getDeviceId()))
             .filter(withArea(areaId, monitorMap))
             .filter(alarm -> startTime == null || !safeTime(alarm).isBefore(startTime))
             .filter(alarm -> endTime == null || !safeTime(alarm).isAfter(endTime))
             .collect(Collectors.toList());
+    }
+
+    private Predicate<AlarmEntity> withDomain(String domain) {
+        if (domain == null || domain.trim().isEmpty() || "all".equalsIgnoreCase(domain)) {
+            return alarm -> true;
+        }
+        if ("device".equalsIgnoreCase(domain)) {
+            return alarm -> TERMINAL_ALARM_TYPES.contains(alarm.getAlarmType());
+        }
+        if ("monitor".equalsIgnoreCase(domain)) {
+            return alarm -> !TERMINAL_ALARM_TYPES.contains(alarm.getAlarmType());
+        }
+        throw new IllegalArgumentException("Invalid domain: " + domain + ", supported values: monitor, device, all");
     }
 
     private Predicate<AlarmEntity> withArea(Long areaId, Map<Long, MonitorEntity> monitorMap) {
