@@ -15,9 +15,44 @@ if ($PressureTotal -lt 1) { throw "PressureTotal must be >= 1" }
 if ($PressureConcurrency -lt 1) { throw "PressureConcurrency must be >= 1" }
 if ($MaxErrorPrint -lt 0) { throw "MaxErrorPrint must be >= 0" }
 
+$BaseUrl = [string]$BaseUrl
+$BaseUrl = $BaseUrl.Trim()
+if (($BaseUrl.StartsWith('"') -and $BaseUrl.EndsWith('"')) -or ($BaseUrl.StartsWith("'") -and $BaseUrl.EndsWith("'"))) {
+  $BaseUrl = $BaseUrl.Substring(1, $BaseUrl.Length - 2)
+}
+if ($BaseUrl.EndsWith("/")) {
+  $BaseUrl = $BaseUrl.TrimEnd("/")
+}
+if ($BaseUrl -notmatch "^https?://") {
+  $BaseUrl = "http://" + $BaseUrl
+}
+
 $measureUrl = "$BaseUrl/shaft/iot/reports/measure"
 $alarmUrl = "$BaseUrl/shaft/iot/reports/alarm"
 $alarmListUrl = "$BaseUrl/shaft/alarm/list"
+
+function Assert-AbsoluteHttpUrl {
+  param(
+    [string]$Name,
+    [string]$Url
+  )
+  $parsed = $null
+  $ok = [System.Uri]::TryCreate($Url, [System.UriKind]::Absolute, [ref]$parsed)
+  if (-not $ok) {
+    throw ("invalid url for {0}: {1}" -f $Name, $Url)
+  }
+  if ($parsed.Scheme -ne "http" -and $parsed.Scheme -ne "https") {
+    throw ("unsupported url scheme for {0}: {1}" -f $Name, $parsed.Scheme)
+  }
+  if ([string]::IsNullOrWhiteSpace($parsed.Host)) {
+    throw ("missing host for {0}: {1}" -f $Name, $Url)
+  }
+}
+
+Assert-AbsoluteHttpUrl -Name "BaseUrl" -Url $BaseUrl
+Assert-AbsoluteHttpUrl -Name "measureUrl" -Url $measureUrl
+Assert-AbsoluteHttpUrl -Name "alarmUrl" -Url $alarmUrl
+Assert-AbsoluteHttpUrl -Name "alarmListUrl" -Url $alarmListUrl
 
 $apiTotal = 0
 $apiOk = 0
@@ -41,6 +76,7 @@ function Invoke-JsonApi {
   )
   $script:apiTotal++
   try {
+    Write-Host ("[HTTP] method={0} url={1}" -f $Method, $Url) -ForegroundColor DarkGray
     $json = $null
     if ($null -ne $Body) {
       $json = $Body | ConvertTo-Json -Depth 8 -Compress
@@ -164,14 +200,17 @@ function Query-AlarmsRaw {
   $start = (Get-Date).AddHours(-24).ToString("yyyy-MM-dd HH:mm:ss")
   $end = (Get-Date).AddHours(1).ToString("yyyy-MM-dd HH:mm:ss")
   $q = @()
-  $q += "pageNo=$PageNo"
-  $q += "pageSize=$PageSize"
-  if (-not [string]::IsNullOrWhiteSpace($Status)) { $q += "status=$([uri]::EscapeDataString($Status))" }
-  if (-not [string]::IsNullOrWhiteSpace($AlarmTypeBig)) { $q += "alarmTypeBig=$([uri]::EscapeDataString($AlarmTypeBig))" }
-  if (-not [string]::IsNullOrWhiteSpace($AreaName)) { $q += "areaName=$([uri]::EscapeDataString($AreaName))" }
-  $q += "startTime=$([uri]::EscapeDataString($start))"
-  $q += "endTime=$([uri]::EscapeDataString($end))"
-  $url = "$alarmListUrl?" + ($q -join "&")
+  $q += "pageNo=" + [System.Uri]::EscapeDataString([string]$PageNo)
+  $q += "pageSize=" + [System.Uri]::EscapeDataString([string]$PageSize)
+  if (-not [string]::IsNullOrWhiteSpace($Status)) { $q += "status=" + [System.Uri]::EscapeDataString([string]$Status) }
+  if (-not [string]::IsNullOrWhiteSpace($AlarmTypeBig)) { $q += "alarmTypeBig=" + [System.Uri]::EscapeDataString([string]$AlarmTypeBig) }
+  if (-not [string]::IsNullOrWhiteSpace($AreaName)) { $q += "areaName=" + [System.Uri]::EscapeDataString([string]$AreaName) }
+  $q += "startTime=" + [System.Uri]::EscapeDataString([string]$start)
+  $q += "endTime=" + [System.Uri]::EscapeDataString([string]$end)
+  $ub = New-Object System.UriBuilder($alarmListUrl)
+  $ub.Query = ($q -join "&")
+  $url = $ub.Uri.AbsoluteUri
+  Write-Host ("[QUERY_ALARM_LIST] {0}" -f $url) -ForegroundColor DarkGray
   return Invoke-JsonApi -Method "GET" -Url $url -TimeoutSec $HttpTimeoutSec
 }
 
@@ -198,6 +237,9 @@ function Get-AlarmList {
 
 Write-Host "start full e2e test..."
 Write-Host ("baseUrl={0} iotCode={1} partitionCount={2} pressureTotal={3} concurrency={4}" -f $BaseUrl, $IotCode, $PartitionCount, $PressureTotal, $PressureConcurrency)
+Write-Host ("[ENDPOINT] measureUrl={0}" -f $measureUrl) -ForegroundColor DarkGray
+Write-Host ("[ENDPOINT] alarmUrl={0}" -f $alarmUrl) -ForegroundColor DarkGray
+Write-Host ("[ENDPOINT] alarmListUrl={0}" -f $alarmListUrl) -ForegroundColor DarkGray
 
 Write-Stage "Stage 1 - baseline measure"
 $r1 = Invoke-JsonApi -Method "POST" -Url $measureUrl -Body (New-MeasureBody -PartitionId 1 -MaxTemp 60 -MinTemp 50 -AvgTemp 55) -TimeoutSec $HttpTimeoutSec
