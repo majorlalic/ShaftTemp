@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>联调排查手册（数据库与MQ映射）</title>
+  <style>
+    body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; line-height: 1.6; color: #222; padding: 24px; }
+    h1, h2, h3 { margin-top: 22px; margin-bottom: 8px; }
+    h1 { font-size: 28px; }
+    h2 { font-size: 22px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
+    h3 { font-size: 17px; }
+    table { border-collapse: collapse; width: 100%; margin: 10px 0 16px 0; }
+    th, td { border: 1px solid #ccc; padding: 8px; font-size: 13px; text-align: left; vertical-align: top; }
+    th { background: #f5f5f5; }
+    pre { background: #f7f7f7; border: 1px solid #ddd; padding: 10px; overflow-x: auto; font-size: 12px; white-space: pre-wrap; word-break: break-word; }
+    .note { color: #666; }
+  </style>
+</head>
+<body>
+  <h1>联调排查手册（数据库与MQ映射）</h1>
+  <p>版本：2026-04-10</p>
+  <p>适用范围：ShaftTemp 项目 service 服务 + 达梦数据库 + MQ/HTTP 上报联调。</p>
+
+  <h2>1. 表分类与创建时机</h2>
+  <h3>1.1 基础表（先初始化，缺了会出错）</h3>
+  <table>
+    <tr><th>表名</th><th>作用</th><th>创建/写入时机</th><th>缺失影响</th></tr>
+    <tr><td>ODS_DWEQ_DM_AREA_D</td><td>区域主数据</td><td>建库后初始化/导入</td><td>列表筛选、区域展示异常</td></tr>
+    <tr><td>ODS_DWEQ_DM_ORG_D</td><td>机构主数据</td><td>建库后初始化/导入</td><td>设备台账组织信息异常</td></tr>
+    <tr><td>ODS_DWEQ_DM_DEVICE_D</td><td>设备主数据</td><td>建库后初始化/新增接口</td><td>无法按 iotCode 解析设备</td></tr>
+    <tr><td>ODS_DWEQ_DM_MONITOR_D</td><td>监测对象主数据</td><td>建库后初始化</td><td>告警归属与名称异常</td></tr>
+    <tr><td>ODS_DWEQ_DM_SHAFT_FLOOR_D</td><td>楼层主数据</td><td>建库后初始化</td><td>楼层映射与展示异常</td></tr>
+    <tr><td>ODS_DWEQ_DM_MONITOR_DEVICE_BIND_D</td><td>监测对象-设备绑定</td><td>初始化/接入确认</td><td>设备和监测对象关系断裂</td></tr>
+    <tr><td>ODS_DWEQ_DM_MONITOR_PARTITION_BIND_D</td><td>分区映射核心表</td><td>建库后初始化</td><td>直接报 partition binding not found</td></tr>
+    <tr><td>ODS_DWEQ_DM_ALARM_RULE_D</td><td>告警规则</td><td>初始化/规则接口维护</td><td>告警判断不符合预期</td></tr>
+  </table>
+
+  <h3>1.2 运行表（系统运行自动产生）</h3>
+  <table>
+    <tr><th>表名</th><th>作用</th><th>触发时机</th></tr>
+    <tr><td>ODS_DWEQ_DM_RAW_DATA_D</td><td>测温原始数据</td><td>/shaft/iot/reports/measure</td></tr>
+    <tr><td>ODS_DWEQ_DM_ALARM_RAW_D</td><td>上游告警原始数据</td><td>/shaft/iot/reports/alarm</td></tr>
+    <tr><td>ODS_DWEQ_DM_ALARM_D</td><td>告警主单</td><td>规则命中 / 离线巡检 createOrMerge</td></tr>
+    <tr><td>ODS_DWEQ_DM_EVENT_D</td><td>告警事件</td><td>触发、合并、处理、恢复</td></tr>
+    <tr><td>ODS_DWEQ_DM_DEVICE_ONLINE_LOG_D</td><td>设备在线日志</td><td>上下线状态变更</td></tr>
+  </table>
+
+  <h2>2. MQ 对接关键字段映射</h2>
+  <table>
+    <tr><th>MQ/HTTP 字段</th><th>数据库字段</th><th>说明</th></tr>
+    <tr><td>iotCode</td><td>device.iot_code</td><td>设备唯一标识，必须能匹配</td></tr>
+    <tr><td>PartitionId</td><td>monitor_partition_bind.partition_id</td><td>分区ID映射</td></tr>
+    <tr><td>dataReference</td><td>monitor_partition_bind.data_reference</td><td>建议严格一致（大小写敏感）</td></tr>
+    <tr><td>topic</td><td>raw_data.topic / alarm_raw.topic</td><td>原始留档</td></tr>
+    <tr><td>IedFullPath</td><td>raw_data.ied_full_path / alarm_raw.ied_full_path</td><td>原始留档</td></tr>
+    <tr><td>MaxTemp/MinTemp/AvgTemp</td><td>raw_data.max_temp/min_temp/avg_temp</td><td>测温原始值</td></tr>
+    <tr><td>AlarmStatus/FaultStatus</td><td>alarm_raw.alarm_status/fault_status</td><td>上游告警状态</td></tr>
+  </table>
+
+  <p class="note">命名规范建议：iotCode 使用 shaft-dev-三位数；分区编码使用 shaft-dev-XXX_TMP_thYY；保持大小写一致。</p>
+
+  <h2>3. 常见报错排查与解决</h2>
+
+  <h3>3.1 报错：partition binding not found for partitionCode=xxx</h3>
+  <p><b>原因：</b>设备/分区映射未命中，常见于 iotCode 或 dataReference 不一致。</p>
+  <p><b>排查 SQL：</b></p>
+  <pre>-- 1) 设备是否存在
+SELECT id, iot_code FROM ODS_DWEQ_DM_DEVICE_D
+WHERE iot_code IN ('shaft-dev-01', 'shaft-dev-001') AND deleted = 0;
+
+-- 2) 指定设备+分区是否存在绑定
+SELECT d.iot_code, b.partition_id, b.partition_code, b.data_reference
+FROM ODS_DWEQ_DM_MONITOR_PARTITION_BIND_D b
+JOIN ODS_DWEQ_DM_DEVICE_D d ON d.id = b.device_id
+WHERE d.iot_code = 'shaft-dev-001'
+  AND b.partition_id = 10
+  AND b.deleted = 0;
+
+-- 3) 按 dataReference 精确核对
+SELECT b.*
+FROM ODS_DWEQ_DM_MONITOR_PARTITION_BIND_D b
+WHERE b.data_reference = '/TMP/shaft-dev-001_TMP_th10'
+  AND b.deleted = 0;</pre>
+  <p><b>解决：</b></p>
+  <p>1) 统一 iotCode 格式（推荐 shaft-dev-001，非 shaft-dev-01）。</p>
+  <p>2) 统一 dataReference 大小写和格式（TMP/th 位数一致）。</p>
+  <p>3) 补齐 monitor_partition_bind 绑定数据。</p>
+
+  <h3>3.2 报错：there was no typehandler found for parameter collecttime</h3>
+  <p><b>原因：</b>MyBatis 参数名/类型不一致，常见是写成 collecttime 而非 collectTime。</p>
+  <p><b>排查：</b>检查 mapper XML 占位符与 VO 字段名是否一致。</p>
+  <p><b>解决：</b>使用 <span class="note">#{collectTime,jdbcType=TIMESTAMP}</span>，批量插入写 <span class="note">#{item.collectTime,...}</span>。</p>
+
+  <h3>3.3 报错：唯一约束冲突（uk_alarm_merge_key）</h3>
+  <p><b>原因：</b>并发创建同一 merge_key 告警。</p>
+  <p><b>排查：</b></p>
+  <pre>SELECT id, merge_key, status, merge_count, updated_on
+FROM ODS_DWEQ_DM_ALARM_D
+WHERE merge_key IS NOT NULL
+ORDER BY updated_on DESC;</pre>
+  <p><b>解决：</b>保持 createOrMerge 冲突兜底逻辑开启；仅待确认主单保留 merge_key。</p>
+
+  <h3>3.4 现象：压测显示成功但数据库无数据</h3>
+  <p><b>原因：</b>仅看 HTTP 200，未校验业务 success/code；或压到了不落 raw_data 的接口。</p>
+  <p><b>排查：</b></p>
+  <p>1) 确认压测接口是 /shaft/iot/reports/measure（会落 raw_data）。</p>
+  <p>2) 检查响应体 code/success，不只看 http status。</p>
+  <p>3) 检查日志是否有业务异常。</p>
+
+  <h3>3.5 报错：不能修改聚集索引列（修改 alarm.id 类型）</h3>
+  <p><b>原因：</b>达梦限制，主键列（聚集索引）不能直接 MODIFY 类型。</p>
+  <p><b>解决：</b>采用重建表迁移法：</p>
+  <p>1) 新建新结构表（id 为 varchar）。</p>
+  <p>2) INSERT SELECT 迁移（Long 字段 TO_CHAR）。</p>
+  <p>3) 重建索引与约束。</p>
+  <p>4) 旧表备份重命名，新表改正式名。</p>
+
+  <h2>4. 联调前最小检查清单</h2>
+  <p>1) 基础表有数据：device、monitor、monitor_partition_bind、alarm_rule。</p>
+  <p>2) iotCode 与分区映射一致：设备编码位数和大小写一致。</p>
+  <p>3) 告警列表筛选参数可用：areaName、status、alarmTypeBig、startTime/endTime。</p>
+  <p>4) 规则启用状态正确（enabled=1）。</p>
+  <p>5) 先用单条 measure 请求验证，再跑压测脚本。</p>
+</body>
+</html>
