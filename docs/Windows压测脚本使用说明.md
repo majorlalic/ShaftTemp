@@ -91,12 +91,13 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows_full_e2e_test.ps1 -Sk
 #### 第 6 步 merge verify
 - 作用：连续推送同类型高温，检查是否合并到同一待确认告警。
 - 成功代表：查询列表中存在 `TEMP_THRESHOLD` 且 `mergeCount >= 2`。
-- 失败代表：未出现合并结果，可能是规则未命中、状态不在可合并范围或查询条件不匹配。
+- 失败代表：未出现合并结果，可能是规则未命中、状态不在可合并范围、或历史数据分页干扰导致未查到目标记录。
 
 #### 第 7 步 offline check（可跳过）
 - 作用：等待巡检任务执行，检查是否生成 `DEVICE_OFFLINE` 告警。
 - 成功代表：离线巡检任务生效，且告警可查询到。
 - 失败代表：巡检未执行、等待时间不足，或离线阈值/设备最近上报时间不满足触发条件。
+- 脚本行为：会优先读取 `DEVICE_OFFLINE` 规则阈值，并将等待时间自动提升到 `max(输入等待秒数, 规则阈值+60秒)`，降低误判概率。
 
 #### 第 8 步 pressure test
 - 作用：并发压测测温入口，观察吞吐、成功率、失败明细。
@@ -115,6 +116,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows_full_e2e_test.ps1 -Sk
 - `[PRESSURE_PROGRESS]`：批次进度、成功率、QPS
 - `[PRESSURE_FAIL]`：失败请求详情（截断输出）
 - `[API_ERROR]/[API_FAIL]`：接口调用异常/业务失败
+- `[DEBUG] merge retry=... thresholdCount=... maxMergeCount=...`：第 6 步合并判定细节
+- `[DEBUG] offline retry=... offlineAlarmCount=...`：第 7 步离线判定细节
 - `SUMMARY` + `[RESULT] PASS/FAIL`：最终结果（退出码 `0/1`）
 
 ## 2. 纯压测脚本
@@ -171,6 +174,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows_pressure.ps1 `
 - 请求全 200 但数据库没数据
   - 检查是否打到了错误环境（`BaseUrl` 不一致）
   - 检查数据库连接配置是否指向当前实例
+- 第 6 步 `merge_check` 失败但数据库里有合并数据
+  - 可能被历史数据和分页干扰，优先查看脚本的 `[DEBUG] merge retry=...]` 输出
+  - 若 `maxMergeCount` 已大于等于 2，可判定合并逻辑已生效
 - 压测输出太少或看起来“卡住”
   - 全链路脚本依赖 `[HEARTBEAT]` 与 `[PRESSURE_PROGRESS]`，如果都不输出，优先检查 PowerShell 执行策略和脚本是否为最新版本
 

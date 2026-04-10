@@ -60,6 +60,7 @@ $apiFail = 0
 $stagePass = 0
 $stageFail = 0
 $printedError = 0
+$offlineThresholdSecFromRule = 0
 
 function Write-Stage {
   param([string]$Title)
@@ -235,11 +236,58 @@ function Get-AlarmList {
   }
 }
 
+function Find-ThresholdAlarms {
+  param([object[]]$Alarms)
+  $result = @()
+  foreach ($a in $Alarms) {
+    if ($null -ne $a -and $a.alarmType -eq "TEMP_THRESHOLD") {
+      $result += $a
+    }
+  }
+  return $result
+}
+
+function Query-AlarmRules {
+  $url = "$BaseUrl/shaft/alarm/alarm-rules?scopeType=GLOBAL&enabled=1"
+  $resp = Invoke-JsonApi -Method "GET" -Url $url -TimeoutSec $HttpTimeoutSec
+  if (-not $resp.ok -or [string]::IsNullOrWhiteSpace($resp.bodyText)) { return @() }
+  try {
+    $obj = $resp.bodyText | ConvertFrom-Json
+    if ($null -eq $obj -or $null -eq $obj.data) { return @() }
+    if ($obj.data -is [System.Array]) { return $obj.data }
+    return @($obj.data)
+  } catch {
+    return @()
+  }
+}
+
 Write-Host "start full e2e test..."
 Write-Host ("baseUrl={0} iotCode={1} partitionCount={2} pressureTotal={3} concurrency={4}" -f $BaseUrl, $IotCode, $PartitionCount, $PressureTotal, $PressureConcurrency)
 Write-Host ("[ENDPOINT] measureUrl={0}" -f $measureUrl) -ForegroundColor DarkGray
 Write-Host ("[ENDPOINT] alarmUrl={0}" -f $alarmUrl) -ForegroundColor DarkGray
 Write-Host ("[ENDPOINT] alarmListUrl={0}" -f $alarmListUrl) -ForegroundColor DarkGray
+$rules = Query-AlarmRules
+if ($rules.Count -gt 0) {
+  $thresholdRule = $rules | Where-Object { $_.alarmType -eq "TEMP_THRESHOLD" } | Select-Object -First 1
+  $offlineRule = $rules | Where-Object { $_.alarmType -eq "DEVICE_OFFLINE" } | Select-Object -First 1
+  if ($null -ne $thresholdRule) {
+    Write-Host ("[RULE] TEMP_THRESHOLD enabled={0} threshold={1}" -f $thresholdRule.enabled, $thresholdRule.thresholdValue) -ForegroundColor DarkGray
+  } else {
+    Write-Host "[RULE] TEMP_THRESHOLD not found in enabled GLOBAL rules (will fallback to app config)." -ForegroundColor DarkYellow
+  }
+  if ($null -ne $offlineRule) {
+    Write-Host ("[RULE] DEVICE_OFFLINE enabled={0} threshold={1}" -f $offlineRule.enabled, $offlineRule.thresholdValue) -ForegroundColor DarkGray
+    try {
+      if ($null -ne $offlineRule.thresholdValue -and [double]$offlineRule.thresholdValue -gt 0) {
+        $offlineThresholdSecFromRule = [int][double]$offlineRule.thresholdValue
+      }
+    } catch {
+      $offlineThresholdSecFromRule = 0
+    }
+  } else {
+    Write-Host "[RULE] DEVICE_OFFLINE not found in enabled GLOBAL rules (will fallback to app config)." -ForegroundColor DarkYellow
+  }
+}
 
 Write-Stage "Stage 1 - baseline measure"
 $r1 = Invoke-JsonApi -Method "POST" -Url $measureUrl -Body (New-MeasureBody -PartitionId 1 -MaxTemp 60 -MinTemp 50 -AvgTemp 55) -TimeoutSec $HttpTimeoutSec
@@ -248,6 +296,14 @@ Assert-Stage -Name "baseline_measure" -Condition $r1.ok -PassMessage "measure ac
 Write-Stage "Stage 2 - threshold trigger"
 $r2 = Invoke-JsonApi -Method "POST" -Url $measureUrl -Body (New-MeasureBody -PartitionId 1 -MaxTemp 88 -MinTemp 60 -AvgTemp 73) -TimeoutSec $HttpTimeoutSec
 Assert-Stage -Name "temp_threshold_push" -Condition $r2.ok -PassMessage "high temp pushed" -FailMessage "high temp failed"
+Start-Sleep -Seconds 1
+$afterStage2 = Get-AlarmList -AlarmTypeBig "0" -PageNo 1 -PageSize 200
+$stage2Threshold = Find-ThresholdAlarms -Alarms $afterStage2
+if ($stage2Threshold.Count -gt 0) {
+  Write-Host ("[DEBUG] stage2 threshold alarms found: {0}" -f $stage2Threshold.Count) -ForegroundColor DarkGray
+} else {
+  Write-Host "[DEBUG] stage2 no TEMP_THRESHOLD found. check partition bind/rule config." -ForegroundColor Yellow
+}
 
 Write-Stage "Stage 3 - temp diff trigger"
 $r3 = Invoke-JsonApi -Method "POST" -Url $measureUrl -Body (New-MeasureBody -PartitionId 2 -MaxTemp 92 -MinTemp 60 -AvgTemp 76) -TimeoutSec $HttpTimeoutSec
@@ -270,33 +326,61 @@ for ($i = 0; $i -lt 4; $i++) {
     Write-Host ("[WARN] merge push failed idx={0}" -f $i) -ForegroundColor Yellow
   }
 }
-Start-Sleep -Seconds 2
-$alarmList = Get-AlarmList -AlarmTypeBig "0" -PageNo 1 -PageSize 200
+Start-Sleep -Seconds 1
 $mergeOk = $false
-foreach ($a in $alarmList) {
-  if ($a.alarmType -eq "TEMP_THRESHOLD" -and $a.mergeCount -ge 2) {
-    $mergeOk = $true
-    break
+$maxMergeCount = 0
+for ($retry = 1; $retry -le 6; $retry++) {
+  $alarmList = Get-AlarmList -AlarmTypeBig "0" -PageNo 1 -PageSize 200
+  $thresholdAlarms = Find-ThresholdAlarms -Alarms $alarmList
+  foreach ($a in $thresholdAlarms) {
+    $mc = 0
+    try { $mc = [int]$a.mergeCount } catch { $mc = 0 }
+    if ($mc -gt $maxMergeCount) { $maxMergeCount = $mc }
+    if ($mc -ge 2) {
+      $mergeOk = $true
+      break
+    }
   }
+  Write-Host ("[DEBUG] merge retry={0}/6 thresholdCount={1} maxMergeCount={2}" -f $retry, $thresholdAlarms.Count, $maxMergeCount) -ForegroundColor DarkGray
+  if ($mergeOk) { break }
+  Start-Sleep -Seconds 2
 }
-Assert-Stage -Name "merge_check" -Condition $mergeOk -PassMessage "mergeCount >= 2 found" -FailMessage "merged alarm not found"
+if (-not $mergeOk) {
+  Write-Host "[DEBUG] merge_check failed. possible reasons: no threshold alarm generated / alarm moved out of pending / db unique merge key missing." -ForegroundColor Yellow
+}
+Assert-Stage -Name "merge_check" -Condition $mergeOk -PassMessage "mergeCount >= 2 found" -FailMessage ("merged alarm not found (maxMergeCount=" + $maxMergeCount + ")")
 
 if (-not $SkipOfflineTest) {
   Write-Stage "Stage 7 - offline check"
-  Write-Host ("waiting {0}s for inspection..." -f $OfflineWaitSec) -ForegroundColor Yellow
-  for ($t = 1; $t -le $OfflineWaitSec; $t++) {
+  $effectiveOfflineWaitSec = $OfflineWaitSec
+  if ($offlineThresholdSecFromRule -gt 0) {
+    $minWait = $offlineThresholdSecFromRule + 60
+    if ($effectiveOfflineWaitSec -lt $minWait) {
+      $effectiveOfflineWaitSec = $minWait
+    }
+  }
+  Write-Host ("waiting {0}s for inspection... (ruleThreshold={1}s, inputWait={2}s)" -f $effectiveOfflineWaitSec, $offlineThresholdSecFromRule, $OfflineWaitSec) -ForegroundColor Yellow
+  for ($t = 1; $t -le $effectiveOfflineWaitSec; $t++) {
     if (($t % 5) -eq 0) {
-      Write-Host ("offline-wait: {0}/{1}s" -f $t, $OfflineWaitSec) -ForegroundColor DarkYellow
+      Write-Host ("offline-wait: {0}/{1}s" -f $t, $effectiveOfflineWaitSec) -ForegroundColor DarkYellow
     }
     Start-Sleep -Seconds 1
   }
-  $offList = Get-AlarmList -AlarmTypeBig "0" -PageNo 1 -PageSize 200
   $offlineOk = $false
-  foreach ($a in $offList) {
-    if ($a.alarmType -eq "DEVICE_OFFLINE") {
+  for ($retry = 1; $retry -le 6; $retry++) {
+    $offList = Get-AlarmList -AlarmTypeBig "0" -PageNo 1 -PageSize 200
+    $offCount = 0
+    foreach ($a in $offList) {
+      if ($a.alarmType -eq "DEVICE_OFFLINE") {
+        $offCount++
+      }
+    }
+    Write-Host ("[DEBUG] offline retry={0}/6 offlineAlarmCount={1}" -f $retry, $offCount) -ForegroundColor DarkGray
+    if ($offCount -gt 0) {
       $offlineOk = $true
       break
     }
+    Start-Sleep -Seconds 5
   }
   Assert-Stage -Name "offline_check" -Condition $offlineOk -PassMessage "offline alarm found" -FailMessage "offline alarm not found"
 }
