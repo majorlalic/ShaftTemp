@@ -68,4 +68,80 @@
         ]]>
     </update>
 
+    <select id="countMonitorAlarmTotal" parameterType="map" resultType="java.lang.Long">
+        <![CDATA[
+        select count(*) from ODS_DWEQ_DM_ALARM_D
+        where (deleted is null or deleted = 0)
+          and alarm_type not in ('DEVICE_OFFLINE', 'PARTITION_FAULT')
+        ]]>
+    </select>
+
+    <select id="countMonitorAlarmTotalByAreaTree" parameterType="map" resultType="java.lang.Long">
+        <![CDATA[
+        select count(*)
+        from ODS_DWEQ_DM_ALARM_D al
+        join ODS_DWEQ_DM_MONITOR_D m on m.id = to_number(al.monitor_id)
+        join ODS_DWEQ_DM_AREA_D a on a.id = m.area_id
+        where (al.deleted is null or al.deleted = 0)
+          and (m.deleted is null or m.deleted = 0)
+          and (a.deleted is null or a.deleted = 0)
+          and al.alarm_type not in ('DEVICE_OFFLINE', 'PARTITION_FAULT')
+          and (a.id = #{areaTreeId} or instr('/' || nvl(a.path_ids, '') || '/', '/' || #{areaTreeId} || '/') > 0)
+        ]]>
+    </select>
+
+    <select id="countTodayNewAlarm" parameterType="map" resultType="java.lang.Long">
+        <![CDATA[
+        select count(*) from ODS_DWEQ_DM_ALARM_D
+        where (deleted is null or deleted = 0)
+          and alarm_type not in ('DEVICE_OFFLINE', 'PARTITION_FAULT')
+          and first_alarm_time >= #{startTime}
+          and first_alarm_time < #{endTime}
+        ]]>
+    </select>
+
+    <select id="countTodayNewAlarmByAreaTree" parameterType="map" resultType="java.lang.Long">
+        <![CDATA[
+        select count(*)
+        from ODS_DWEQ_DM_ALARM_D al
+        join ODS_DWEQ_DM_MONITOR_D m on m.id = to_number(al.monitor_id)
+        join ODS_DWEQ_DM_AREA_D a on a.id = m.area_id
+        where (al.deleted is null or al.deleted = 0)
+          and (m.deleted is null or m.deleted = 0)
+          and (a.deleted is null or a.deleted = 0)
+          and al.alarm_type not in ('DEVICE_OFFLINE', 'PARTITION_FAULT')
+          and al.first_alarm_time >= #{startTime}
+          and al.first_alarm_time < #{endTime}
+          and (a.id = #{areaTreeId} or instr('/' || nvl(a.path_ids, '') || '/', '/' || #{areaTreeId} || '/') > 0)
+        ]]>
+    </select>
+
+    <select id="countTodayRecoveredAlarm" parameterType="map" resultType="java.lang.Long">
+        <![CDATA[
+        select count(*) from ODS_DWEQ_DM_ALARM_D
+        where (deleted is null or deleted = 0)
+          and alarm_type not in ('DEVICE_OFFLINE', 'PARTITION_FAULT')
+          and status = 5
+          and updated_on >= #{startTime}
+          and updated_on < #{endTime}
+        ]]>
+    </select>
+
+    <select id="countTodayRecoveredAlarmByAreaTree" parameterType="map" resultType="java.lang.Long">
+        <![CDATA[
+        select count(*)
+        from ODS_DWEQ_DM_ALARM_D al
+        join ODS_DWEQ_DM_MONITOR_D m on m.id = to_number(al.monitor_id)
+        join ODS_DWEQ_DM_AREA_D a on a.id = m.area_id
+        where (al.deleted is null or al.deleted = 0)
+          and (m.deleted is null or m.deleted = 0)
+          and (a.deleted is null or a.deleted = 0)
+          and al.alarm_type not in ('DEVICE_OFFLINE', 'PARTITION_FAULT')
+          and al.status = 5
+          and al.updated_on >= #{startTime}
+          and al.updated_on < #{endTime}
+          and (a.id = #{areaTreeId} or instr('/' || nvl(a.path_ids, '') || '/', '/' || #{areaTreeId} || '/') > 0)
+        ]]>
+    </select>
+
 </mapper>

@@ -2,6 +2,7 @@ package com.example.demo.dao;
 
 import com.example.demo.entity.AreaEntity;
 import java.util.List;
+import java.util.Optional;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
@@ -11,6 +12,9 @@ public interface AreaRepository {
 
     @Select("select * from ODS_DWEQ_DM_AREA_D where deleted is null or deleted = 0 order by sort asc, id asc")
     List<AreaEntity> findAllActive();
+
+    @Select("select * from ODS_DWEQ_DM_AREA_D where id = #{id} and (deleted is null or deleted = 0)")
+    Optional<AreaEntity> findActiveById(Long id);
 
     @Update({
         "MERGE INTO ODS_DWEQ_DM_AREA_D t",

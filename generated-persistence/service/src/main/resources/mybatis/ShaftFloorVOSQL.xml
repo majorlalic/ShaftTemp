@@ -20,4 +20,16 @@
         ]]>
     </select>
 
+    <select id="findAllActiveByAreaTreeId" parameterType="map" resultType="com.csg.dgri.szsiom.sysmanage.model.ShaftFloorVO">
+        <![CDATA[
+        select f.*
+        from ODS_DWEQ_DM_SHAFT_FLOOR_D f
+        join ODS_DWEQ_DM_AREA_D a on a.id = f.area_id
+        where (f.deleted is null or f.deleted = 0)
+          and (a.deleted is null or a.deleted = 0)
+          and (a.id = #{areaTreeId} or instr('/' || nvl(a.path_ids, '') || '/', '/' || #{areaTreeId} || '/') > 0)
+        order by f.sort asc, f.id asc
+        ]]>
+    </select>
+
 </mapper>

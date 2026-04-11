@@ -29,8 +29,13 @@ public class MonitorController {
     }
 
     @GetMapping("/api/monitor/statistics")
-    public RestObject<Map<String, Object>> statistics() {
-        return RestObject.newOk(monitorDocService.statistics());
+    public RestObject<Map<String, Object>> statistics(@RequestParam(required = false) Long areaTreeId) {
+        return RestObject.newOk(monitorDocService.statistics(areaTreeId));
+    }
+
+    @GetMapping("/api/monitor/list")
+    public RestObject<Map<String, Object>> list(@RequestParam(required = false) Long areaTreeId) {
+        return RestObject.newOk(monitorDocService.listByAreaTree(areaTreeId));
     }
 
     @GetMapping("/api/raw-data")

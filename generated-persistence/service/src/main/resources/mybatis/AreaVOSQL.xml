@@ -8,6 +8,12 @@
         ]]>
     </select>
 
+    <select id="findActiveById" parameterType="map" resultType="com.csg.dgri.szsiom.sysmanage.model.AreaVO">
+        <![CDATA[
+        select * from ODS_DWEQ_DM_AREA_D where id = #{id} and (deleted is null or deleted = 0)
+        ]]>
+    </select>
+
     <update id="upsert" parameterType="com.csg.dgri.szsiom.sysmanage.model.AreaVO">
         <![CDATA[
         MERGE INTO ODS_DWEQ_DM_AREA_D t

@@ -240,7 +240,7 @@ function Find-ThresholdAlarms {
   param([object[]]$Alarms)
   $result = @()
   foreach ($a in $Alarms) {
-    if ($null -ne $a -and $a.alarmType -eq "TEMP_THRESHOLD") {
+    if ($null -ne $a -and $a.alarmType -eq "TEMP_THRESHOLD" -and $a.statusCode -eq 0) {
       $result += $a
     }
   }
