@@ -82,14 +82,15 @@ public interface AlarmRepository {
     int updateById(AlarmEntity entity);
 
     @Select({
-        "select count(*) from ODS_DWEQ_DM_ALARM_D",
+        "select count(distinct monitor_id) from ODS_DWEQ_DM_ALARM_D",
         "where (deleted is null or deleted = 0)",
-        "and alarm_type not in ('DEVICE_OFFLINE', 'PARTITION_FAULT')"
+        "and alarm_type not in ('DEVICE_OFFLINE', 'PARTITION_FAULT')",
+        "and status in (0,1,2,3,4)"
     })
     Long countMonitorAlarmTotal();
 
     @Select({
-        "select count(*)",
+        "select count(distinct al.monitor_id)",
         "from ODS_DWEQ_DM_ALARM_D al",
         "join ODS_DWEQ_DM_MONITOR_D m on m.id = to_number(al.monitor_id)",
         "join ODS_DWEQ_DM_AREA_D a on a.id = m.area_id",
@@ -97,6 +98,7 @@ public interface AlarmRepository {
         "and (m.deleted is null or m.deleted = 0)",
         "and (a.deleted is null or a.deleted = 0)",
         "and al.alarm_type not in ('DEVICE_OFFLINE', 'PARTITION_FAULT')",
+        "and al.status in (0,1,2,3,4)",
         "and (a.id = #{areaTreeId} or instr('/' || nvl(a.path_ids, '') || '/', '/' || #{areaTreeId} || '/') > 0)"
     })
     Long countMonitorAlarmTotalByAreaTree(@Param("areaTreeId") Long areaTreeId);
