@@ -2,6 +2,7 @@ package com.example.demo.service;
 
 import com.example.demo.service.AlarmService;
 import com.example.demo.service.AlarmStatus;
+import com.example.demo.dao.EventRepository;
 import com.example.demo.vo.AlarmHandleRequest;
 import com.csg.dgri.szsiom.sysmanage.model.AlarmVO;
 import com.csg.dgri.szsiom.sysmanage.model.DeviceVO;
@@ -22,7 +23,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,6 +40,7 @@ public class TerminalDocService {
     private final DeviceAppService<?> deviceRepository;
     private final AlarmAppService<?> alarmRepository;
     private final EventAppService<?> eventRepository;
+    private final EventRepository eventQueryRepository;
     private final AlarmService alarmService;
     private final MonitorAppService<?> monitorRepository;
     private final ShaftFloorAppService<?> shaftFloorRepository;
@@ -50,6 +51,7 @@ public class TerminalDocService {
         DeviceAppService<?> deviceRepository,
         AlarmAppService<?> alarmRepository,
         EventAppService<?> eventRepository,
+        EventRepository eventQueryRepository,
         AlarmService alarmService,
         MonitorAppService<?> monitorRepository,
         ShaftFloorAppService<?> shaftFloorRepository,
@@ -59,6 +61,7 @@ public class TerminalDocService {
         this.deviceRepository = deviceRepository;
         this.alarmRepository = alarmRepository;
         this.eventRepository = eventRepository;
+        this.eventQueryRepository = eventQueryRepository;
         this.alarmService = alarmService;
         this.monitorRepository = monitorRepository;
         this.shaftFloorRepository = shaftFloorRepository;
@@ -99,13 +102,27 @@ public class TerminalDocService {
         return data;
     }
 
-    public PagePayload<Map<String, Object>> alarmList(Integer pageNum, Integer pageSize, String status) {
+    public PagePayload<Map<String, Object>> alarmList(
+        Integer pageNum,
+        Integer pageSize,
+        String status,
+        String orgName,
+        String deviceType,
+        LocalDateTime startTime,
+        LocalDateTime endTime
+    ) {
         Integer statusCode = parseStatus(status);
-        List<Map<String, Object>> rows = terminalAlarms(statusCode, null).stream()
-            .sorted(Comparator.comparing(AlarmVO::getLastAlarmTime, Comparator.nullsLast(Comparator.reverseOrder())))
-            .map(this::toAlarmRow)
+        int safePageNum = pageNum == null || pageNum.intValue() < 1 ? 1 : pageNum.intValue();
+        int safePageSize = pageSize == null || pageSize.intValue() < 1 ? 10 : pageSize.intValue();
+        int startRow = (safePageNum - 1) * safePageSize + 1;
+        int endRow = startRow + safePageSize - 1;
+        long total = eventQueryRepository.countTerminalAlarmEventRows(statusCode, orgName, deviceType, startTime, endTime);
+        List<Map<String, Object>> rows = eventQueryRepository
+            .findTerminalAlarmEventPage(statusCode, orgName, deviceType, startTime, endTime, startRow, endRow)
+            .stream()
+            .map(this::toTerminalAlarmEventRow)
             .collect(Collectors.toList());
-        return paginate(rows, pageNum, pageSize);
+        return new PagePayload<Map<String, Object>>(total, rows, safePageNum);
     }
 
     public Map<String, Object> alarmDetail(Long id) {
@@ -169,8 +186,11 @@ public class TerminalDocService {
         return paginate(rows, pageNum, pageSize);
     }
 
-    public Map<String, Object> ledgerStat() {
-        List<DeviceVO> devices = deviceRepository.findAllActive();
+    public Map<String, Object> ledgerStat(LocalDateTime startTime, LocalDateTime endTime) {
+        List<DeviceVO> devices = deviceRepository.findAllActive().stream()
+            .filter(device -> startTime == null || device.getCreatedOn() == null || !device.getCreatedOn().isBefore(startTime))
+            .filter(device -> endTime == null || device.getCreatedOn() == null || !device.getCreatedOn().isAfter(endTime))
+            .collect(Collectors.toList());
         Map<String, Long> deviceTypeCount = devices.stream()
             .collect(Collectors.groupingBy(device -> device.getDeviceType() == null ? "UNKNOWN" : device.getDeviceType(), LinkedHashMap::new, Collectors.counting()));
         Map<String, Long> statusCount = devices.stream()
@@ -179,6 +199,8 @@ public class TerminalDocService {
         data.put("total", devices.size());
         data.put("deviceTypeCount", deviceTypeCount);
         data.put("assetStatusCount", statusCount);
+        data.put("startTime", startTime);
+        data.put("endTime", endTime);
         return data;
     }
 
@@ -309,6 +331,16 @@ public class TerminalDocService {
         return Integer.valueOf(status);
     }
 
+    private Integer asInteger(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Number) {
+            return ((Number) value).intValue();
+        }
+        return Integer.valueOf(String.valueOf(value));
+    }
+
     private Map<String, Object> toAlarmRow(AlarmVO alarm) {
         DeviceVO device = alarm.getDeviceId() == null ? null : deviceRepository.findActiveById(alarm.getDeviceId()).orElse(null);
         Map<String, Object> row = new LinkedHashMap<String, Object>();
@@ -322,6 +354,50 @@ public class TerminalDocService {
         row.put("alarmTime", alarm.getLastAlarmTime());
         row.put("alarmContent", alarm.getContent());
         row.put("alarmCount", alarm.getEventCount());
+        return row;
+    }
+
+    private Map<String, Object> toAlarmEventRow(AlarmVO alarm, DeviceVO device, EventVO event) {
+        Map<String, Object> row = new LinkedHashMap<String, Object>();
+        row.put("alarmId", alarm.getId());
+        row.put("eventId", event == null ? null : event.getId());
+        row.put("deviceId", alarm.getDeviceId());
+        row.put("deviceName", device == null ? null : device.getName());
+        row.put("deviceType", device == null ? null : device.getDeviceType());
+        row.put("alarmType", alarm.getAlarmType());
+        row.put("statusCode", alarm.getStatus());
+        row.put("statusName", AlarmStatus.nameOf(alarm.getStatus()));
+        row.put("firstAlarmTime", alarm.getFirstAlarmTime());
+        row.put("lastAlarmTime", alarm.getLastAlarmTime());
+        row.put("alarmCount", alarm.getEventCount());
+        row.put("eventNo", event == null ? null : event.getEventNo());
+        row.put("eventLabel", event == null || event.getEventNo() == null ? null : ("第" + event.getEventNo() + "次告警"));
+        row.put("eventTime", event == null ? null : event.getEventTime());
+        row.put("eventType", event == null ? null : event.getEventType());
+        row.put("alarmContent", event == null || event.getContent() == null ? alarm.getContent() : event.getContent());
+        return row;
+    }
+
+    private Map<String, Object> toTerminalAlarmEventRow(Map<String, Object> source) {
+        Map<String, Object> row = new LinkedHashMap<String, Object>();
+        row.put("alarmId", source.get("alarm_id"));
+        row.put("eventId", source.get("event_id"));
+        row.put("deviceId", source.get("device_id"));
+        row.put("deviceName", source.get("device_name"));
+        row.put("orgName", source.get("org_name"));
+        row.put("deviceType", source.get("device_type"));
+        row.put("alarmType", source.get("alarm_type"));
+        Integer statusCode = asInteger(source.get("status_code"));
+        row.put("statusCode", statusCode);
+        row.put("statusName", AlarmStatus.nameOf(statusCode));
+        row.put("firstAlarmTime", source.get("first_alarm_time"));
+        row.put("lastAlarmTime", source.get("last_alarm_time"));
+        row.put("alarmCount", source.get("alarm_count"));
+        row.put("eventNo", source.get("event_no"));
+        row.put("eventLabel", source.get("event_no") == null ? null : ("第" + source.get("event_no") + "次告警"));
+        row.put("eventTime", source.get("event_time"));
+        row.put("eventType", source.get("event_type"));
+        row.put("alarmContent", source.get("alarm_content"));
         return row;
     }
 

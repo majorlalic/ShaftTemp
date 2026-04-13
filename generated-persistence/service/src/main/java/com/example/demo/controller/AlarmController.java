@@ -102,10 +102,14 @@ public class AlarmController {
         @RequestParam(required = false) Integer pageNo,
         @RequestParam(required = false) Integer pageNum,
         @RequestParam(required = false) Integer pageSize,
-        @RequestParam(required = false) String status
+        @RequestParam(required = false) String status,
+        @RequestParam(required = false) String orgName,
+        @RequestParam(required = false) String deviceType,
+        @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startTime,
+        @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime
     ) {
         Integer resolvedPageNo = pageNo == null ? pageNum : pageNo;
-        return RestObject.newOk(terminalDocService.alarmList(resolvedPageNo, pageSize, status));
+        return RestObject.newOk(terminalDocService.alarmList(resolvedPageNo, pageSize, status, orgName, deviceType, startTime, endTime));
     }
 
     @PutMapping("/api/terminal/alarm/handle")

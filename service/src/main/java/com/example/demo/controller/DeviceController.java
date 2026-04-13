@@ -57,8 +57,11 @@ public class DeviceController {
     }
 
     @GetMapping("/stat")
-    public RestObject<Map<String, Object>> ledgerStat() {
-        return RestObject.newOk(terminalDocService.ledgerStat());
+    public RestObject<Map<String, Object>> ledgerStat(
+        @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startTime,
+        @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime
+    ) {
+        return RestObject.newOk(terminalDocService.ledgerStat(startTime, endTime));
     }
 
     @GetMapping("/access/list")
