@@ -63,7 +63,7 @@ for ($batch = 0; $batch -lt $batchCount; $batch++) {
       try {
         $part = ($index % $partitionCount) + 1
         $partStr = "{0:D2}" -f $part
-        $ts = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss")
+        $ts = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
         $topicPrefix = "/TMP/$iotCode" + "_TMP_th$partStr"
         $ref = "/TMP/$iotCode" + "_TMP_th$partStr"
 

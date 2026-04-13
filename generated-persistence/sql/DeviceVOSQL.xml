@@ -26,6 +26,50 @@
         ]]>
     </select>
 
+    <select id="countAccessListRows" parameterType="map" resultType="long">
+        select count(*)
+        from ODS_DWEQ_DM_DEVICE_D d
+        where (d.deleted is null or d.deleted = 0)
+        <if test="status != null and status != ''">
+          and d.asset_status = #{status}
+        </if>
+    </select>
+
+    <select id="findAccessListPage" parameterType="map" resultType="map">
+        select * from (
+          select t.*, row_number() over(order by t.updated_on desc nulls last, t.id desc) rn
+          from (
+            select
+              d.id, d.iot_code, d.name, d.device_type, d.model, d.manufacturer, d.factory_date, d.run_date,
+              d.asset_status, d.area_id, d.org_id, d.online_status, d.last_report_time, d.last_offline_time,
+              d.remark, d.created_on, d.updated_on,
+              (
+                select listagg(to_char(m.id), ',') within group(order by m.id)
+                from ODS_DWEQ_DM_MONITOR_DEVICE_BIND_D b
+                join ODS_DWEQ_DM_MONITOR_D m on m.id = b.monitor_id
+                where b.device_id = d.id
+                  and (b.deleted is null or b.deleted = 0)
+                  and (m.deleted is null or m.deleted = 0)
+              ) as monitor_ids,
+              (
+                select listagg(m.name, ',') within group(order by m.id)
+                from ODS_DWEQ_DM_MONITOR_DEVICE_BIND_D b
+                join ODS_DWEQ_DM_MONITOR_D m on m.id = b.monitor_id
+                where b.device_id = d.id
+                  and (b.deleted is null or b.deleted = 0)
+                  and (m.deleted is null or m.deleted = 0)
+              ) as monitor_names
+            from ODS_DWEQ_DM_DEVICE_D d
+            where (d.deleted is null or d.deleted = 0)
+            <if test="status != null and status != ''">
+              and d.asset_status = #{status}
+            </if>
+          ) t
+        ) x
+        where x.rn <![CDATA[>=]]> #{startRow} and x.rn <![CDATA[<=]]> #{endRow}
+        order by x.rn
+    </select>
+
     <update id="updateById" parameterType="com.csg.dgri.szsiom.sysmanage.model.DeviceVO">
         <![CDATA[
         update ODS_DWEQ_DM_DEVICE_D set

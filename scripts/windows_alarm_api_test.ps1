@@ -30,7 +30,7 @@ Write-Host "baseUrl=$BaseUrl iotCode=$IotCode total=$TotalMeasure partitionCount
 for ($i = 1; $i -le $TotalMeasure; $i++) {
   $part = ($i % $PartitionCount) + 1
   $partStr = "{0:D2}" -f $part
-  $ts = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss")
+  $ts = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
   $ref = "/TMP/$IotCode" + "_TMP_th$partStr"
   $topic = "$ref/Measure"
 

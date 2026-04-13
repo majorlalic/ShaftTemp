@@ -10,9 +10,12 @@
 
 用途：
 - 模拟实时测温上报、告警上报
+- 覆盖设备录入与接入状态流转（`待接入 -> 已接入`）
 - 触发定温/差温/升温速率规则
 - 验证告警合并（`mergeCount`）
 - 验证离线巡检告警（可跳过）
+- 验证终端告警筛选参数（`status/deviceType/startTime/endTime`）
+- 验证设备接入列表返回字段（`onlineStatus`、`monitorIds`、`monitorNames`）
 - 执行并发压测并持续打印进度
 
 ### 1.1 参数
@@ -52,14 +55,15 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows_full_e2e_test.ps1 -Sk
 ### 1.3 阶段说明
 
 1. baseline measure  
-2. threshold trigger  
-3. temp diff trigger  
-4. rise rate trigger  
-5. alarm raw push  
-6. merge verify  
-7. offline check（可跳过）  
-8. pressure test  
-9. filter query checks
+2. device create/access flow  
+3. threshold trigger  
+4. temp diff trigger  
+5. rise rate trigger  
+6. alarm raw push  
+7. merge verify  
+8. offline check（可跳过）  
+9. pressure test  
+10. filter query checks
 
 ### 1.4 每一步的作用与判定
 
@@ -68,44 +72,49 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows_full_e2e_test.ps1 -Sk
 - 成功代表：`/shaft/iot/reports/measure` 可正常接收并返回业务成功。
 - 失败代表：实时入口不可用或请求体/主数据映射存在问题。
 
-#### 第 2 步 threshold trigger
+#### 第 2 步 device create/access flow
+- 作用：调用设备录入接口创建设备（默认状态应为`待接入`），再调用接入确认接口将状态改为`已接入`，并检查接入列表字段完整性。
+- 成功代表：设备状态流转正确，且接入列表包含 `onlineStatus`、`monitorIds`、`monitorNames` 字段。
+- 失败代表：设备接口不可用、状态值不一致、或接入列表字段返回缺失。
+
+#### 第 3 步 threshold trigger
 - 作用：发送高温数据，触发定温告警规则。
 - 成功代表：高温消息已被接收，后续可用于生成/合并告警。
 - 失败代表：高温消息未被服务接受，或请求参数不符合接口要求。
 
-#### 第 3 步 temp diff trigger
+#### 第 4 步 temp diff trigger
 - 作用：发送较大温差数据，触发差温规则。
 - 成功代表：差温触发数据已进入链路。
 - 失败代表：接口不可用或数据字段异常。
 
-#### 第 4 步 rise rate trigger
+#### 第 5 步 rise rate trigger
 - 作用：先发低值再发高值，构造升温速率场景。
 - 成功代表：两条数据均接收成功，可触发速率规则判定。
 - 失败代表：其中任一请求失败，速率场景无效。
 
-#### 第 5 步 alarm raw push
+#### 第 6 步 alarm raw push
 - 作用：调用 `/shaft/iot/reports/alarm`，验证告警原始上报入口。
 - 成功代表：原始告警报文可入库（`alarm_raw` 路径）。
 - 失败代表：告警上报入口不可用或请求字段异常。
 
-#### 第 6 步 merge verify
+#### 第 7 步 merge verify
 - 作用：连续推送同类型高温，检查是否合并到同一待确认告警。
 - 成功代表：查询列表中存在 `TEMP_THRESHOLD` 且 `mergeCount >= 2`。
 - 失败代表：未出现合并结果，可能是规则未命中、状态不在可合并范围、或历史数据分页干扰导致未查到目标记录。
 
-#### 第 7 步 offline check（可跳过）
+#### 第 8 步 offline check（可跳过）
 - 作用：等待巡检任务执行，检查是否生成 `DEVICE_OFFLINE` 告警。
 - 成功代表：离线巡检任务生效，且告警可查询到。
 - 失败代表：巡检未执行、等待时间不足，或离线阈值/设备最近上报时间不满足触发条件。
 - 脚本行为：会优先读取 `DEVICE_OFFLINE` 规则阈值，并将等待时间自动提升到 `max(输入等待秒数, 规则阈值+60秒)`，降低误判概率。
 
-#### 第 8 步 pressure test
+#### 第 9 步 pressure test
 - 作用：并发压测测温入口，观察吞吐、成功率、失败明细。
 - 成功代表：`pressureFail=0`，压测请求全部成功。
 - 失败代表：存在失败请求（会打印 `[PRESSURE_FAIL]` 便于排查）。
 
-#### 第 9 步 filter query checks
-- 作用：验证告警分页查询筛选参数可用（`status`、`alarmTypeBig`、`areaName`）。
+#### 第 10 步 filter query checks
+- 作用：验证告警分页查询筛选参数可用（`status`、`alarmTypeBig`、`areaName`），以及终端告警筛选参数（`status`、`deviceType`、`startTime`、`endTime`）。
 - 成功代表：筛选查询接口可正常返回。
 - 失败代表：查询接口异常、参数映射不一致或服务端 SQL/分页逻辑异常。
 
@@ -160,6 +169,16 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows_pressure.ps1 `
 - 主数据完整（`device`、`monitor`、`shaft_floor`、`monitor_device_bind` 有正确映射）
 - 设备分区编码与绑定一致，否则会出现：
   - `partition binding not found for partitionCode=...`
+
+## 3.1 时间格式约定（已更新）
+
+- 所有 Windows 测试脚本上报时间统一使用：`yyyy-MM-dd HH:mm:ss`
+- 不再使用：`yyyy-MM-ddTHH:mm:ss`
+- 影响脚本：
+  - `scripts/windows_full_e2e_test.ps1`
+  - `scripts/windows_alarm_api_test.ps1`
+  - `scripts/windows_pressure.ps1`
+- 如果你手工传参（如 `startTime/endTime`），也建议使用同一格式，避免解析差异。
 
 ## 4. 常见报错排查
 

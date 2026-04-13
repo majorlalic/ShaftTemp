@@ -2,9 +2,11 @@ package com.example.demo.dao;
 
 import com.example.demo.entity.DeviceEntity;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
@@ -22,6 +24,60 @@ public interface DeviceRepository {
 
     @Select("select * from ODS_DWEQ_DM_DEVICE_D where asset_status = #{assetStatus} and (deleted is null or deleted = 0)")
     List<DeviceEntity> findAllActiveByAssetStatus(String assetStatus);
+
+    @Select({
+        "<script>",
+        "select count(*)",
+        "from ODS_DWEQ_DM_DEVICE_D d",
+        "where (d.deleted is null or d.deleted = 0)",
+        "<if test='status != null and status != \"\"'>",
+        "and d.asset_status = #{status}",
+        "</if>",
+        "</script>"
+    })
+    Long countAccessListRows(@Param("status") String status);
+
+    @Select({
+        "<script>",
+        "select * from (",
+        "  select t.*, row_number() over(order by t.updated_on desc nulls last, t.id desc) rn",
+        "  from (",
+        "    select",
+        "      d.id, d.iot_code, d.name, d.device_type, d.model, d.manufacturer, d.factory_date, d.run_date,",
+        "      d.asset_status, d.area_id, d.org_id, d.online_status, d.last_report_time, d.last_offline_time,",
+        "      d.remark, d.created_on, d.updated_on,",
+        "      (",
+        "        select listagg(to_char(m.id), ',') within group(order by m.id)",
+        "        from ODS_DWEQ_DM_MONITOR_DEVICE_BIND_D b",
+        "        join ODS_DWEQ_DM_MONITOR_D m on m.id = b.monitor_id",
+        "        where b.device_id = d.id",
+        "          and (b.deleted is null or b.deleted = 0)",
+        "          and (m.deleted is null or m.deleted = 0)",
+        "      ) as monitor_ids,",
+        "      (",
+        "        select listagg(m.name, ',') within group(order by m.id)",
+        "        from ODS_DWEQ_DM_MONITOR_DEVICE_BIND_D b",
+        "        join ODS_DWEQ_DM_MONITOR_D m on m.id = b.monitor_id",
+        "        where b.device_id = d.id",
+        "          and (b.deleted is null or b.deleted = 0)",
+        "          and (m.deleted is null or m.deleted = 0)",
+        "      ) as monitor_names",
+        "    from ODS_DWEQ_DM_DEVICE_D d",
+        "    where (d.deleted is null or d.deleted = 0)",
+        "    <if test='status != null and status != \"\"'>",
+        "    and d.asset_status = #{status}",
+        "    </if>",
+        "  ) t",
+        ") x",
+        "where x.rn &gt;= #{startRow} and x.rn &lt;= #{endRow}",
+        "order by x.rn",
+        "</script>"
+    })
+    List<Map<String, Object>> findAccessListPage(
+        @Param("status") String status,
+        @Param("startRow") Integer startRow,
+        @Param("endRow") Integer endRow
+    );
 
     @Insert({
         "insert into ODS_DWEQ_DM_DEVICE_D (",

@@ -2,6 +2,7 @@ package com.example.demo.service;
 
 import com.example.demo.service.AlarmService;
 import com.example.demo.service.AlarmStatus;
+import com.example.demo.dao.DeviceRepository;
 import com.example.demo.dao.EventRepository;
 import com.example.demo.vo.AlarmHandleRequest;
 import com.csg.dgri.szsiom.sysmanage.model.AlarmVO;
@@ -38,6 +39,7 @@ public class TerminalDocService {
         .collect(Collectors.toSet());
 
     private final DeviceAppService<?> deviceRepository;
+    private final DeviceRepository deviceQueryRepository;
     private final AlarmAppService<?> alarmRepository;
     private final EventAppService<?> eventRepository;
     private final EventRepository eventQueryRepository;
@@ -49,6 +51,7 @@ public class TerminalDocService {
 
     public TerminalDocService(
         DeviceAppService<?> deviceRepository,
+        DeviceRepository deviceQueryRepository,
         AlarmAppService<?> alarmRepository,
         EventAppService<?> eventRepository,
         EventRepository eventQueryRepository,
@@ -59,6 +62,7 @@ public class TerminalDocService {
         IdGenerator idGenerator
     ) {
         this.deviceRepository = deviceRepository;
+        this.deviceQueryRepository = deviceQueryRepository;
         this.alarmRepository = alarmRepository;
         this.eventRepository = eventRepository;
         this.eventQueryRepository = eventQueryRepository;
@@ -205,11 +209,18 @@ public class TerminalDocService {
     }
 
     public PagePayload<Map<String, Object>> accessList(Integer pageNum, Integer pageSize, String status) {
-        List<Map<String, Object>> rows = deviceRepository.findAllActive().stream()
-            .filter(device -> status == null || status.trim().isEmpty() || status.equals(device.getAssetStatus()))
+        int safePageNum = pageNum == null || pageNum.intValue() < 1 ? 1 : pageNum.intValue();
+        int safePageSize = pageSize == null || pageSize.intValue() < 1 ? 10 : pageSize.intValue();
+        int startRow = (safePageNum - 1) * safePageSize + 1;
+        int endRow = safePageNum * safePageSize;
+        Long total = deviceQueryRepository.countAccessListRows(status);
+        if (total == null || total.longValue() == 0L) {
+            return new PagePayload<Map<String, Object>>(0L, new ArrayList<Map<String, Object>>(), safePageNum);
+        }
+        List<Map<String, Object>> rows = deviceQueryRepository.findAccessListPage(status, startRow, endRow).stream()
             .map(this::toAccessRow)
             .collect(Collectors.toList());
-        return paginate(rows, pageNum, pageSize);
+        return new PagePayload<Map<String, Object>>(total, rows, safePageNum);
     }
 
     @Transactional
@@ -225,7 +236,7 @@ public class TerminalDocService {
             if (device == null) {
                 continue;
             }
-            device.setAssetStatus("CONNECTED");
+            device.setAssetStatus(DeviceAssetStatus.CONNECTED.value());
             if (request.getAreaId() != null) {
                 device.setAreaId(request.getAreaId());
             }
@@ -486,15 +497,27 @@ public class TerminalDocService {
         return row;
     }
 
-    private Map<String, Object> toAccessRow(DeviceVO device) {
+    private Map<String, Object> toAccessRow(Map<String, Object> source) {
         Map<String, Object> row = new LinkedHashMap<String, Object>();
-        row.put("id", device.getId());
-        row.put("name", device.getName());
-        row.put("deviceType", device.getDeviceType());
-        row.put("model", device.getModel());
-        row.put("assetStatus", device.getAssetStatus());
-        row.put("orgId", device.getOrgId());
-        row.put("areaId", device.getAreaId());
+        row.put("id", source.get("id"));
+        row.put("iotCode", source.get("iot_code"));
+        row.put("name", source.get("name"));
+        row.put("deviceType", source.get("device_type"));
+        row.put("model", source.get("model"));
+        row.put("manufacturer", source.get("manufacturer"));
+        row.put("factoryDate", source.get("factory_date"));
+        row.put("runDate", source.get("run_date"));
+        row.put("assetStatus", source.get("asset_status"));
+        row.put("areaId", source.get("area_id"));
+        row.put("orgId", source.get("org_id"));
+        row.put("onlineStatus", source.get("online_status"));
+        row.put("lastReportTime", source.get("last_report_time"));
+        row.put("lastOfflineTime", source.get("last_offline_time"));
+        row.put("remark", source.get("remark"));
+        row.put("createdOn", source.get("created_on"));
+        row.put("updatedOn", source.get("updated_on"));
+        row.put("monitorIds", source.get("monitor_ids"));
+        row.put("monitorNames", source.get("monitor_names"));
         return row;
     }
 

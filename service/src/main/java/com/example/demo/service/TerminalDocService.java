@@ -205,7 +205,7 @@ public class TerminalDocService {
         entity.setRunDate(request.getRunDate());
         entity.setAssetStatus(
             request.getAssetStatus() == null || request.getAssetStatus().trim().isEmpty()
-                ? "待接入"
+                ? DeviceAssetStatus.PENDING_ACCESS.value()
                 : request.getAssetStatus().trim()
         );
         entity.setAreaId(request.getAreaId());
@@ -263,11 +263,18 @@ public class TerminalDocService {
     }
 
     public PagePayload<Map<String, Object>> accessList(Integer pageNum, Integer pageSize, String status) {
-        List<Map<String, Object>> rows = deviceRepository.findAllActive().stream()
-            .filter(device -> status == null || status.trim().isEmpty() || status.equals(device.getAssetStatus()))
+        int safePageNum = pageNum == null || pageNum.intValue() < 1 ? 1 : pageNum.intValue();
+        int safePageSize = pageSize == null || pageSize.intValue() < 1 ? 10 : pageSize.intValue();
+        int startRow = (safePageNum - 1) * safePageSize + 1;
+        int endRow = safePageNum * safePageSize;
+        Long total = deviceRepository.countAccessListRows(status);
+        if (total == null || total.longValue() == 0L) {
+            return new PagePayload<Map<String, Object>>(0L, new ArrayList<Map<String, Object>>(), safePageNum);
+        }
+        List<Map<String, Object>> rows = deviceRepository.findAccessListPage(status, startRow, endRow).stream()
             .map(this::toAccessRow)
             .collect(Collectors.toList());
-        return paginate(rows, pageNum, pageSize);
+        return new PagePayload<Map<String, Object>>(total, rows, safePageNum);
     }
 
     @Transactional
@@ -283,7 +290,7 @@ public class TerminalDocService {
             if (device == null) {
                 continue;
             }
-            device.setAssetStatus("CONNECTED");
+            device.setAssetStatus(DeviceAssetStatus.CONNECTED.value());
             if (request.getAreaId() != null) {
                 device.setAreaId(request.getAreaId());
             }
@@ -540,15 +547,27 @@ public class TerminalDocService {
         return row;
     }
 
-    private Map<String, Object> toAccessRow(DeviceEntity device) {
+    private Map<String, Object> toAccessRow(Map<String, Object> src) {
         Map<String, Object> row = new LinkedHashMap<String, Object>();
-        row.put("id", device.getId());
-        row.put("name", device.getName());
-        row.put("deviceType", device.getDeviceType());
-        row.put("model", device.getModel());
-        row.put("assetStatus", device.getAssetStatus());
-        row.put("orgId", device.getOrgId());
-        row.put("areaId", device.getAreaId());
+        row.put("id", src.get("id"));
+        row.put("iotCode", src.get("iot_code"));
+        row.put("name", src.get("name"));
+        row.put("deviceType", src.get("device_type"));
+        row.put("model", src.get("model"));
+        row.put("manufacturer", src.get("manufacturer"));
+        row.put("factoryDate", src.get("factory_date"));
+        row.put("runDate", src.get("run_date"));
+        row.put("assetStatus", src.get("asset_status"));
+        row.put("areaId", src.get("area_id"));
+        row.put("orgId", src.get("org_id"));
+        row.put("onlineStatus", src.get("online_status"));
+        row.put("lastReportTime", src.get("last_report_time"));
+        row.put("lastOfflineTime", src.get("last_offline_time"));
+        row.put("remark", src.get("remark"));
+        row.put("createdOn", src.get("created_on"));
+        row.put("updatedOn", src.get("updated_on"));
+        row.put("monitorIds", src.get("monitor_ids"));
+        row.put("monitorNames", src.get("monitor_names"));
         return row;
     }
 
