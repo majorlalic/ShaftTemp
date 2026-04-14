@@ -10,6 +10,10 @@ param(
   [int]$MaxErrorPrint = 30
 )
 
+$ErrorActionPreference = "Continue"
+$statusPending = [string]::Concat([char]24453, [char]25509, [char]20837)
+$statusConnected = [string]::Concat([char]24050, [char]25509, [char]20837)
+
 if ($PartitionCount -lt 1) { throw "PartitionCount must be >= 1" }
 if ($PressureTotal -lt 1) { throw "PressureTotal must be >= 1" }
 if ($PressureConcurrency -lt 1) { throw "PressureConcurrency must be >= 1" }
@@ -61,6 +65,9 @@ Assert-AbsoluteHttpUrl -Name "terminalAlarmListUrl" -Url $terminalAlarmListUrl
 Assert-AbsoluteHttpUrl -Name "deviceCreateUrl" -Url $deviceCreateUrl
 Assert-AbsoluteHttpUrl -Name "deviceAccessListUrl" -Url $deviceAccessListUrl
 Assert-AbsoluteHttpUrl -Name "deviceAccessConfirmUrl" -Url $deviceAccessConfirmUrl
+
+Write-Host ("[BOOT] script loaded at {0}" -f (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")) -ForegroundColor Cyan
+Write-Host ("[BOOT] statusPending={0} statusConnected={1}" -f $statusPending, $statusConnected) -ForegroundColor DarkGray
 
 $apiTotal = 0
 $apiOk = 0
@@ -369,7 +376,7 @@ Write-Stage "Stage 2 - device create/access flow"
 $newDeviceIotCode = "e2e-dev-" + (Get-Date).ToString("yyyyMMddHHmmss")
 $createBody = @{
   iotCode = $newDeviceIotCode
-  name = ("E2E设备-" + (Get-Date).ToString("HHmmss"))
+  name = ("E2E-DEVICE-" + (Get-Date).ToString("HHmmss"))
   deviceType = "TMP"
 }
 $r2Create = Invoke-JsonApi -Method "POST" -Url $deviceCreateUrl -Body $createBody -TimeoutSec $HttpTimeoutSec
@@ -384,7 +391,7 @@ if ($r2Create.ok -and -not [string]::IsNullOrWhiteSpace($r2Create.bodyText)) {
 }
 Assert-Stage -Name "device_create" -Condition ($r2Create.ok -and $null -ne $createdDeviceId) -PassMessage "device created" -FailMessage "device create failed"
 
-$r2Pending = Query-DeviceAccessListRaw -Status "待接入" -PageNo 1 -PageSize 100
+$r2Pending = Query-DeviceAccessListRaw -Status $statusPending -PageNo 1 -PageSize 100
 $pendingRows = Get-PageList -Response $r2Pending
 $pendingFound = $false
 $pendingHasOnline = $false
@@ -405,7 +412,7 @@ if ($null -ne $createdDeviceId) {
 }
 Assert-Stage -Name "device_access_confirm" -Condition $confirmOk -PassMessage "device confirmed" -FailMessage "device confirm failed"
 
-$r2Connected = Query-DeviceAccessListRaw -Status "已接入" -PageNo 1 -PageSize 100
+$r2Connected = Query-DeviceAccessListRaw -Status $statusConnected -PageNo 1 -PageSize 100
 $connectedRows = Get-PageList -Response $r2Connected
 $connectedFound = $false
 $connectedHasMonitorFields = $false
@@ -629,11 +636,11 @@ $nowEnd = (Get-Date).AddHours(1).ToString("yyyy-MM-dd HH:mm:ss")
 $tq = Query-TerminalAlarmsRaw -Status "0" -DeviceType "TMP" -StartTime $nowStart -EndTime $nowEnd -PageNo 1 -PageSize 50
 Assert-Stage -Name "terminal_alarm_filters" -Condition $tq.ok -PassMessage "terminal alarm filter query ok" -FailMessage "terminal alarm filter query failed"
 
-$dq = Query-DeviceAccessListRaw -Status "已接入" -PageNo 1 -PageSize 50
+$dq = Query-DeviceAccessListRaw -Status $statusConnected -PageNo 1 -PageSize 50
 $dqRows = Get-PageList -Response $dq
 $deviceFieldCheck = $false
 if ($dqRows.Count -gt 0) {
-  $first = $dqRows[0]
+  $first = $dqRows | Select-Object -First 1
   if (($first.PSObject.Properties.Name -contains "onlineStatus") -and ($first.PSObject.Properties.Name -contains "monitorId")) {
     $deviceFieldCheck = $true
   }

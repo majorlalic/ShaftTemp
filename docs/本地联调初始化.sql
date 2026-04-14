@@ -30,7 +30,7 @@ INSERT INTO ODS_DWEQ_DM_DEVICE_D (
     id, device_type, name, area_id, iot_code, model, manufacturer, asset_status, org_id, remark,
     online_status, deleted, created_on, updated_on
 ) VALUES (
-    3001, 'SHAFT_TEMP', '竖井测温终端A', 1001, 'shaft-dev-01', 'TMP-V1', 'LOCAL', 'CONNECTED', 2001, '本地联调设备',
+    3001, 'SHAFT_TEMP', '竖井测温终端A', 1001, 'shaft-dev-01', 'TMP-V1', 'LOCAL', '已接入', 2001, '本地联调设备',
     0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 );
 
@@ -65,7 +65,7 @@ INSERT INTO ODS_DWEQ_DM_ALARM_RULE_D
 (id, rule_name, biz_type, alarm_type, scope_type, scope_id, level, threshold_value, threshold_value2, duration_seconds, enabled, remark, deleted, created_on, updated_on)
 VALUES
 (9001, '全局定温告警', 'MONITOR', 'TEMP_THRESHOLD', 'GLOBAL', NULL, 2, 70.00, NULL, NULL, 1, '默认定温阈值', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-(9002, '全局差温告警', 'MONITOR', 'TEMP_DIFFERENCE', 'GLOBAL', NULL, 2, 15.00, NULL, NULL, 1, '默认差温阈值', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-(9003, '全局升温速率告警', 'MONITOR', 'TEMP_RISE_RATE', 'GLOBAL', NULL, 2, 8.00, NULL, 300, 1, '默认升温速率阈值', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-(9004, '全局离线告警', 'DEVICE', 'DEVICE_OFFLINE', 'GLOBAL', NULL, 3, 300.00, NULL, NULL, 1, '默认离线阈值5分钟', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(9002, '全局差温告警', 'MONITOR', 'TEMP_DIFFERENCE', 'GLOBAL', NULL, 2, 20.00, NULL, NULL, 1, '默认差温阈值', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(9003, '全局升温速率告警', 'MONITOR', 'TEMP_RISE_RATE', 'GLOBAL', NULL, 2, 10.00, NULL, 300, 1, '默认升温速率阈值', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(9004, '全局离线告警', 'DEVICE', 'DEVICE_OFFLINE', 'GLOBAL', NULL, 3, 30.00, NULL, NULL, 1, '默认离线阈值30秒', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
 (9005, '全局分区故障告警', 'DEVICE', 'PARTITION_FAULT', 'GLOBAL', NULL, 3, NULL, NULL, NULL, 1, '默认分区故障启用', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
