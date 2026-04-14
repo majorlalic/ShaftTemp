@@ -412,7 +412,7 @@ $connectedHasMonitorFields = $false
 foreach ($row in $connectedRows) {
   if ($null -ne $createdDeviceId -and [string]$row.id -eq [string]$createdDeviceId) {
     $connectedFound = $true
-    if ($row.PSObject.Properties.Name -contains "monitorIds" -and $row.PSObject.Properties.Name -contains "monitorNames") {
+    if ($row.PSObject.Properties.Name -contains "monitorId" -and $row.PSObject.Properties.Name -contains "monitorName") {
       $connectedHasMonitorFields = $true
     }
     break
@@ -634,7 +634,7 @@ $dqRows = Get-PageList -Response $dq
 $deviceFieldCheck = $false
 if ($dqRows.Count -gt 0) {
   $first = $dqRows[0]
-  if (($first.PSObject.Properties.Name -contains "onlineStatus") -and ($first.PSObject.Properties.Name -contains "monitorIds")) {
+  if (($first.PSObject.Properties.Name -contains "onlineStatus") -and ($first.PSObject.Properties.Name -contains "monitorId")) {
     $deviceFieldCheck = $true
   }
 }

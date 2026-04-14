@@ -15,7 +15,7 @@
 - 验证告警合并（`mergeCount`）
 - 验证离线巡检告警（可跳过）
 - 验证终端告警筛选参数（`status/deviceType/startTime/endTime`）
-- 验证设备接入列表返回字段（`onlineStatus`、`monitorIds`、`monitorNames`）
+- 验证设备接入列表返回字段（`onlineStatus`、`monitorId`、`monitorName`）
 - 执行并发压测并持续打印进度
 
 ### 1.1 参数
@@ -74,7 +74,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\windows_full_e2e_test.ps1 -Sk
 
 #### 第 2 步 device create/access flow
 - 作用：调用设备录入接口创建设备（默认状态应为`待接入`），再调用接入确认接口将状态改为`已接入`，并检查接入列表字段完整性。
-- 成功代表：设备状态流转正确，且接入列表包含 `onlineStatus`、`monitorIds`、`monitorNames` 字段。
+- 成功代表：设备状态流转正确，且接入列表包含 `onlineStatus`、`monitorId`、`monitorName` 字段。
 - 失败代表：设备接口不可用、状态值不一致、或接入列表字段返回缺失。
 
 #### 第 3 步 threshold trigger

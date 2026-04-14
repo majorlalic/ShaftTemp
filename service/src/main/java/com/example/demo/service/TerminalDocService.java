@@ -262,16 +262,32 @@ public class TerminalDocService {
         return data;
     }
 
-    public PagePayload<Map<String, Object>> accessList(Integer pageNum, Integer pageSize, String status) {
+    public PagePayload<Map<String, Object>> accessList(
+        Integer pageNum,
+        Integer pageSize,
+        String deviceType,
+        String status,
+        Long orgId,
+        String manufacturer,
+        String model
+    ) {
         int safePageNum = pageNum == null || pageNum.intValue() < 1 ? 1 : pageNum.intValue();
         int safePageSize = pageSize == null || pageSize.intValue() < 1 ? 10 : pageSize.intValue();
         int startRow = (safePageNum - 1) * safePageSize + 1;
         int endRow = safePageNum * safePageSize;
-        Long total = deviceRepository.countAccessListRows(status);
+        Long total = deviceRepository.countAccessListRows(deviceType, status, orgId, manufacturer, model);
         if (total == null || total.longValue() == 0L) {
             return new PagePayload<Map<String, Object>>(0L, new ArrayList<Map<String, Object>>(), safePageNum);
         }
-        List<Map<String, Object>> rows = deviceRepository.findAccessListPage(status, startRow, endRow).stream()
+        List<Map<String, Object>> rows = deviceRepository.findAccessListPage(
+            deviceType,
+            status,
+            orgId,
+            manufacturer,
+            model,
+            startRow,
+            endRow
+        ).stream()
             .map(this::toAccessRow)
             .collect(Collectors.toList());
         return new PagePayload<Map<String, Object>>(total, rows, safePageNum);
@@ -566,8 +582,8 @@ public class TerminalDocService {
         row.put("remark", src.get("remark"));
         row.put("createdOn", src.get("created_on"));
         row.put("updatedOn", src.get("updated_on"));
-        row.put("monitorIds", src.get("monitor_ids"));
-        row.put("monitorNames", src.get("monitor_names"));
+        row.put("monitorId", src.get("monitor_id"));
+        row.put("monitorName", src.get("monitor_name"));
         return row;
     }
 

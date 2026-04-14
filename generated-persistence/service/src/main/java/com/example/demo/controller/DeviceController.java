@@ -72,10 +72,14 @@ public class DeviceController {
         @RequestParam(required = false) Integer pageNo,
         @RequestParam(required = false) Integer pageNum,
         @RequestParam(required = false) Integer pageSize,
-        @RequestParam(required = false) String status
+        @RequestParam(required = false) String deviceType,
+        @RequestParam(required = false) String status,
+        @RequestParam(required = false) Long orgId,
+        @RequestParam(required = false) String manufacturer,
+        @RequestParam(required = false) String model
     ) {
         Integer resolvedPageNo = pageNo == null ? pageNum : pageNo;
-        return RestObject.newOk(terminalDocService.accessList(resolvedPageNo, pageSize, status));
+        return RestObject.newOk(terminalDocService.accessList(resolvedPageNo, pageSize, deviceType, status, orgId, manufacturer, model));
     }
 
     @PostMapping("/api/terminal/access/confirm")
