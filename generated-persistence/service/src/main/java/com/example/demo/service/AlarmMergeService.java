@@ -163,72 +163,57 @@ public class AlarmMergeService implements AlarmService {
 
     @Override
     @Transactional
-    public AlarmVO confirm(Long alarmId, Long handler, String remark) {
+    public AlarmVO handle(Long alarmId, Integer status, String remark) {
+        if (status == null) {
+            throw new IllegalArgumentException("status is required");
+        }
+        if (!isSupportedStatus(status.intValue())) {
+            throw new IllegalArgumentException("Unsupported status: " + status);
+        }
         AlarmVO alarm = alarmRepository.findById(alarmId)
             .orElseThrow(() -> new IllegalArgumentException("Alarm not found: " + alarmId));
+        LocalDateTime now = LocalDateTime.now();
         alarm.setMergeKey(null);
-        alarm.setStatus(AlarmStatus.CONFIRMED);
-        alarm.setHandler(handler);
-        alarm.setHandleTime(LocalDateTime.now());
+        alarm.setStatus(status);
+        alarm.setHandleTime(now);
         alarm.setHandleRemark(remark);
-        alarm.setUpdatedOn(LocalDateTime.now());
+        alarm.setUpdatedOn(now);
         alarmRepository.updateById(alarm);
         AlarmVO savedAlarm = alarmRepository.findById(alarmId)
             .orElseThrow(() -> new IllegalArgumentException("Alarm not found: " + alarmId));
         realtimeStateService.clearActiveAlarmId(savedAlarm.getAlarmType(), String.valueOf(savedAlarm.getMonitorId()));
-        createLifecycleEvent(savedAlarm, "MANUAL_CONFIRM", AlarmEventType.CONFIRM, remark);
+        createLifecycleEvent(savedAlarm, sourceTypeByStatus(status), eventTypeByStatus(status), remark);
+        return savedAlarm;
+    }
+
+    @Override
+    @Transactional
+    public AlarmVO confirm(Long alarmId, Long handler, String remark) {
+        AlarmVO savedAlarm = handle(alarmId, Integer.valueOf(AlarmStatus.CONFIRMED), remark);
+        if (handler != null) {
+            savedAlarm.setHandler(handler);
+            savedAlarm.setUpdatedOn(LocalDateTime.now());
+            alarmRepository.updateById(savedAlarm);
+        }
         return savedAlarm;
     }
 
     @Override
     @Transactional
     public AlarmVO observe(Long alarmId, String remark) {
-        AlarmVO alarm = alarmRepository.findById(alarmId)
-            .orElseThrow(() -> new IllegalArgumentException("Alarm not found: " + alarmId));
-        alarm.setMergeKey(null);
-        alarm.setStatus(AlarmStatus.OBSERVING);
-        alarm.setHandleRemark(remark);
-        alarm.setUpdatedOn(LocalDateTime.now());
-        alarmRepository.updateById(alarm);
-        AlarmVO savedAlarm = alarmRepository.findById(alarmId)
-            .orElseThrow(() -> new IllegalArgumentException("Alarm not found: " + alarmId));
-        realtimeStateService.clearActiveAlarmId(savedAlarm.getAlarmType(), String.valueOf(savedAlarm.getMonitorId()));
-        createLifecycleEvent(savedAlarm, "MANUAL_OBSERVE", AlarmEventType.OBSERVE, remark);
-        return savedAlarm;
+        return handle(alarmId, Integer.valueOf(AlarmStatus.OBSERVING), remark);
     }
 
     @Override
     @Transactional
     public AlarmVO markFalsePositive(Long alarmId, String remark) {
-        AlarmVO alarm = alarmRepository.findById(alarmId)
-            .orElseThrow(() -> new IllegalArgumentException("Alarm not found: " + alarmId));
-        alarm.setMergeKey(null);
-        alarm.setStatus(AlarmStatus.FALSE_POSITIVE);
-        alarm.setHandleRemark(remark);
-        alarm.setUpdatedOn(LocalDateTime.now());
-        alarmRepository.updateById(alarm);
-        AlarmVO savedAlarm = alarmRepository.findById(alarmId)
-            .orElseThrow(() -> new IllegalArgumentException("Alarm not found: " + alarmId));
-        realtimeStateService.clearActiveAlarmId(savedAlarm.getAlarmType(), String.valueOf(savedAlarm.getMonitorId()));
-        createLifecycleEvent(savedAlarm, "MANUAL_FALSE", AlarmEventType.FALSE_POSITIVE, remark);
-        return savedAlarm;
+        return handle(alarmId, Integer.valueOf(AlarmStatus.FALSE_POSITIVE), remark);
     }
 
     @Override
     @Transactional
     public AlarmVO close(Long alarmId, String remark) {
-        AlarmVO alarm = alarmRepository.findById(alarmId)
-            .orElseThrow(() -> new IllegalArgumentException("Alarm not found: " + alarmId));
-        alarm.setMergeKey(null);
-        alarm.setStatus(AlarmStatus.CLOSED);
-        alarm.setHandleRemark(remark);
-        alarm.setUpdatedOn(LocalDateTime.now());
-        alarmRepository.updateById(alarm);
-        AlarmVO savedAlarm = alarmRepository.findById(alarmId)
-            .orElseThrow(() -> new IllegalArgumentException("Alarm not found: " + alarmId));
-        realtimeStateService.clearActiveAlarmId(savedAlarm.getAlarmType(), String.valueOf(savedAlarm.getMonitorId()));
-        createLifecycleEvent(savedAlarm, "MANUAL_CLOSE", AlarmEventType.CLOSE, remark);
-        return savedAlarm;
+        return handle(alarmId, Integer.valueOf(AlarmStatus.CLOSED), remark);
     }
 
     private void createLifecycleEvent(AlarmVO alarm, String sourceType, Integer eventType, String remark) {
@@ -311,5 +296,43 @@ public class AlarmMergeService implements AlarmService {
 
     private String buildMergeKey(Long monitorId, String alarmType) {
         return monitorId + ":" + alarmType;
+    }
+
+    private boolean isSupportedStatus(int status) {
+        return status == AlarmStatus.PENDING_CONFIRM
+            || status == AlarmStatus.CONFIRMED
+            || status == AlarmStatus.OBSERVING
+            || status == AlarmStatus.FALSE_POSITIVE
+            || status == AlarmStatus.CLOSED;
+    }
+
+    private String sourceTypeByStatus(Integer status) {
+        switch (status.intValue()) {
+            case AlarmStatus.PENDING_CONFIRM:
+                return "MANUAL_PENDING_CONFIRM";
+            case AlarmStatus.CONFIRMED:
+                return "MANUAL_CONFIRM";
+            case AlarmStatus.OBSERVING:
+                return "MANUAL_OBSERVE";
+            case AlarmStatus.FALSE_POSITIVE:
+                return "MANUAL_FALSE";
+            case AlarmStatus.CLOSED:
+                return "MANUAL_CLOSE";
+            default:
+                return "MANUAL_HANDLE";
+        }
+    }
+
+    private Integer eventTypeByStatus(Integer status) {
+        switch (status.intValue()) {
+            case AlarmStatus.CONFIRMED:
+                return Integer.valueOf(AlarmEventType.CONFIRM);
+            case AlarmStatus.CLOSED:
+                return Integer.valueOf(AlarmEventType.CLOSE);
+            case AlarmStatus.FALSE_POSITIVE:
+                return Integer.valueOf(AlarmEventType.FALSE_POSITIVE);
+            default:
+                return Integer.valueOf(AlarmEventType.OBSERVE);
+        }
     }
 }

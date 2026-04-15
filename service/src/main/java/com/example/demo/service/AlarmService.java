@@ -22,6 +22,8 @@ public interface AlarmService {
         String detailJson
     );
 
+    AlarmEntity handle(Long alarmId, Integer status, String remark);
+
     AlarmEntity confirm(Long alarmId, Long handler, String remark);
 
     AlarmEntity observe(Long alarmId, String remark);

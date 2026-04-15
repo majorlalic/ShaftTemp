@@ -92,8 +92,9 @@ public class AlarmViewService {
     }
 
     public Map<String, Object> handle(AlarmHandleRequest request) {
-        validateActionRequest(request, true);
-        AlarmEntity alarm = applyAction(request.getId(), request.getAction(), request.getHandler(), request.getHandleRemark());
+        validateHandleRequest(request);
+        Long alarmId = request.getAlarmIds().get(0);
+        AlarmEntity alarm = alarmService.handle(alarmId, request.getStatus(), request.getRemark());
         Map<String, Object> data = new LinkedHashMap<String, Object>();
         data.put("id", alarm.getId());
         data.put("statusCode", alarm.getStatus());
@@ -103,12 +104,12 @@ public class AlarmViewService {
     }
 
     public Map<String, Object> batchHandle(AlarmHandleRequest request) {
-        validateActionRequest(request, false);
+        validateHandleRequest(request);
         int successCount = 0;
         List<Long> failIds = new ArrayList<Long>();
         for (Long alarmId : request.getAlarmIds()) {
             try {
-                applyAction(alarmId, request.getAction(), request.getHandler(), request.getHandleRemark());
+                alarmService.handle(alarmId, request.getStatus(), request.getRemark());
                 successCount++;
             } catch (RuntimeException ex) {
                 failIds.add(alarmId);
@@ -121,35 +122,15 @@ public class AlarmViewService {
         return data;
     }
 
-    private AlarmEntity applyAction(Long alarmId, String action, Long handler, String handleRemark) {
-        if ("confirm".equals(action)) {
-            return alarmService.confirm(alarmId, handler, handleRemark);
-        }
-        if ("observe".equals(action)) {
-            return alarmService.observe(alarmId, handleRemark);
-        }
-        if ("false_positive".equals(action)) {
-            return alarmService.markFalsePositive(alarmId, handleRemark);
-        }
-        if ("close".equals(action)) {
-            return alarmService.close(alarmId, handleRemark);
-        }
-        throw new IllegalArgumentException("Unsupported action: " + action);
-    }
-
-    private void validateActionRequest(AlarmHandleRequest request, boolean single) {
+    private void validateHandleRequest(AlarmHandleRequest request) {
         if (request == null) {
             throw new IllegalArgumentException("Request body is required");
         }
-        if (single) {
-            if (request.getId() == null) {
-                throw new IllegalArgumentException("id is required");
-            }
-        } else if (request.getAlarmIds() == null || request.getAlarmIds().isEmpty()) {
+        if (request.getAlarmIds() == null || request.getAlarmIds().isEmpty()) {
             throw new IllegalArgumentException("alarmIds is required");
         }
-        if (request.getAction() == null || request.getAction().trim().isEmpty()) {
-            throw new IllegalArgumentException("action is required");
+        if (request.getStatus() == null) {
+            throw new IllegalArgumentException("status is required");
         }
     }
 

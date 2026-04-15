@@ -4,19 +4,9 @@ import java.util.List;
 
 public class AlarmHandleRequest {
 
-    private Long id;
     private List<Long> alarmIds;
-    private String action;
-    private Long handler;
-    private String handleRemark;
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
+    private Integer status;
+    private String remark;
 
     public List<Long> getAlarmIds() {
         return alarmIds;
@@ -26,27 +16,19 @@ public class AlarmHandleRequest {
         this.alarmIds = alarmIds;
     }
 
-    public String getAction() {
-        return action;
+    public Integer getStatus() {
+        return status;
     }
 
-    public void setAction(String action) {
-        this.action = action;
+    public void setStatus(Integer status) {
+        this.status = status;
     }
 
-    public Long getHandler() {
-        return handler;
+    public String getRemark() {
+        return remark;
     }
 
-    public void setHandler(Long handler) {
-        this.handler = handler;
-    }
-
-    public String getHandleRemark() {
-        return handleRemark;
-    }
-
-    public void setHandleRemark(String handleRemark) {
-        this.handleRemark = handleRemark;
+    public void setRemark(String remark) {
+        this.remark = remark;
     }
 }

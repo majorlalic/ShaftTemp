@@ -149,10 +149,13 @@ public class TerminalDocService {
         if (batch) {
             return batchHandle(request);
         }
-        if (request == null || request.getId() == null) {
-            throw new IllegalArgumentException("id is required");
+        if (request == null || request.getAlarmIds() == null || request.getAlarmIds().isEmpty()) {
+            throw new IllegalArgumentException("alarmIds is required");
         }
-        AlarmVO alarm = applyAction(request.getId(), request.getAction(), request.getHandler(), request.getHandleRemark());
+        if (request.getStatus() == null) {
+            throw new IllegalArgumentException("status is required");
+        }
+        AlarmVO alarm = applyStatus(request.getAlarmIds().get(0), request.getStatus(), request.getRemark());
         Map<String, Object> data = new LinkedHashMap<String, Object>();
         data.put("id", alarm.getId());
         data.put("statusCode", alarm.getStatus());
@@ -286,11 +289,14 @@ public class TerminalDocService {
         if (request == null || request.getAlarmIds() == null || request.getAlarmIds().isEmpty()) {
             throw new IllegalArgumentException("alarmIds is required");
         }
+        if (request.getStatus() == null) {
+            throw new IllegalArgumentException("status is required");
+        }
         int successCount = 0;
         List<Long> failIds = new ArrayList<Long>();
         for (Long alarmId : request.getAlarmIds()) {
             try {
-                applyAction(alarmId, request.getAction(), request.getHandler(), request.getHandleRemark());
+                applyStatus(alarmId, request.getStatus(), request.getRemark());
                 successCount++;
             } catch (RuntimeException ex) {
                 failIds.add(alarmId);
@@ -303,25 +309,13 @@ public class TerminalDocService {
         return data;
     }
 
-    private AlarmVO applyAction(Long alarmId, String action, Long handler, String remark) {
+    private AlarmVO applyStatus(Long alarmId, Integer status, String remark) {
         AlarmVO alarm = alarmRepository.findById(alarmId)
             .orElseThrow(() -> new IllegalArgumentException("Alarm not found: " + alarmId));
         if (!TERMINAL_ALARM_TYPES.contains(alarm.getAlarmType())) {
             throw new IllegalArgumentException("Alarm is not terminal type: " + alarmId);
         }
-        if ("confirm".equals(action)) {
-            return alarmService.confirm(alarmId, handler, remark);
-        }
-        if ("observe".equals(action)) {
-            return alarmService.observe(alarmId, remark);
-        }
-        if ("false_positive".equals(action)) {
-            return alarmService.markFalsePositive(alarmId, remark);
-        }
-        if ("close".equals(action)) {
-            return alarmService.close(alarmId, remark);
-        }
-        throw new IllegalArgumentException("Unsupported action: " + action);
+        return alarmService.handle(alarmId, status, remark);
     }
 
     private List<DeviceVO> filterDevices(

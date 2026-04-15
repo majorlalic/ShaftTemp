@@ -22,6 +22,8 @@ public interface AlarmService {
         String detailJson
     );
 
+    AlarmVO handle(Long alarmId, Integer status, String remark);
+
     AlarmVO confirm(Long alarmId, Long handler, String remark);
 
     AlarmVO observe(Long alarmId, String remark);
