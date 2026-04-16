@@ -45,8 +45,24 @@ public class AlarmViewService {
         this.alarmService = alarmService;
     }
 
-    public Map<String, Object> statistics(Long areaId, Long deviceId, LocalDateTime startTime, LocalDateTime endTime, String domain) {
-        List<AlarmEntity> alarms = filterAlarms(areaId, null, deviceId, startTime, endTime, null, null, null);
+    public Map<String, Object> statistics(
+        Long areaId,
+        Long deviceId,
+        LocalDateTime startTime,
+        LocalDateTime endTime,
+        String domain,
+        Integer alarmDomain
+    ) {
+        List<AlarmEntity> alarms = filterAlarms(
+            areaId,
+            null,
+            deviceId,
+            startTime,
+            endTime,
+            null,
+            null,
+            resolveAlarmDomain(domain, alarmDomain)
+        );
         Map<String, Object> data = new LinkedHashMap<String, Object>();
         data.put("pendingConfirm", countStatus(alarms, AlarmStatus.PENDING_CONFIRM));
         data.put("confirmed", countStatus(alarms, AlarmStatus.CONFIRMED));
@@ -65,10 +81,20 @@ public class AlarmViewService {
         LocalDateTime startTime,
         LocalDateTime endTime,
         String status,
-        Integer alarmTypeBig
+        Integer alarmTypeBig,
+        Integer alarmDomain
     ) {
         Integer statusCode = parseStatus(status);
-        List<Map<String, Object>> rows = filterAlarms(areaId, areaName, deviceId, startTime, endTime, statusCode, alarmTypeBig, null).stream()
+        List<Map<String, Object>> rows = filterAlarms(
+            areaId,
+            areaName,
+            deviceId,
+            startTime,
+            endTime,
+            statusCode,
+            alarmTypeBig,
+            alarmDomain
+        ).stream()
             .sorted(Comparator.comparing(AlarmEntity::getLastAlarmTime, Comparator.nullsLast(Comparator.reverseOrder())))
             .map(this::toAlarmListRow)
             .collect(Collectors.toList());
@@ -142,7 +168,7 @@ public class AlarmViewService {
         LocalDateTime endTime,
         Integer statusCode,
         Integer alarmTypeBig,
-        String domain
+        Integer alarmDomain
     ) {
         Map<Long, MonitorEntity> monitorMap = monitorRepository.findAllActive().stream()
             .collect(Collectors.toMap(MonitorEntity::getId, monitor -> monitor));
@@ -150,6 +176,7 @@ public class AlarmViewService {
             .filter(this::notDeleted)
             .filter(alarm -> statusCode == null || statusCode.equals(alarm.getStatus()))
             .filter(alarm -> alarmTypeBig == null || alarmTypeBig.equals(alarm.getAlarmTypeBig()))
+            .filter(alarm -> alarmDomain == null || alarmDomain.equals(alarm.getAlarmDomain()))
             .filter(withDeviceId(deviceId))
             .filter(withArea(areaId, monitorMap))
             .filter(withAreaNameLike(areaName))
@@ -213,6 +240,23 @@ public class AlarmViewService {
         }
     }
 
+    private Integer resolveAlarmDomain(String domain, Integer alarmDomain) {
+        if (alarmDomain != null) {
+            return alarmDomain;
+        }
+        if (domain == null || domain.trim().isEmpty()) {
+            return null;
+        }
+        String normalized = domain.trim().toLowerCase();
+        if ("terminal".equals(normalized)) {
+            return Integer.valueOf(AlarmDomain.TERMINAL);
+        }
+        if ("monitor".equals(normalized)) {
+            return Integer.valueOf(AlarmDomain.MONITOR);
+        }
+        return null;
+    }
+
     private Map<String, Object> toAlarmListRow(AlarmEntity alarm) {
         MonitorEntity monitor = monitorRepository.findActiveById(parseLong(alarm.getMonitorId())).orElse(null);
         DeviceEntity device = deviceRepository.findActiveById(parseLong(alarm.getDeviceId())).orElse(null);
@@ -227,6 +271,7 @@ public class AlarmViewService {
         row.put("deviceType", device == null ? null : device.getDeviceType());
         row.put("alarmTypeBig", alarm.getAlarmTypeBig());
         row.put("alarmTypeBigName", AlarmTypeBig.nameOf(alarm.getAlarmTypeBig()));
+        row.put("alarmDomain", alarm.getAlarmDomain());
         row.put("alarmType", alarm.getAlarmType());
         row.put("alarmContent", alarm.getContent());
         row.put("statusCode", alarm.getStatus());
@@ -243,6 +288,7 @@ public class AlarmViewService {
         row.put("alarmType", alarm.getAlarmType());
         row.put("alarmTypeBig", alarm.getAlarmTypeBig());
         row.put("alarmTypeBigName", AlarmTypeBig.nameOf(alarm.getAlarmTypeBig()));
+        row.put("alarmDomain", alarm.getAlarmDomain());
         row.put("sourceType", alarm.getSourceType());
         row.put("monitorId", alarm.getMonitorId());
         row.put("monitorName", alarm.getMonitorName() == null ? (monitor == null ? null : monitor.getName()) : alarm.getMonitorName());

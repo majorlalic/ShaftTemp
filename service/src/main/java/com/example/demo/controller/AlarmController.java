@@ -41,9 +41,10 @@ public class AlarmController {
         @RequestParam(required = false) Long deviceId,
         @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startTime,
         @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime,
-        @RequestParam(required = false) String domain
+        @RequestParam(required = false) String domain,
+        @RequestParam(required = false) Integer alarmDomain
     ) {
-        return RestObject.newOk(alarmViewService.statistics(areaId, deviceId, startTime, endTime, domain));
+        return RestObject.newOk(alarmViewService.statistics(areaId, deviceId, startTime, endTime, domain, alarmDomain));
     }
 
     @GetMapping("/list")
@@ -57,7 +58,8 @@ public class AlarmController {
         @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startTime,
         @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime,
         @RequestParam(required = false) String status,
-        @RequestParam(required = false) Integer alarmTypeBig
+        @RequestParam(required = false) Integer alarmTypeBig,
+        @RequestParam(required = false) Integer alarmDomain
     ) {
         Integer resolvedPageNo = pageNo == null ? pageNum : pageNo;
         return RestObject.newOk(
@@ -70,7 +72,8 @@ public class AlarmController {
                 startTime,
                 endTime,
                 status,
-                alarmTypeBig
+                alarmTypeBig,
+                alarmDomain
             )
         );
     }

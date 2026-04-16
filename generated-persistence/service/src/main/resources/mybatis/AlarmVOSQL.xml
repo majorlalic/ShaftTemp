@@ -25,11 +25,11 @@
         insert into ODS_DWEQ_DM_ALARM_D (
         id, alarm_code, alarm_type, source_type, monitor_id, device_id, shaft_floor_id, partition_code, partition_name,
         data_reference, device_token, partition_no, source_format, merge_key, status, first_alarm_time, last_alarm_time,
-        merge_count, event_count, alarm_level, title, content, deleted, created_on, updated_on
+        merge_count, event_count, alarm_level, title, content, alarm_domain, deleted, created_on, updated_on
         ) values (
         #{id}, #{alarmCode}, #{alarmType}, #{sourceType}, #{monitorId}, #{deviceId}, #{shaftFloorId}, #{partitionCode}, #{partitionName},
         #{dataReference}, #{deviceToken}, #{partitionNo}, #{sourceFormat}, #{mergeKey}, #{status}, #{firstAlarmTime}, #{lastAlarmTime},
-        #{mergeCount}, #{eventCount}, #{alarmLevel}, #{title}, #{content}, #{deleted}, #{createdOn}, #{updatedOn}
+        #{mergeCount}, #{eventCount}, #{alarmLevel}, #{title}, #{content}, #{alarmDomain}, #{deleted}, #{createdOn}, #{updatedOn}
         )
         ]]>
     </insert>
@@ -58,6 +58,7 @@
         alarm_level = #{alarmLevel},
         title = #{title},
         content = #{content},
+        alarm_domain = #{alarmDomain},
         handler = #{handler},
         handle_time = #{handleTime},
         handle_remark = #{handleRemark},

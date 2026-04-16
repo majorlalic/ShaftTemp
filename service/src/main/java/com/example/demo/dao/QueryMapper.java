@@ -21,6 +21,7 @@ public class QueryMapper {
         payload.put("alarmType", alarm.getAlarmType());
         payload.put("alarmTypeBig", alarm.getAlarmTypeBig());
         payload.put("alarmTypeBigName", AlarmTypeBig.nameOf(alarm.getAlarmTypeBig()));
+        payload.put("alarmDomain", alarm.getAlarmDomain());
         payload.put("sourceType", alarm.getSourceType());
         payload.put("monitorId", alarm.getMonitorId());
         payload.put("deviceId", alarm.getDeviceId());

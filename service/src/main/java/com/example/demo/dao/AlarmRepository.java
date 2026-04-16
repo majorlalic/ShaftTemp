@@ -27,12 +27,12 @@ public interface AlarmRepository {
         "id, alarm_code, alarm_type, source_type, monitor_id, device_id, shaft_floor_id, partition_code, partition_name, ",
         "data_reference, device_token, partition_no, source_format, merge_key, status, first_alarm_time, last_alarm_time, ",
         "merge_count, event_count, alarm_level, title, content, handler, handle_time, handle_remark, push_status, alarm_type_big, ",
-        "area_name, monitor_name, device_name, handler_name, manufacturer, device_model, push_time, deleted, created_on, updated_on",
+        "alarm_domain, area_name, monitor_name, device_name, handler_name, manufacturer, device_model, push_time, deleted, created_on, updated_on",
         ") values (",
         "#{id}, #{alarmCode}, #{alarmType}, #{sourceType}, #{monitorId}, #{deviceId}, #{shaftFloorId}, #{partitionCode}, #{partitionName}, ",
         "#{dataReference}, #{deviceToken}, #{partitionNo}, #{sourceFormat}, #{mergeKey}, #{status}, #{firstAlarmTime}, #{lastAlarmTime}, ",
         "#{mergeCount}, #{eventCount}, #{alarmLevel}, #{title}, #{content}, #{handler}, #{handleTime}, #{handleRemark}, #{pushStatus}, #{alarmTypeBig}, ",
-        "#{areaName}, #{monitorName}, #{deviceName}, #{handlerName}, #{manufacturer}, #{deviceModel}, #{pushTime}, #{deleted}, #{createdOn}, #{updatedOn}",
+        "#{alarmDomain}, #{areaName}, #{monitorName}, #{deviceName}, #{handlerName}, #{manufacturer}, #{deviceModel}, #{pushTime}, #{deleted}, #{createdOn}, #{updatedOn}",
         ")"
     })
     int upsertPendingAlarm(AlarmEntity entity);
@@ -66,6 +66,7 @@ public interface AlarmRepository {
         "handle_remark = #{handleRemark},",
         "push_status = #{pushStatus},",
         "alarm_type_big = #{alarmTypeBig},",
+        "alarm_domain = #{alarmDomain},",
         "area_name = #{areaName},",
         "monitor_name = #{monitorName},",
         "device_name = #{deviceName},",

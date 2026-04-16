@@ -78,6 +78,9 @@ public class AlarmEntity {
     @Column(name = "alarm_type_big")
     private Integer alarmTypeBig;
 
+    @Column(name = "alarm_domain")
+    private Integer alarmDomain;
+
     @Column(name = "area_name")
     private String areaName;
 
@@ -321,6 +324,14 @@ public class AlarmEntity {
 
     public void setAlarmTypeBig(Integer alarmTypeBig) {
         this.alarmTypeBig = alarmTypeBig;
+    }
+
+    public Integer getAlarmDomain() {
+        return alarmDomain;
+    }
+
+    public void setAlarmDomain(Integer alarmDomain) {
+        this.alarmDomain = alarmDomain;
     }
 
     public String getAreaName() {

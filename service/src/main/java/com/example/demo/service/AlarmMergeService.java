@@ -55,6 +55,7 @@ public class AlarmMergeService implements AlarmService {
         candidate.setAlarmCode(result.getAlarmType() + "-" + CODE_FORMATTER.format(eventTime) + "-" + candidate.getId());
         candidate.setAlarmType(result.getAlarmType());
         candidate.setAlarmTypeBig(Integer.valueOf(AlarmTypeBig.SHAFT_TEMP));
+        candidate.setAlarmDomain(AlarmDomain.fromAlarmType(result.getAlarmType()));
         candidate.setStatus(AlarmStatus.PENDING_CONFIRM);
         candidate.setFirstAlarmTime(eventTime);
         candidate.setMergeCount(1);
@@ -99,6 +100,7 @@ public class AlarmMergeService implements AlarmService {
             savedAlarm = alarmRepository.findByMergeKey(mergeKey)
                 .orElseThrow(() -> new IllegalStateException("Alarm not found after duplicate key: " + mergeKey));
             savedAlarm.setSourceType(result.getSourceType());
+            savedAlarm.setAlarmDomain(AlarmDomain.fromAlarmType(result.getAlarmType()));
             savedAlarm.setDeviceId(String.valueOf(resolved.getDevice().getId()));
             savedAlarm.setShaftFloorId(resolved.getShaftFloorId());
             savedAlarm.setPartitionCode(resolved.getPartitionCode());

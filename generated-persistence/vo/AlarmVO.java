@@ -90,6 +90,9 @@ public class AlarmVO extends CapBaseVO implements Serializable {
     @Column(name = "push_status")
     private Integer pushStatus;
 
+    @Column(name = "alarm_domain")
+    private Integer alarmDomain;
+
     private Integer deleted;
 
     @Column(name = "created_on")
@@ -304,6 +307,14 @@ public class AlarmVO extends CapBaseVO implements Serializable {
 
     public void setPushStatus(Integer pushStatus) {
         this.pushStatus = pushStatus;
+    }
+
+    public Integer getAlarmDomain() {
+        return alarmDomain;
+    }
+
+    public void setAlarmDomain(Integer alarmDomain) {
+        this.alarmDomain = alarmDomain;
     }
 
     public Integer getDeleted() {
