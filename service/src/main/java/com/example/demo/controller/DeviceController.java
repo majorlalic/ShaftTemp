@@ -26,11 +26,13 @@ public class DeviceController {
 
     @GetMapping("/statistics")
     public RestObject<Map<String, Object>> statistics(
+        @RequestParam(required = false) Long areaId,
         @RequestParam(required = false) Long orgId,
         @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startTime,
         @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime
     ) {
-        return RestObject.newOk(terminalDocService.statistics(orgId, startTime, endTime));
+        Long resolvedAreaId = areaId == null ? orgId : areaId;
+        return RestObject.newOk(terminalDocService.statistics(resolvedAreaId, startTime, endTime));
     }
 
     @GetMapping("/detail/{id}")
@@ -46,13 +48,15 @@ public class DeviceController {
         @RequestParam(required = false) String deviceType,
         @RequestParam(required = false) String company,
         @RequestParam(required = false) String model,
+        @RequestParam(required = false) Long areaId,
         @RequestParam(required = false) Long orgId,
         @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
         @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate
     ) {
         Integer resolvedPageNo = pageNo == null ? pageNum : pageNo;
+        Long resolvedAreaId = areaId == null ? orgId : areaId;
         return RestObject.newOk(
-            terminalDocService.ledgerList(resolvedPageNo, pageSize, deviceType, company, model, orgId, startDate, endDate)
+            terminalDocService.ledgerList(resolvedPageNo, pageSize, deviceType, company, model, resolvedAreaId, startDate, endDate)
         );
     }
 
@@ -71,12 +75,14 @@ public class DeviceController {
         @RequestParam(required = false) Integer pageSize,
         @RequestParam(required = false) String deviceType,
         @RequestParam(required = false) String status,
+        @RequestParam(required = false) Long areaId,
         @RequestParam(required = false) Long orgId,
         @RequestParam(required = false) String manufacturer,
         @RequestParam(required = false) String model
     ) {
         Integer resolvedPageNo = pageNo == null ? pageNum : pageNo;
-        return RestObject.newOk(terminalDocService.accessList(resolvedPageNo, pageSize, deviceType, status, orgId, manufacturer, model));
+        Long resolvedAreaId = areaId == null ? orgId : areaId;
+        return RestObject.newOk(terminalDocService.accessList(resolvedPageNo, pageSize, deviceType, status, resolvedAreaId, manufacturer, model));
     }
 
     @PostMapping("/access/confirm")

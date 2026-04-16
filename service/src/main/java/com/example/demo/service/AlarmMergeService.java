@@ -151,7 +151,11 @@ public class AlarmMergeService implements AlarmService {
     private boolean isPendingMergeConflict(Throwable ex) {
         Throwable cursor = ex;
         while (cursor != null) {
-            if (cursor instanceof DuplicateKeyException || cursor instanceof DataIntegrityViolationException || cursor instanceof PersistenceException) {
+            if (cursor instanceof DuplicateKeyException) {
+                // upsertPendingAlarm 的唯一冲突只来自 merge_key，直接按合并路径处理
+                return true;
+            }
+            if (cursor instanceof DataIntegrityViolationException || cursor instanceof PersistenceException) {
                 String message = cursor.getMessage();
                 if (message != null) {
                     String normalized = message.toLowerCase();

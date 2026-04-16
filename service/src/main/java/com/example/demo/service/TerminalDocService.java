@@ -67,8 +67,8 @@ public class TerminalDocService {
         this.idGenerator = idGenerator;
     }
 
-    public Map<String, Object> statistics(Long orgId, LocalDateTime startTime, LocalDateTime endTime) {
-        List<DeviceEntity> devices = filterDevices(orgId, null, null, null, null, null).stream()
+    public Map<String, Object> statistics(Long areaId, LocalDateTime startTime, LocalDateTime endTime) {
+        List<DeviceEntity> devices = filterDevices(areaId, null, null, null, null, null).stream()
             .collect(Collectors.toList());
         long online = devices.stream().filter(device -> device.getOnlineStatus() != null && device.getOnlineStatus().intValue() == 1).count();
         long offline = devices.size() - online;
@@ -104,7 +104,7 @@ public class TerminalDocService {
         Integer pageNum,
         Integer pageSize,
         String status,
-        String orgName,
+        String areaName,
         String deviceType,
         LocalDateTime startTime,
         LocalDateTime endTime
@@ -114,13 +114,13 @@ public class TerminalDocService {
         int safePageSize = pageSize == null || pageSize.intValue() < 1 ? 10 : pageSize.intValue();
         int startRow = (safePageNum - 1) * safePageSize + 1;
         int endRow = safePageNum * safePageSize;
-        Long total = eventRepository.countTerminalAlarmEventRows(statusCode, orgName, deviceType, startTime, endTime);
+        Long total = eventRepository.countTerminalAlarmEventRows(statusCode, areaName, deviceType, startTime, endTime);
         if (total == null || total.longValue() == 0L) {
             return new PagePayload<Map<String, Object>>(0L, new ArrayList<Map<String, Object>>(), safePageNum);
         }
         List<Map<String, Object>> dbRows = eventRepository.findTerminalAlarmEventPage(
             statusCode,
-            orgName,
+            areaName,
             deviceType,
             startTime,
             endTime,
@@ -212,7 +212,7 @@ public class TerminalDocService {
                 : request.getAssetStatus().trim()
         );
         entity.setAreaId(request.getAreaId());
-        entity.setOrgId(request.getOrgId());
+        entity.setOrgId(request.getAreaId() == null ? request.getOrgId() : request.getAreaId());
         entity.setOnlineStatus(0);
         entity.setLastReportTime(null);
         entity.setLastOfflineTime(null);
@@ -237,11 +237,11 @@ public class TerminalDocService {
         String deviceType,
         String company,
         String model,
-        Long orgId,
+        Long areaId,
         LocalDate startDate,
         LocalDate endDate
     ) {
-        List<Map<String, Object>> rows = filterDevices(orgId, deviceType, company, model, startDate, endDate).stream()
+        List<Map<String, Object>> rows = filterDevices(areaId, deviceType, company, model, startDate, endDate).stream()
             .map(this::toLedgerRow)
             .collect(Collectors.toList());
         return paginate(rows, pageNum, pageSize);
@@ -270,7 +270,7 @@ public class TerminalDocService {
         Integer pageSize,
         String deviceType,
         String status,
-        Long orgId,
+        Long areaId,
         String manufacturer,
         String model
     ) {
@@ -278,14 +278,14 @@ public class TerminalDocService {
         int safePageSize = pageSize == null || pageSize.intValue() < 1 ? 10 : pageSize.intValue();
         int startRow = (safePageNum - 1) * safePageSize + 1;
         int endRow = safePageNum * safePageSize;
-        Long total = deviceRepository.countAccessListRows(deviceType, status, orgId, manufacturer, model);
+        Long total = deviceRepository.countAccessListRows(deviceType, status, areaId, manufacturer, model);
         if (total == null || total.longValue() == 0L) {
             return new PagePayload<Map<String, Object>>(0L, new ArrayList<Map<String, Object>>(), safePageNum);
         }
         List<Map<String, Object>> rows = deviceRepository.findAccessListPage(
             deviceType,
             status,
-            orgId,
+            areaId,
             manufacturer,
             model,
             startRow,
@@ -312,9 +312,10 @@ public class TerminalDocService {
             device.setAssetStatus(DeviceAssetStatus.CONNECTED.value());
             if (request.getAreaId() != null) {
                 device.setAreaId(request.getAreaId());
+                device.setOrgId(request.getAreaId());
             }
             if (request.getOrgId() != null) {
-                device.setOrgId(request.getOrgId());
+                device.setOrgId(request.getAreaId() == null ? request.getOrgId() : request.getAreaId());
             }
             deviceRepository.updateById(device);
             successCount++;
@@ -373,7 +374,7 @@ public class TerminalDocService {
     }
 
     private List<DeviceEntity> filterDevices(
-        Long orgId,
+        Long areaId,
         String deviceType,
         String company,
         String model,
@@ -381,7 +382,7 @@ public class TerminalDocService {
         LocalDate endDate
     ) {
         return deviceRepository.findAllActive().stream()
-            .filter(device -> orgId == null || orgId.equals(device.getOrgId()))
+            .filter(device -> areaId == null || areaId.equals(device.getAreaId()))
             .filter(device -> deviceType == null || deviceType.equals(device.getDeviceType()))
             .filter(device -> company == null || company.equals(device.getManufacturer()))
             .filter(device -> model == null || model.equals(device.getModel()))
@@ -431,7 +432,8 @@ public class TerminalDocService {
         row.put("eventId", src.get("event_id"));
         row.put("deviceId", src.get("device_id"));
         row.put("deviceName", src.get("device_name"));
-        row.put("orgName", src.get("org_name"));
+        row.put("areaName", src.get("area_name"));
+        row.put("orgName", src.get("area_name"));
         row.put("deviceType", src.get("device_type"));
         row.put("alarmType", src.get("alarm_type"));
         row.put("statusCode", statusCode);
@@ -516,8 +518,8 @@ public class TerminalDocService {
         row.put("runDate", device.getRunDate());
         row.put("assetStatus", device.getAssetStatus());
         row.put("onlineStatus", device.getOnlineStatus());
-        row.put("orgId", device.getOrgId());
         row.put("areaId", device.getAreaId());
+        row.put("orgId", device.getAreaId());
         row.put("remark", device.getRemark());
         return row;
     }
@@ -552,8 +554,8 @@ public class TerminalDocService {
         row.put("factoryDate", device.getFactoryDate());
         row.put("runDate", device.getRunDate());
         row.put("assetStatus", device.getAssetStatus());
-        row.put("orgId", device.getOrgId());
         row.put("areaId", device.getAreaId());
+        row.put("orgId", device.getAreaId());
         return row;
     }
 
@@ -569,7 +571,8 @@ public class TerminalDocService {
         row.put("runDate", src.get("run_date"));
         row.put("assetStatus", src.get("asset_status"));
         row.put("areaId", src.get("area_id"));
-        row.put("orgId", src.get("org_id"));
+        row.put("orgId", src.get("area_id"));
+        row.put("areaName", src.get("area_name"));
         row.put("onlineStatus", src.get("online_status"));
         row.put("lastReportTime", src.get("last_report_time"));
         row.put("lastOfflineTime", src.get("last_offline_time"));

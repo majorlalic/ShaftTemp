@@ -29,17 +29,17 @@
     <select id="countAccessListRows" parameterType="map" resultType="long">
         select count(*)
         from ODS_DWEQ_DM_DEVICE_D d
-        left join ODS_DWEQ_DM_ORG_D o on o.id = d.org_id
+        left join ODS_DWEQ_DM_AREA_D a on a.id = d.area_id
         where (d.deleted is null or d.deleted = 0)
-          and (o.deleted is null or o.deleted = 0)
+          and (a.deleted is null or a.deleted = 0)
         <if test="deviceType != null and deviceType != ''">
           and d.device_type = #{deviceType}
         </if>
         <if test="status != null and status != ''">
           and d.asset_status = #{status}
         </if>
-        <if test="orgId != null">
-          and (d.org_id = #{orgId} or instr('/' || nvl(o.path_ids, '') || '/', '/' || #{orgId} || '/') <![CDATA[>]]> 0)
+        <if test="areaId != null">
+          and (d.area_id = #{areaId} or instr('/' || nvl(a.path_ids, '') || '/', '/' || #{areaId} || '/') <![CDATA[>]]> 0)
         </if>
         <if test="manufacturer != null and manufacturer != ''">
           and d.manufacturer = #{manufacturer}
@@ -53,13 +53,13 @@
         select * from (
           select
             d.id, d.iot_code, d.name, d.device_type, d.model, d.manufacturer, d.factory_date, d.run_date,
-            d.asset_status, d.area_id, d.org_id, d.online_status, d.last_report_time, d.last_offline_time,
+            d.asset_status, d.area_id, d.org_id, a.name as area_name, d.online_status, d.last_report_time, d.last_offline_time,
             d.remark, d.created_on, d.updated_on,
             b.monitor_id as monitor_id,
             m.name as monitor_name,
             row_number() over(order by d.updated_on desc nulls last, d.id desc) rn
           from ODS_DWEQ_DM_DEVICE_D d
-          left join ODS_DWEQ_DM_ORG_D o on o.id = d.org_id
+          left join ODS_DWEQ_DM_AREA_D a on a.id = d.area_id
           left join ODS_DWEQ_DM_MONITOR_DEVICE_BIND_D b on b.id = (
             select max(b1.id)
             from ODS_DWEQ_DM_MONITOR_DEVICE_BIND_D b1
@@ -67,15 +67,15 @@
           )
           left join ODS_DWEQ_DM_MONITOR_D m on m.id = b.monitor_id and (m.deleted is null or m.deleted = 0)
           where (d.deleted is null or d.deleted = 0)
-            and (o.deleted is null or o.deleted = 0)
+            and (a.deleted is null or a.deleted = 0)
           <if test="deviceType != null and deviceType != ''">
             and d.device_type = #{deviceType}
           </if>
           <if test="status != null and status != ''">
             and d.asset_status = #{status}
           </if>
-          <if test="orgId != null">
-            and (d.org_id = #{orgId} or instr('/' || nvl(o.path_ids, '') || '/', '/' || #{orgId} || '/') <![CDATA[>]]> 0)
+          <if test="areaId != null">
+            and (d.area_id = #{areaId} or instr('/' || nvl(a.path_ids, '') || '/', '/' || #{areaId} || '/') <![CDATA[>]]> 0)
           </if>
           <if test="manufacturer != null and manufacturer != ''">
             and d.manufacturer = #{manufacturer}
