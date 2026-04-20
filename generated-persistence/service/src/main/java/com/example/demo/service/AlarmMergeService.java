@@ -173,7 +173,19 @@ public class AlarmMergeService implements AlarmService {
         AlarmVO alarm = alarmRepository.findById(alarmId)
             .orElseThrow(() -> new IllegalArgumentException("Alarm not found: " + alarmId));
         LocalDateTime now = LocalDateTime.now();
-        alarm.setMergeKey(null);
+        boolean restoreMergeState = status.intValue() == AlarmStatus.PENDING_CONFIRM
+            && alarm.getStatus() != null
+            && alarm.getStatus().intValue() == AlarmStatus.OBSERVING;
+        if (restoreMergeState) {
+            String mergeKey = buildMergeKey(alarm.getMonitorId(), alarm.getAlarmType());
+            Optional<AlarmVO> existing = alarmRepository.findByMergeKey(mergeKey);
+            if (existing.isPresent() && !alarm.getId().equals(existing.get().getId())) {
+                throw new IllegalStateException("Pending alarm already exists for monitor/alarmType: " + mergeKey);
+            }
+            alarm.setMergeKey(mergeKey);
+        } else {
+            alarm.setMergeKey(null);
+        }
         alarm.setStatus(status);
         alarm.setHandleTime(now);
         alarm.setHandleRemark(remark);
@@ -181,7 +193,18 @@ public class AlarmMergeService implements AlarmService {
         alarmRepository.updateById(alarm);
         AlarmVO savedAlarm = alarmRepository.findById(alarmId)
             .orElseThrow(() -> new IllegalArgumentException("Alarm not found: " + alarmId));
-        realtimeStateService.clearActiveAlarmId(savedAlarm.getAlarmType(), String.valueOf(savedAlarm.getMonitorId()));
+        if (savedAlarm.getStatus() != null
+            && savedAlarm.getStatus().intValue() == AlarmStatus.PENDING_CONFIRM
+            && savedAlarm.getMergeKey() != null
+            && !savedAlarm.getMergeKey().trim().isEmpty()) {
+            realtimeStateService.setActiveAlarmId(
+                savedAlarm.getAlarmType(),
+                String.valueOf(savedAlarm.getMonitorId()),
+                savedAlarm.getId()
+            );
+        } else {
+            realtimeStateService.clearActiveAlarmId(savedAlarm.getAlarmType(), String.valueOf(savedAlarm.getMonitorId()));
+        }
         createLifecycleEvent(savedAlarm, sourceTypeByStatus(status), eventTypeByStatus(status), remark);
         return savedAlarm;
     }

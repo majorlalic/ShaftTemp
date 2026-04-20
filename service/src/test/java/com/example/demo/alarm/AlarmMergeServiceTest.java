@@ -297,4 +297,30 @@ class AlarmMergeServiceTest {
         verify(eventRepository).insert(any());
     }
 
+    @Test
+    void shouldRestoreMergeStateWhenObservingBackToPendingConfirm() {
+        AlarmEntity existing = new AlarmEntity();
+        existing.setId("500");
+        existing.setAlarmType("TEMP_THRESHOLD");
+        existing.setMonitorId("10");
+        existing.setDeviceId("1");
+        existing.setStatus(AlarmStatus.OBSERVING);
+        existing.setMergeKey(null);
+        existing.setMergeCount(1);
+        existing.setEventCount(1);
+        existing.setAlarmLevel(2);
+        when(alarmRepository.findById(500L)).thenReturn(Optional.of(existing));
+        when(alarmRepository.findByMergeKey("10:TEMP_THRESHOLD")).thenReturn(Optional.of(existing));
+        when(alarmRepository.updateById(any(AlarmEntity.class))).thenReturn(1);
+        when(idGenerator.nextId()).thenReturn(1006L);
+
+        AlarmEntity alarm = alarmMergeService.handle(500L, Integer.valueOf(AlarmStatus.PENDING_CONFIRM), "reopen");
+
+        assertEquals(AlarmStatus.PENDING_CONFIRM, alarm.getStatus().intValue());
+        assertEquals("10:TEMP_THRESHOLD", alarm.getMergeKey());
+        verify(realtimeStateService).setActiveAlarmId("TEMP_THRESHOLD", "10", 500L);
+        verify(realtimeStateService, never()).clearActiveAlarmId("TEMP_THRESHOLD", "10");
+        verify(eventRepository).insert(any());
+    }
+
 }

@@ -41,6 +41,13 @@ FROM ODS_DWEQ_DM_AREA_D a
 WHERE a.id BETWEEN 9100001 AND 9400580
   AND (a.deleted IS NULL OR a.deleted = 0);
 
+-- 1.1) 设备 org_id 与 area_id 保持一致（兼容旧参数/旧返回字段）
+UPDATE ODS_DWEQ_DM_DEVICE_D
+SET org_id = area_id,
+    updated_on = CURRENT_TIMESTAMP
+WHERE id BETWEEN 9500001 AND 9500020
+  AND (deleted IS NULL OR deleted = 0);
+
 -- =========================
 -- 2) 告警规则（5）
 -- =========================
