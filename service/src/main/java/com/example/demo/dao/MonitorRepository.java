@@ -13,6 +13,18 @@ public interface MonitorRepository {
     @Select("select * from ODS_DWEQ_DM_MONITOR_D where device_id = #{deviceId} and (deleted is null or deleted = 0)")
     Optional<MonitorEntity> findActiveByDeviceId(Long deviceId);
 
+    @Select({
+        "<script>",
+        "select * from ODS_DWEQ_DM_MONITOR_D",
+        "where (deleted is null or deleted = 0)",
+        "and device_id in",
+        "<foreach collection='deviceIds' item='id' open='(' separator=',' close=')'>",
+        "#{id}",
+        "</foreach>",
+        "</script>"
+    })
+    List<MonitorEntity> findActiveByDeviceIds(@Param("deviceIds") List<Long> deviceIds);
+
     @Select("select * from ODS_DWEQ_DM_MONITOR_D where id = #{id} and (deleted is null or deleted = 0)")
     Optional<MonitorEntity> findActiveById(Long id);
 

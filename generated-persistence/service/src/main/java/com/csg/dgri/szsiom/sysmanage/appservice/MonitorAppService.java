@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Collections;
 
 import org.springframework.stereotype.Service;
 
@@ -24,6 +25,15 @@ public class MonitorAppService<T extends MonitorVO> extends AbstractMonitorAppSe
         params.put("deviceId", deviceId);
         MonitorVO one = (MonitorVO) this.getCapBaseCommonDAO().selectOne(NS + "findActiveByDeviceId", params);
         return Optional.ofNullable(one);
+    }
+
+    public List<MonitorVO> findActiveByDeviceIds(List<Long> deviceIds) {
+        if (deviceIds == null || deviceIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        Map<String, Object> params = new HashMap<String, Object>();
+        params.put("deviceIds", deviceIds);
+        return this.getCapBaseCommonDAO().queryList(NS + "findActiveByDeviceIds", params);
     }
 
     @SuppressWarnings("unchecked")

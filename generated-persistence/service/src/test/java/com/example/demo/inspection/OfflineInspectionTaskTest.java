@@ -17,6 +17,7 @@ import com.example.demo.service.RealtimeStateService;
 import com.example.demo.service.IdGenerator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -67,8 +68,9 @@ class OfflineInspectionTaskTest {
         device.setLastReportTime(LocalDateTime.now());
         MonitorEntity monitor = new MonitorEntity();
         monitor.setId(10L);
+        monitor.setDeviceId(1L);
         when(deviceRepository.findAllActive()).thenReturn(Collections.singletonList(device));
-        when(monitorRepository.findActiveByDeviceId(1L)).thenReturn(Optional.of(monitor));
+        when(monitorRepository.findActiveByDeviceIds(Collections.singletonList(1L))).thenReturn(Arrays.asList(monitor));
         when(realtimeStateService.getLastReportTime(1L)).thenReturn(Optional.of(LocalDateTime.now()));
         when(alarmRuleResolverService.resolveDeviceRule(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq("DEVICE_OFFLINE")))
             .thenReturn(new AlarmRuleResolverService.RuleConfig(true, 2, java.math.BigDecimal.valueOf(30L), null));

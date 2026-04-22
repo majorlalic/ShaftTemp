@@ -19,7 +19,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -70,8 +72,9 @@ public class OfflineInspectionTask {
             return;
         }
         List<DeviceEntity> devices = deviceRepository.findAllActive();
+        Map<Long, MonitorEntity> monitorByDeviceId = loadMonitorByDeviceId(devices);
         for (DeviceEntity device : devices) {
-            MonitorEntity monitor = monitorRepository.findActiveByDeviceId(device.getId()).orElse(null);
+            MonitorEntity monitor = monitorByDeviceId.get(device.getId());
             if (monitor == null) {
                 continue;
             }
@@ -95,6 +98,29 @@ public class OfflineInspectionTask {
             }
             triggerOffline(resolved, offlineSeconds);
         }
+    }
+
+    private Map<Long, MonitorEntity> loadMonitorByDeviceId(List<DeviceEntity> devices) {
+        if (devices == null || devices.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        List<Long> deviceIds = new java.util.ArrayList<Long>(devices.size());
+        for (DeviceEntity device : devices) {
+            if (device != null && device.getId() != null) {
+                deviceIds.add(device.getId());
+            }
+        }
+        if (deviceIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        List<MonitorEntity> monitors = monitorRepository.findActiveByDeviceIds(deviceIds);
+        Map<Long, MonitorEntity> monitorByDeviceId = new HashMap<Long, MonitorEntity>();
+        for (MonitorEntity monitor : monitors) {
+            if (monitor.getDeviceId() != null && !monitorByDeviceId.containsKey(monitor.getDeviceId())) {
+                monitorByDeviceId.put(monitor.getDeviceId(), monitor);
+            }
+        }
+        return monitorByDeviceId;
     }
 
     private void triggerOffline(DeviceResolverService.ResolvedTarget resolved, long offlineSeconds) {

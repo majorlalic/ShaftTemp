@@ -8,6 +8,15 @@
         ]]>
     </select>
 
+    <select id="findActiveByDeviceIds" parameterType="map" resultType="com.csg.dgri.szsiom.sysmanage.model.MonitorVO">
+        select * from ODS_DWEQ_DM_MONITOR_D
+        where (deleted is null or deleted = 0)
+          and device_id in
+        <foreach collection="deviceIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+
     <select id="findActiveById" parameterType="map" resultType="com.csg.dgri.szsiom.sysmanage.model.MonitorVO">
         <![CDATA[
         select * from ODS_DWEQ_DM_MONITOR_D where id = #{id} and (deleted is null or deleted = 0)
