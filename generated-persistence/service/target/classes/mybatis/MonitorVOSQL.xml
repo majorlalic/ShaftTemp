@@ -8,6 +8,15 @@
         ]]>
     </select>
 
+    <select id="findActiveByDeviceIds" parameterType="map" resultType="com.csg.dgri.szsiom.sysmanage.model.MonitorVO">
+        select * from ODS_DWEQ_DM_MONITOR_D
+        where (deleted is null or deleted = 0)
+          and device_id in
+        <foreach collection="deviceIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+
     <select id="findActiveById" parameterType="map" resultType="com.csg.dgri.szsiom.sysmanage.model.MonitorVO">
         <![CDATA[
         select * from ODS_DWEQ_DM_MONITOR_D where id = #{id} and (deleted is null or deleted = 0)
@@ -17,6 +26,37 @@
     <select id="findAllActive" parameterType="map" resultType="com.csg.dgri.szsiom.sysmanage.model.MonitorVO">
         <![CDATA[
         select * from ODS_DWEQ_DM_MONITOR_D where (deleted is null or deleted = 0)
+        ]]>
+    </select>
+
+    <select id="findAllActiveByAreaTreeId" parameterType="map" resultType="com.csg.dgri.szsiom.sysmanage.model.MonitorVO">
+        <![CDATA[
+        select m.*
+        from ODS_DWEQ_DM_MONITOR_D m
+        join ODS_DWEQ_DM_AREA_D a on a.id = m.area_id
+        where (m.deleted is null or m.deleted = 0)
+          and (a.deleted is null or a.deleted = 0)
+          and (a.id = #{areaTreeId} or instr('/' || nvl(a.path_ids, '') || '/', '/' || #{areaTreeId} || '/') > 0)
+        order by m.id asc
+        ]]>
+    </select>
+
+    <select id="countMonitorDeviceTotal" parameterType="map" resultType="java.lang.Long">
+        <![CDATA[
+        select count(distinct device_id) from ODS_DWEQ_DM_MONITOR_D
+        where device_id is not null and (deleted is null or deleted = 0)
+        ]]>
+    </select>
+
+    <select id="countMonitorDeviceTotalByAreaTree" parameterType="map" resultType="java.lang.Long">
+        <![CDATA[
+        select count(distinct m.device_id)
+        from ODS_DWEQ_DM_MONITOR_D m
+        join ODS_DWEQ_DM_AREA_D a on a.id = m.area_id
+        where m.device_id is not null
+          and (m.deleted is null or m.deleted = 0)
+          and (a.deleted is null or a.deleted = 0)
+          and (a.id = #{areaTreeId} or instr('/' || nvl(a.path_ids, '') || '/', '/' || #{areaTreeId} || '/') > 0)
         ]]>
     </select>
 
