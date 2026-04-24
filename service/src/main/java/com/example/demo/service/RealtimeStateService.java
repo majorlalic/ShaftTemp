@@ -12,6 +12,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -95,6 +96,29 @@ public class RealtimeStateService {
     public Optional<RealtimeSummary> getLastPartitionSummary(String partitionCode) {
         String value = redisTemplate.opsForValue().get(keyBuilder.partitionMeasureKey(partitionCode));
         return parseSummary(value);
+    }
+
+    public Map<String, RealtimeSummary> getLastPartitionSummaries(List<String> partitionCodes) {
+        if (partitionCodes == null || partitionCodes.isEmpty()) {
+            return java.util.Collections.emptyMap();
+        }
+        List<String> keys = new java.util.ArrayList<String>(partitionCodes.size());
+        for (String partitionCode : partitionCodes) {
+            keys.add(keyBuilder.partitionMeasureKey(partitionCode));
+        }
+        List<String> values = redisTemplate.opsForValue().multiGet(keys);
+        Map<String, RealtimeSummary> result = new HashMap<String, RealtimeSummary>();
+        for (int i = 0; i < partitionCodes.size(); i++) {
+            String value = values == null || i >= values.size() ? null : values.get(i);
+            if (value == null || value.trim().isEmpty()) {
+                continue;
+            }
+            RealtimeSummary summary = parseSummary(value).orElse(null);
+            if (summary != null) {
+                result.put(partitionCodes.get(i), summary);
+            }
+        }
+        return result;
     }
 
     private Optional<RealtimeSummary> parseSummary(String value) {

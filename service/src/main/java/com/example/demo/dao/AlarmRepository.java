@@ -167,4 +167,44 @@ public interface AlarmRepository {
         @Param("startTime") LocalDateTime startTime,
         @Param("endTime") LocalDateTime endTime
     );
+
+    @Select({
+        "<script>",
+        "select distinct to_number(monitor_id) as monitor_id",
+        "from ODS_DWEQ_DM_ALARM_D",
+        "where (deleted is null or deleted = 0)",
+        "and monitor_id is not null",
+        "and last_alarm_time &gt;= #{startTime}",
+        "and last_alarm_time &lt; #{endTime}",
+        "and to_number(monitor_id) in",
+        "<foreach collection='monitorIds' item='id' open='(' separator=',' close=')'>",
+        "#{id}",
+        "</foreach>",
+        "</script>"
+    })
+    List<Long> findTodayAlarmMonitorIds(
+        @Param("monitorIds") List<Long> monitorIds,
+        @Param("startTime") LocalDateTime startTime,
+        @Param("endTime") LocalDateTime endTime
+    );
+
+    @Select({
+        "<script>",
+        "select distinct shaft_floor_id",
+        "from ODS_DWEQ_DM_ALARM_D",
+        "where (deleted is null or deleted = 0)",
+        "and shaft_floor_id is not null",
+        "and last_alarm_time &gt;= #{startTime}",
+        "and last_alarm_time &lt; #{endTime}",
+        "and shaft_floor_id in",
+        "<foreach collection='shaftFloorIds' item='id' open='(' separator=',' close=')'>",
+        "#{id}",
+        "</foreach>",
+        "</script>"
+    })
+    List<Long> findTodayAlarmShaftFloorIds(
+        @Param("shaftFloorIds") List<Long> shaftFloorIds,
+        @Param("startTime") LocalDateTime startTime,
+        @Param("endTime") LocalDateTime endTime
+    );
 }

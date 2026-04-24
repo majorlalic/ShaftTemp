@@ -12,13 +12,17 @@ import com.example.demo.dao.DeviceRepository;
 import com.example.demo.dao.MonitorPartitionBindRepository;
 import com.example.demo.dao.MonitorRepository;
 import com.example.demo.dao.ShaftFloorRepository;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 
@@ -31,6 +35,7 @@ public class MonitorDocService {
     private final MonitorPartitionBindRepository monitorPartitionBindRepository;
     private final AlarmRepository alarmRepository;
     private final AreaRepository areaRepository;
+    private final RealtimeStateService realtimeStateService;
 
     public MonitorDocService(
         MonitorRepository monitorRepository,
@@ -38,7 +43,8 @@ public class MonitorDocService {
         ShaftFloorRepository shaftFloorRepository,
         MonitorPartitionBindRepository monitorPartitionBindRepository,
         AlarmRepository alarmRepository,
-        AreaRepository areaRepository
+        AreaRepository areaRepository,
+        RealtimeStateService realtimeStateService
     ) {
         this.monitorRepository = monitorRepository;
         this.deviceRepository = deviceRepository;
@@ -46,6 +52,7 @@ public class MonitorDocService {
         this.monitorPartitionBindRepository = monitorPartitionBindRepository;
         this.alarmRepository = alarmRepository;
         this.areaRepository = areaRepository;
+        this.realtimeStateService = realtimeStateService;
     }
 
     public Map<String, Object> detail(Long monitorId) {
@@ -112,21 +119,18 @@ public class MonitorDocService {
         String areaType = null;
 
         if (areaTreeId == null) {
-            for (MonitorEntity monitor : monitorRepository.findAllActive()) {
-                rows.add(toMonitorListRow(monitor));
-            }
+            List<MonitorEntity> monitors = monitorRepository.findAllActive();
+            enrichMonitorRows(monitors, rows);
         } else {
             AreaEntity area = areaRepository.findActiveById(areaTreeId).orElse(null);
             areaType = area == null ? null : area.getType();
             if (isShaftArea(areaType)) {
                 mode = "SHAFT_FLOOR";
-                for (ShaftFloorEntity floor : shaftFloorRepository.findAllActiveByAreaTreeId(areaTreeId)) {
-                    rows.add(toFloorListRow(floor));
-                }
+                List<ShaftFloorEntity> floors = shaftFloorRepository.findAllActiveByAreaTreeId(areaTreeId);
+                enrichFloorRows(floors, rows);
             } else {
-                for (MonitorEntity monitor : monitorRepository.findAllActiveByAreaTreeId(areaTreeId)) {
-                    rows.add(toMonitorListRow(monitor));
-                }
+                List<MonitorEntity> monitors = monitorRepository.findAllActiveByAreaTreeId(areaTreeId);
+                enrichMonitorRows(monitors, rows);
             }
         }
 
@@ -137,6 +141,131 @@ public class MonitorDocService {
         data.put("total", rows.size());
         data.put("list", rows);
         return data;
+    }
+
+    private void enrichMonitorRows(List<MonitorEntity> monitors, List<Map<String, Object>> rows) {
+        if (monitors == null || monitors.isEmpty()) {
+            return;
+        }
+        List<Long> monitorIds = monitors.stream().map(MonitorEntity::getId).collect(Collectors.toList());
+        Set<Long> todayAlarmMonitorIds = new HashSet<Long>(
+            alarmRepository.findTodayAlarmMonitorIds(monitorIds, startOfToday(), startOfTomorrow())
+        );
+        Map<Long, TempAggregate> tempByMonitor = buildMonitorTempAggregates(monitorIds);
+        for (MonitorEntity monitor : monitors) {
+            Map<String, Object> row = toMonitorListRow(monitor);
+            fillTodayAlarmAndTemperature(
+                row,
+                todayAlarmMonitorIds.contains(monitor.getId()),
+                tempByMonitor.get(monitor.getId())
+            );
+            rows.add(row);
+        }
+    }
+
+    private void enrichFloorRows(List<ShaftFloorEntity> floors, List<Map<String, Object>> rows) {
+        if (floors == null || floors.isEmpty()) {
+            return;
+        }
+        List<Long> shaftFloorIds = floors.stream().map(ShaftFloorEntity::getId).collect(Collectors.toList());
+        Set<Long> todayAlarmShaftFloorIds = new HashSet<Long>(
+            alarmRepository.findTodayAlarmShaftFloorIds(shaftFloorIds, startOfToday(), startOfTomorrow())
+        );
+        Map<Long, TempAggregate> tempByFloor = buildFloorTempAggregates(shaftFloorIds);
+        for (ShaftFloorEntity floor : floors) {
+            Map<String, Object> row = toFloorListRow(floor);
+            fillTodayAlarmAndTemperature(
+                row,
+                todayAlarmShaftFloorIds.contains(floor.getId()),
+                tempByFloor.get(floor.getId())
+            );
+            rows.add(row);
+        }
+    }
+
+    private LocalDateTime startOfToday() {
+        return LocalDate.now().atStartOfDay();
+    }
+
+    private LocalDateTime startOfTomorrow() {
+        return startOfToday().plusDays(1);
+    }
+
+    private void fillTodayAlarmAndTemperature(Map<String, Object> row, boolean todayAlarm, TempAggregate aggregate) {
+        row.put("todayAlarm", todayAlarm ? 1 : 0);
+        if (aggregate == null || aggregate.getCount() == 0) {
+            row.put("maxTemp", null);
+            row.put("minTemp", null);
+            row.put("avgTemp", null);
+            return;
+        }
+        row.put("maxTemp", aggregate.getMaxTemp());
+        row.put("minTemp", aggregate.getMinTemp());
+        row.put("avgTemp", aggregate.getAvgTemp());
+    }
+
+    private Map<Long, TempAggregate> buildMonitorTempAggregates(List<Long> monitorIds) {
+        if (monitorIds == null || monitorIds.isEmpty()) {
+            return java.util.Collections.emptyMap();
+        }
+        List<MonitorPartitionBindEntity> bindings = monitorPartitionBindRepository.findAllActiveByMonitorIds(monitorIds);
+        return aggregateTemperatures(
+            bindings,
+            new IdExtractor() {
+                @Override
+                public Long extract(MonitorPartitionBindEntity binding) {
+                    return binding.getMonitorId();
+                }
+            }
+        );
+    }
+
+    private Map<Long, TempAggregate> buildFloorTempAggregates(List<Long> shaftFloorIds) {
+        if (shaftFloorIds == null || shaftFloorIds.isEmpty()) {
+            return java.util.Collections.emptyMap();
+        }
+        List<MonitorPartitionBindEntity> bindings = monitorPartitionBindRepository.findAllActiveByShaftFloorIds(shaftFloorIds);
+        return aggregateTemperatures(
+            bindings,
+            new IdExtractor() {
+                @Override
+                public Long extract(MonitorPartitionBindEntity binding) {
+                    return binding.getShaftFloorId();
+                }
+            }
+        );
+    }
+
+    private Map<Long, TempAggregate> aggregateTemperatures(
+        List<MonitorPartitionBindEntity> bindings,
+        IdExtractor idExtractor
+    ) {
+        if (bindings == null || bindings.isEmpty()) {
+            return java.util.Collections.emptyMap();
+        }
+        List<String> partitionCodes = bindings.stream()
+            .map(MonitorPartitionBindEntity::getPartitionCode)
+            .collect(Collectors.toList());
+        Map<String, RealtimeStateService.RealtimeSummary> summaryByPartitionCode =
+            realtimeStateService.getLastPartitionSummaries(partitionCodes);
+        Map<Long, TempAggregate> aggregates = new HashMap<Long, TempAggregate>();
+        for (MonitorPartitionBindEntity binding : bindings) {
+            Long objectId = idExtractor.extract(binding);
+            if (objectId == null) {
+                continue;
+            }
+            RealtimeStateService.RealtimeSummary summary = summaryByPartitionCode.get(binding.getPartitionCode());
+            if (summary == null) {
+                continue;
+            }
+            TempAggregate aggregate = aggregates.get(objectId);
+            if (aggregate == null) {
+                aggregate = new TempAggregate();
+                aggregates.put(objectId, aggregate);
+            }
+            aggregate.accept(summary.getMaxTemp(), summary.getMinTemp(), summary.getAvgTemp());
+        }
+        return aggregates;
     }
 
     private Map<String, Object> toMonitorMap(MonitorEntity monitor) {
@@ -242,5 +371,48 @@ public class MonitorDocService {
 
     private boolean notDeleted(AlarmEntity alarm) {
         return alarm.getDeleted() == null || alarm.getDeleted().intValue() == 0;
+    }
+
+    private interface IdExtractor {
+        Long extract(MonitorPartitionBindEntity binding);
+    }
+
+    private static final class TempAggregate {
+        private BigDecimal maxTemp;
+        private BigDecimal minTemp;
+        private BigDecimal avgSum = BigDecimal.ZERO;
+        private int count;
+
+        void accept(BigDecimal max, BigDecimal min, BigDecimal avg) {
+            if (max != null) {
+                maxTemp = maxTemp == null || max.compareTo(maxTemp) > 0 ? max : maxTemp;
+            }
+            if (min != null) {
+                minTemp = minTemp == null || min.compareTo(minTemp) < 0 ? min : minTemp;
+            }
+            if (avg != null) {
+                avgSum = avgSum.add(avg);
+                count++;
+            }
+        }
+
+        int getCount() {
+            return count;
+        }
+
+        BigDecimal getMaxTemp() {
+            return maxTemp;
+        }
+
+        BigDecimal getMinTemp() {
+            return minTemp;
+        }
+
+        BigDecimal getAvgTemp() {
+            if (count <= 0) {
+                return null;
+            }
+            return avgSum.divide(BigDecimal.valueOf(count), 2, java.math.RoundingMode.HALF_UP);
+        }
     }
 }
