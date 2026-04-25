@@ -1,6 +1,6 @@
 -- 鸣翠居主数据初始化（达梦）
 -- 结构：深圳供电局-福田区-香蜜湖街道-香蜜社区-鸣翠居
--- 展开：1~10栋 -> 每栋 1/2单元（按 SHAFT 处理）-> 每单元 1~29层
+-- 展开：1~10栋 -> 每栋 1/2单元（按 SHAFT 处理）
 -- 关联：每个单元(竖井)1台设备、1个monitor、29条楼层、29条分区绑定
 
 -- 可重复执行：先清理本脚本使用的 ID 段
@@ -10,7 +10,6 @@ DELETE FROM ODS_DWEQ_DM_MONITOR_DEVICE_BIND_D WHERE id BETWEEN 9700001 AND 97000
 DELETE FROM ODS_DWEQ_DM_MONITOR_D WHERE id BETWEEN 9600001 AND 9600020;
 DELETE FROM ODS_DWEQ_DM_DEVICE_D WHERE id BETWEEN 9500001 AND 9500020;
 
-DELETE FROM ODS_DWEQ_DM_AREA_D WHERE id BETWEEN 9400001 AND 9400580;
 DELETE FROM ODS_DWEQ_DM_AREA_D WHERE id BETWEEN 9300001 AND 9300020;
 DELETE FROM ODS_DWEQ_DM_AREA_D WHERE id BETWEEN 9200001 AND 9200010;
 DELETE FROM ODS_DWEQ_DM_AREA_D WHERE id BETWEEN 9100001 AND 9100005;
@@ -60,26 +59,7 @@ SELECT
 FROM (SELECT LEVEL AS b FROM dual CONNECT BY LEVEL <= 10) b
 CROSS JOIN (SELECT LEVEL AS u FROM dual CONNECT BY LEVEL <= 2) u;
 
--- 4) area 楼层（580条）
-INSERT INTO ODS_DWEQ_DM_AREA_D (
-    id, parent_id, name, type, path_ids, path_names, deleted, sort, created_on, updated_on
-)
-SELECT
-    9400000 + (((b.b - 1) * 2 + u.u - 1) * 29 + f.f) AS id,
-    9300000 + ((b.b - 1) * 2 + u.u) AS parent_id,
-    TO_CHAR(f.f) || '层' AS name,
-    'FLOOR' AS type,
-    '9100001/9100002/9100003/9100004/9100005/' || TO_CHAR(9200000 + b.b) || '/' || TO_CHAR(9300000 + ((b.b - 1) * 2 + u.u)) || '/' || TO_CHAR(9400000 + (((b.b - 1) * 2 + u.u - 1) * 29 + f.f)) AS path_ids,
-    '深圳供电局/福田区/香蜜湖街道/香蜜社区/鸣翠居/' || TO_CHAR(b.b) || '栋/' || TO_CHAR(u.u) || '单元/' || TO_CHAR(f.f) || '层' AS path_names,
-    0 AS deleted,
-    f.f AS sort,
-    CURRENT_TIMESTAMP AS created_on,
-    CURRENT_TIMESTAMP AS updated_on
-FROM (SELECT LEVEL AS b FROM dual CONNECT BY LEVEL <= 10) b
-CROSS JOIN (SELECT LEVEL AS u FROM dual CONNECT BY LEVEL <= 2) u
-CROSS JOIN (SELECT LEVEL AS f FROM dual CONNECT BY LEVEL <= 29) f;
-
--- 5) device（20台，每个单元1台）
+-- 4) device（20台，每个单元1台）
 INSERT INTO ODS_DWEQ_DM_DEVICE_D (
     id, device_type, name, area_id, iot_code, model, manufacturer, asset_status, org_id,
     online_status, deleted, created_on, updated_on, remark
@@ -101,7 +81,7 @@ SELECT
     '鸣翠居批量初始化' AS remark
 FROM (SELECT LEVEL AS s FROM dual CONNECT BY LEVEL <= 20) s;
 
--- 6) monitor（20个竖井，每个单元1个）
+-- 5) monitor（20个竖井，每个单元1个）
 INSERT INTO ODS_DWEQ_DM_MONITOR_D (
     id, name, area_id, area_name, elevator_count, shaft_type, monitor_status, owner_company, device_id,
     remark, deleted, created_on, updated_on
@@ -122,7 +102,7 @@ SELECT
     CURRENT_TIMESTAMP AS updated_on
 FROM (SELECT LEVEL AS s FROM dual CONNECT BY LEVEL <= 20) s;
 
--- 7) monitor-device 绑定（20条）
+-- 6) monitor-device 绑定（20条）
 INSERT INTO ODS_DWEQ_DM_MONITOR_DEVICE_BIND_D (
     id, monitor_id, device_id, bind_status, bind_time, deleted, created_on, updated_on
 )
@@ -137,14 +117,14 @@ SELECT
     CURRENT_TIMESTAMP AS updated_on
 FROM (SELECT LEVEL AS s FROM dual CONNECT BY LEVEL <= 20) s;
 
--- 8) shaft_floor（580条）
+-- 7) shaft_floor（580条）
 INSERT INTO ODS_DWEQ_DM_SHAFT_FLOOR_D (
     id, monitor_id, area_id, name, device_id, start_point, end_point, sort, deleted, created_on, updated_on
 )
 SELECT
     9800000 + ((s.s - 1) * 29 + f.f) AS id,
     9600000 + s.s AS monitor_id,
-    9400000 + ((s.s - 1) * 29 + f.f) AS area_id,
+    9300000 + s.s AS area_id,
     TO_CHAR(f.f) || '层' AS name,
     9500000 + s.s AS device_id,
     0 AS start_point,
@@ -156,7 +136,7 @@ SELECT
 FROM (SELECT LEVEL AS s FROM dual CONNECT BY LEVEL <= 20) s
 CROSS JOIN (SELECT LEVEL AS f FROM dual CONNECT BY LEVEL <= 29) f;
 
--- 9) monitor_partition_bind（580条，按 1层=1分区）
+-- 8) monitor_partition_bind（580条，按 1层=1分区）
 INSERT INTO ODS_DWEQ_DM_MONITOR_PARTITION_BIND_D (
     id, monitor_id, device_id, shaft_floor_id, partition_id, partition_code, partition_name, data_reference,
     device_token, partition_no, bind_status, deleted, created_on, updated_on
@@ -179,8 +159,8 @@ SELECT
 FROM (SELECT LEVEL AS s FROM dual CONNECT BY LEVEL <= 20) s
 CROSS JOIN (SELECT LEVEL AS f FROM dual CONNECT BY LEVEL <= 29) f;
 
--- 10) 校验统计
-SELECT 'AREA_TOTAL' AS tag, COUNT(*) AS cnt FROM ODS_DWEQ_DM_AREA_D WHERE id BETWEEN 9100001 AND 9400580
+-- 9) 校验统计
+SELECT 'AREA_TOTAL' AS tag, COUNT(*) AS cnt FROM ODS_DWEQ_DM_AREA_D WHERE id BETWEEN 9100001 AND 9300020
 UNION ALL
 SELECT 'DEVICE_TOTAL' AS tag, COUNT(*) AS cnt FROM ODS_DWEQ_DM_DEVICE_D WHERE id BETWEEN 9500001 AND 9500020
 UNION ALL
@@ -191,4 +171,3 @@ UNION ALL
 SELECT 'SHAFT_FLOOR_TOTAL' AS tag, COUNT(*) AS cnt FROM ODS_DWEQ_DM_SHAFT_FLOOR_D WHERE id BETWEEN 9800001 AND 9800580
 UNION ALL
 SELECT 'MONITOR_PARTITION_BIND_TOTAL' AS tag, COUNT(*) AS cnt FROM ODS_DWEQ_DM_MONITOR_PARTITION_BIND_D WHERE id BETWEEN 9900001 AND 9900580;
-

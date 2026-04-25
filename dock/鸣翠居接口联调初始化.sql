@@ -1,7 +1,7 @@
 -- 鸣翠居接口联调初始化（达梦）
 -- 前置：请先执行 dock/鸣翠居主数据初始化.sql
 -- 目标：
--- 1) org 与 area 保持同一套层级数据
+-- 1) org 与 area 保持同一套层级数据（不含楼层节点）
 -- 2) 补齐接口联调数据（rule/raw_data/alarm_raw/alarm/event/device_online_log）
 -- 3) 单表数据量控制在 1~2000
 
@@ -16,12 +16,12 @@ DELETE FROM ODS_DWEQ_DM_ALARM_D WHERE id BETWEEN '9980001' AND '9980800';
 DELETE FROM ODS_DWEQ_DM_ALARM_RULE_D WHERE id BETWEEN 9950001 AND 9950005;
 
 -- org 镜像清理（与 area 同ID段）
-DELETE FROM ODS_DWEQ_DM_ORG_D WHERE id BETWEEN 9100001 AND 9400580;
+DELETE FROM ODS_DWEQ_DM_ORG_D WHERE id BETWEEN 9100001 AND 9300020;
 
 COMMIT;
 
 -- =========================
--- 1) org 与 area 保持一致（615）
+-- 1) org 与 area 保持一致（35）
 -- =========================
 INSERT INTO ODS_DWEQ_DM_ORG_D (
     id, parent_id, name, type, path_ids, path_names, deleted, sort, created_on, updated_on
@@ -38,7 +38,7 @@ SELECT
     CURRENT_TIMESTAMP AS created_on,
     CURRENT_TIMESTAMP AS updated_on
 FROM ODS_DWEQ_DM_AREA_D a
-WHERE a.id BETWEEN 9100001 AND 9400580
+WHERE a.id BETWEEN 9100001 AND 9300020
   AND (a.deleted IS NULL OR a.deleted = 0);
 
 -- 1.1) 设备 org_id 与 area_id 保持一致（兼容旧参数/旧返回字段）
@@ -369,8 +369,8 @@ COMMIT;
 -- =========================
 -- 8) 数据量检查
 -- =========================
-SELECT 'AREA' AS t, COUNT(*) AS c FROM ODS_DWEQ_DM_AREA_D WHERE id BETWEEN 9100001 AND 9400580
-UNION ALL SELECT 'ORG', COUNT(*) FROM ODS_DWEQ_DM_ORG_D WHERE id BETWEEN 9100001 AND 9400580
+SELECT 'AREA' AS t, COUNT(*) AS c FROM ODS_DWEQ_DM_AREA_D WHERE id BETWEEN 9100001 AND 9300020
+UNION ALL SELECT 'ORG', COUNT(*) FROM ODS_DWEQ_DM_ORG_D WHERE id BETWEEN 9100001 AND 9300020
 UNION ALL SELECT 'DEVICE', COUNT(*) FROM ODS_DWEQ_DM_DEVICE_D WHERE id BETWEEN 9500001 AND 9500020
 UNION ALL SELECT 'MONITOR', COUNT(*) FROM ODS_DWEQ_DM_MONITOR_D WHERE id BETWEEN 9600001 AND 9600020
 UNION ALL SELECT 'SHAFT_FLOOR', COUNT(*) FROM ODS_DWEQ_DM_SHAFT_FLOOR_D WHERE id BETWEEN 9800001 AND 9800580
