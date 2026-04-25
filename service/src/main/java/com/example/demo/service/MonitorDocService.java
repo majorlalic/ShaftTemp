@@ -197,11 +197,13 @@ public class MonitorDocService {
             row.put("maxTemp", null);
             row.put("minTemp", null);
             row.put("avgTemp", null);
+            row.put("lastCollectTime", null);
             return;
         }
         row.put("maxTemp", aggregate.getMaxTemp());
         row.put("minTemp", aggregate.getMinTemp());
         row.put("avgTemp", aggregate.getAvgTemp());
+        row.put("lastCollectTime", aggregate.getLastCollectTime());
     }
 
     private Map<Long, TempAggregate> buildMonitorTempAggregates(List<Long> monitorIds) {
@@ -263,7 +265,7 @@ public class MonitorDocService {
                 aggregate = new TempAggregate();
                 aggregates.put(objectId, aggregate);
             }
-            aggregate.accept(summary.getMaxTemp(), summary.getMinTemp(), summary.getAvgTemp());
+            aggregate.accept(summary.getMaxTemp(), summary.getMinTemp(), summary.getAvgTemp(), summary.getCollectTime());
         }
         return aggregates;
     }
@@ -382,8 +384,9 @@ public class MonitorDocService {
         private BigDecimal minTemp;
         private BigDecimal avgSum = BigDecimal.ZERO;
         private int count;
+        private LocalDateTime lastCollectTime;
 
-        void accept(BigDecimal max, BigDecimal min, BigDecimal avg) {
+        void accept(BigDecimal max, BigDecimal min, BigDecimal avg, LocalDateTime collectTime) {
             if (max != null) {
                 maxTemp = maxTemp == null || max.compareTo(maxTemp) > 0 ? max : maxTemp;
             }
@@ -393,6 +396,11 @@ public class MonitorDocService {
             if (avg != null) {
                 avgSum = avgSum.add(avg);
                 count++;
+            }
+            if (collectTime != null) {
+                if (lastCollectTime == null || collectTime.isAfter(lastCollectTime)) {
+                    lastCollectTime = collectTime;
+                }
             }
         }
 
@@ -413,6 +421,10 @@ public class MonitorDocService {
                 return null;
             }
             return avgSum.divide(BigDecimal.valueOf(count), 2, java.math.RoundingMode.HALF_UP);
+        }
+
+        LocalDateTime getLastCollectTime() {
+            return lastCollectTime;
         }
     }
 }
