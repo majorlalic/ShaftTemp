@@ -114,7 +114,18 @@ SELECT
   2,
   CASE WHEN t.alarm_type IN ('DEVICE_OFFLINE','PARTITION_FAULT') THEN 1 ELSE 2 END,
   SUBSTR('福田区联调告警-' || TO_CHAR(t.rn),1,120),
-  SUBSTR(t.partition_name || ' 触发 ' || t.alarm_type,1,500),
+  SUBSTR(
+    t.partition_name || '发生' ||
+    CASE t.alarm_type
+      WHEN 'TEMP_THRESHOLD' THEN '温度阈值告警'
+      WHEN 'TEMP_DIFFERENCE' THEN '差温告警'
+      WHEN 'TEMP_RISE_RATE' THEN '升温速率告警'
+      WHEN 'DEVICE_OFFLINE' THEN '设备离线告警'
+      WHEN 'PARTITION_FAULT' THEN '分区断纤告警'
+      ELSE '异常告警'
+    END,
+    1,500
+  ),
   CASE WHEN t.status IN (1,4) THEN 'handler-001' ELSE NULL END,
   CASE WHEN t.status IN (1,4) THEN TO_DATE('2026-05-13 22:00:00','YYYY-MM-DD HH24:MI:SS') - (MOD(t.rn,120) / 1440) ELSE NULL END,
   CASE WHEN t.status IN (1,4) THEN '联调处警' ELSE NULL END,

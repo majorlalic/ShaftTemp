@@ -98,7 +98,7 @@ WHERE NVL(shaft.deleted,0)=0;
 
 -- monitor: 每竖井1个，共12（名称非全路径）
 INSERT INTO ECMS_D_ST_MONITOR (
-  id,name,area_id,area_name,elevator_count,shaft_type,monitor_status,owner_company,device_id,remark,deleted,created_on,updated_on
+  id,name,area_id,area_name,elevator_count,shaft_type,monitor_status,build_date,owner_company,device_id,remark,deleted,created_on,updated_on
 )
 SELECT
   8860000 + s.s,
@@ -108,6 +108,7 @@ SELECT
   1,
   'POWER',
   'RUNNING',
+  TO_DATE('2024-01-01','YYYY-MM-DD'),
   '深圳供电局',
   8850000 + s.s,
   '福田区台账抽取',
