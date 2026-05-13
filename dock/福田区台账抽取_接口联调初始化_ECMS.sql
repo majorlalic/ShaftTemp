@@ -1,364 +1,283 @@
 -- 福田区台账抽取接口联调初始化（达梦）
--- 前置：请先执行 dock/福田区台账抽取_主数据初始化_ECMS.sql
--- 表名规则：ECMS_D_ST_*
--- 目标：规则 + 实时原始 + 告警原文 + 主告警 + 事件 + 在线日志
--- 时间口径：样例数据时间分布覆盖到 2026-04-30
+-- 前置：先执行 dock/福田区台账抽取_主数据初始化_ECMS.sql
+-- 口径：
+-- 1) alarm 状态仅生成 3 种：0(待确认)、1(持续观察)、4(已确认)
+-- 2) alarm.merge_count、alarm.event_count 与 event 实际条数一致
+-- 3) alarm 冗余字段 device_name / monitor_name 直接取主表 name（不使用路径）
+-- 4) 设备接入状态不在本脚本改写（由主数据脚本保证 0/1）
 
--- =========================
--- 0) 清理本脚本 ID 段
--- =========================
 DELETE FROM ECMS_D_ST_DEVICE_ONLINE_LOG WHERE id BETWEEN 9940001 AND 9943000;
-DELETE FROM ECMS_D_ST_RAW_DATA WHERE id BETWEEN 9960001 AND 9963000;
+DELETE FROM ECMS_D_ST_RAW_DATA WHERE id BETWEEN 9960001 AND 9964000;
 DELETE FROM ECMS_D_ST_ALARM_RAW WHERE id BETWEEN 9970001 AND 9973000;
-DELETE FROM ECMS_D_ST_EVENT WHERE id BETWEEN 9990001 AND 9993000;
-DELETE FROM ECMS_D_ST_ALARM WHERE id BETWEEN '9980001' AND '9982000';
+DELETE FROM ECMS_D_ST_EVENT WHERE id BETWEEN 9990001 AND 9995000;
+DELETE FROM ECMS_D_ST_ALARM WHERE id BETWEEN '9980001' AND '9983000';
 DELETE FROM ECMS_D_ST_ALARM_RULE WHERE id BETWEEN 9950001 AND 9950005;
 
 COMMIT;
 
--- =========================
--- 1) 告警规则（5）
--- =========================
-INSERT INTO ECMS_D_ST_ALARM_RULE (
-    id, rule_name, biz_type, alarm_type, scope_type, scope_id,
-    level, threshold_value, threshold_value2, duration_seconds,
-    enabled, remark, deleted, created_on, updated_on
-) VALUES (
-    9950001, '温度阈值', 'MONITOR', 'TEMP_THRESHOLD', 'GLOBAL', NULL,
-    2, 70.00, NULL, NULL, 1, '福田区联调默认规则', 0,
-    TO_DATE('2026-04-01 09:00:00', 'YYYY-MM-DD HH24:MI:SS'),
-    TO_DATE('2026-04-01 09:00:00', 'YYYY-MM-DD HH24:MI:SS')
-);
-INSERT INTO ECMS_D_ST_ALARM_RULE (
-    id, rule_name, biz_type, alarm_type, scope_type, scope_id,
-    level, threshold_value, threshold_value2, duration_seconds,
-    enabled, remark, deleted, created_on, updated_on
-) VALUES (
-    9950002, '差温阈值', 'MONITOR', 'TEMP_DIFFERENCE', 'GLOBAL', NULL,
-    2, 20.00, NULL, NULL, 1, '福田区联调默认规则', 0,
-    TO_DATE('2026-04-01 09:00:00', 'YYYY-MM-DD HH24:MI:SS'),
-    TO_DATE('2026-04-01 09:00:00', 'YYYY-MM-DD HH24:MI:SS')
-);
-INSERT INTO ECMS_D_ST_ALARM_RULE (
-    id, rule_name, biz_type, alarm_type, scope_type, scope_id,
-    level, threshold_value, threshold_value2, duration_seconds,
-    enabled, remark, deleted, created_on, updated_on
-) VALUES (
-    9950003, '升温速率', 'MONITOR', 'TEMP_RISE_RATE', 'GLOBAL', NULL,
-    2, 10.00, NULL, 60, 1, '福田区联调默认规则', 0,
-    TO_DATE('2026-04-01 09:00:00', 'YYYY-MM-DD HH24:MI:SS'),
-    TO_DATE('2026-04-01 09:00:00', 'YYYY-MM-DD HH24:MI:SS')
-);
-INSERT INTO ECMS_D_ST_ALARM_RULE (
-    id, rule_name, biz_type, alarm_type, scope_type, scope_id,
-    level, threshold_value, threshold_value2, duration_seconds,
-    enabled, remark, deleted, created_on, updated_on
-) VALUES (
-    9950004, '设备离线', 'DEVICE', 'DEVICE_OFFLINE', 'GLOBAL', NULL,
-    1, 30.00, NULL, NULL, 1, '福田区联调默认规则', 0,
-    TO_DATE('2026-04-01 09:00:00', 'YYYY-MM-DD HH24:MI:SS'),
-    TO_DATE('2026-04-01 09:00:00', 'YYYY-MM-DD HH24:MI:SS')
-);
-INSERT INTO ECMS_D_ST_ALARM_RULE (
-    id, rule_name, biz_type, alarm_type, scope_type, scope_id,
-    level, threshold_value, threshold_value2, duration_seconds,
-    enabled, remark, deleted, created_on, updated_on
-) VALUES (
-    9950005, '分区断纤', 'DEVICE', 'PARTITION_FAULT', 'GLOBAL', NULL,
-    1, 0.00, NULL, NULL, 1, '福田区联调默认规则', 0,
-    TO_DATE('2026-04-01 09:00:00', 'YYYY-MM-DD HH24:MI:SS'),
-    TO_DATE('2026-04-01 09:00:00', 'YYYY-MM-DD HH24:MI:SS')
-);
+-- 规则
+INSERT INTO ECMS_D_ST_ALARM_RULE (id,rule_name,biz_type,alarm_type,scope_type,scope_id,level,threshold_value,threshold_value2,duration_seconds,enabled,remark,deleted,created_on,updated_on)
+VALUES (9950001,'温度阈值','MONITOR','TEMP_THRESHOLD','GLOBAL',NULL,2,70.00,NULL,NULL,1,'福田区联调默认规则',0,TO_DATE('2026-04-01 09:00:00','YYYY-MM-DD HH24:MI:SS'),TO_DATE('2026-04-01 09:00:00','YYYY-MM-DD HH24:MI:SS'));
+INSERT INTO ECMS_D_ST_ALARM_RULE (id,rule_name,biz_type,alarm_type,scope_type,scope_id,level,threshold_value,threshold_value2,duration_seconds,enabled,remark,deleted,created_on,updated_on)
+VALUES (9950002,'差温阈值','MONITOR','TEMP_DIFFERENCE','GLOBAL',NULL,2,20.00,NULL,NULL,1,'福田区联调默认规则',0,TO_DATE('2026-04-01 09:00:00','YYYY-MM-DD HH24:MI:SS'),TO_DATE('2026-04-01 09:00:00','YYYY-MM-DD HH24:MI:SS'));
+INSERT INTO ECMS_D_ST_ALARM_RULE (id,rule_name,biz_type,alarm_type,scope_type,scope_id,level,threshold_value,threshold_value2,duration_seconds,enabled,remark,deleted,created_on,updated_on)
+VALUES (9950003,'升温速率','MONITOR','TEMP_RISE_RATE','GLOBAL',NULL,2,10.00,NULL,60,1,'福田区联调默认规则',0,TO_DATE('2026-04-01 09:00:00','YYYY-MM-DD HH24:MI:SS'),TO_DATE('2026-04-01 09:00:00','YYYY-MM-DD HH24:MI:SS'));
+INSERT INTO ECMS_D_ST_ALARM_RULE (id,rule_name,biz_type,alarm_type,scope_type,scope_id,level,threshold_value,threshold_value2,duration_seconds,enabled,remark,deleted,created_on,updated_on)
+VALUES (9950004,'设备离线','DEVICE','DEVICE_OFFLINE','GLOBAL',NULL,1,30.00,NULL,NULL,1,'福田区联调默认规则',0,TO_DATE('2026-04-01 09:00:00','YYYY-MM-DD HH24:MI:SS'),TO_DATE('2026-04-01 09:00:00','YYYY-MM-DD HH24:MI:SS'));
+INSERT INTO ECMS_D_ST_ALARM_RULE (id,rule_name,biz_type,alarm_type,scope_type,scope_id,level,threshold_value,threshold_value2,duration_seconds,enabled,remark,deleted,created_on,updated_on)
+VALUES (9950005,'分区断纤','DEVICE','PARTITION_FAULT','GLOBAL',NULL,1,0.00,NULL,NULL,1,'福田区联调默认规则',0,TO_DATE('2026-04-01 09:00:00','YYYY-MM-DD HH24:MI:SS'),TO_DATE('2026-04-01 09:00:00','YYYY-MM-DD HH24:MI:SS'));
 
--- =========================
--- 2) raw_data（1920）
--- 240 分区 * 8 次采样
--- =========================
+-- raw_data: 240分区 * 8 = 1920
 INSERT INTO ECMS_D_ST_RAW_DATA (
-    id, device_id, iot_code, topic, partition_id, monitor_id, shaft_floor_id,
-    data_reference, ied_full_path, collect_time,
-    max_temp, min_temp, avg_temp, max_temp_position, min_temp_position,
-    max_temp_channel, min_temp_channel, payload_json, deleted, created_on
+  id,device_id,iot_code,topic,partition_id,monitor_id,shaft_floor_id,data_reference,ied_full_path,collect_time,
+  max_temp,min_temp,avg_temp,max_temp_position,min_temp_position,max_temp_channel,min_temp_channel,payload_json,deleted,created_on
 )
 SELECT
-    9960000 + t.rn AS id,
-    t.device_id,
-    t.device_token AS iot_code,
-    t.data_reference || '/Measure' AS topic,
-    t.partition_id,
-    t.monitor_id,
-    t.shaft_floor_id,
-    t.data_reference,
-    '/IED/' || t.device_token AS ied_full_path,
-    TO_DATE('2026-04-30 23:40:00', 'YYYY-MM-DD HH24:MI:SS')
-        - ((8 - t.seq_no) * 3)
-        - (MOD(t.rn, 120) / 1440) AS collect_time,
-    58 + MOD(t.partition_id, 15) + MOD(t.rn, 7) * 0.2 AS max_temp,
-    35 + MOD(t.partition_id, 9) + MOD(t.rn, 5) * 0.1 AS min_temp,
-    46 + MOD(t.partition_id, 11) + MOD(t.rn, 6) * 0.1 AS avg_temp,
-    60 + MOD(t.partition_id, 25) AS max_temp_position,
-    10 + MOD(t.partition_id, 18) AS min_temp_position,
-    MOD(t.partition_id, 4) + 1 AS max_temp_channel,
-    MOD(t.partition_id + 1, 4) + 1 AS min_temp_channel,
-    '{"scene":"ft-ledger-measure","seq":' || TO_CHAR(t.seq_no) || ',"partitionId":' || TO_CHAR(t.partition_id) || '}' AS payload_json,
-    0 AS deleted,
-    TO_DATE('2026-04-30 23:50:00', 'YYYY-MM-DD HH24:MI:SS') AS created_on
+  9960000 + t.rn,
+  t.device_id,
+  t.device_token,
+  t.data_reference || '/Measure',
+  t.partition_id,
+  t.monitor_id,
+  t.shaft_floor_id,
+  t.data_reference,
+  '/IED/' || t.device_token,
+  TO_DATE('2026-05-13 23:40:00','YYYY-MM-DD HH24:MI:SS') - ((8 - t.seq_no) * 3) - (MOD(t.rn,120) / 1440),
+  58 + MOD(t.partition_id,15) + MOD(t.rn,7) * 0.2,
+  35 + MOD(t.partition_id,9) + MOD(t.rn,5) * 0.1,
+  46 + MOD(t.partition_id,11) + MOD(t.rn,6) * 0.1,
+  60 + MOD(t.partition_id,25),
+  10 + MOD(t.partition_id,18),
+  MOD(t.partition_id,4) + 1,
+  MOD(t.partition_id + 1,4) + 1,
+  '{"scene":"ft-ledger-measure","seq":' || TO_CHAR(t.seq_no) || ',"partitionId":' || TO_CHAR(t.partition_id) || '}',
+  0,
+  TO_DATE('2026-05-13 23:50:00','YYYY-MM-DD HH24:MI:SS')
 FROM (
-    SELECT
-        ROW_NUMBER() OVER (ORDER BY b.id, s.seq_no) rn,
-        s.seq_no,
-        b.monitor_id, b.device_id, b.shaft_floor_id, b.partition_id, b.data_reference, b.device_token
-    FROM ECMS_D_ST_MONITOR_PARTITION_BIND b
-    CROSS JOIN (SELECT LEVEL AS seq_no FROM dual CONNECT BY LEVEL <= 8) s
-    WHERE (b.deleted IS NULL OR b.deleted = 0)
-      AND b.bind_status = 1
-      AND b.device_token LIKE 'ft-shaft-dev-%'
+  SELECT ROW_NUMBER() OVER (ORDER BY b.id,s.seq_no) rn,s.seq_no,b.monitor_id,b.device_id,b.shaft_floor_id,b.partition_id,b.data_reference,b.device_token
+  FROM ECMS_D_ST_MONITOR_PARTITION_BIND b
+  CROSS JOIN (SELECT LEVEL seq_no FROM dual CONNECT BY LEVEL <= 8) s
+  WHERE NVL(b.deleted,0)=0 AND b.bind_status=1 AND b.device_token LIKE 'ft-shaft-dev-%'
 ) t
 WHERE t.rn <= 1920;
 
--- =========================
--- 3) alarm_raw（1200）
--- 240 分区 * 5 次告警原文
--- =========================
+-- alarm_raw: 240分区 * 5 = 1200
 INSERT INTO ECMS_D_ST_ALARM_RAW (
-    id, iot_code, topic, partition_id, alarm_status, fault_status,
-    ied_full_path, data_reference, collect_time, payload_json, deleted, created_on
+  id,iot_code,topic,partition_id,alarm_status,fault_status,ied_full_path,data_reference,collect_time,payload_json,deleted,created_on
 )
 SELECT
-    9970000 + t.rn AS id,
-    t.device_token AS iot_code,
-    t.data_reference || '/Alarm' AS topic,
-    t.partition_id,
-    CASE WHEN MOD(t.rn, 4) = 0 THEN 1 ELSE 0 END AS alarm_status,
-    CASE WHEN MOD(t.rn, 9) = 0 THEN 1 ELSE 0 END AS fault_status,
-    '/IED/' || t.device_token AS ied_full_path,
-    t.data_reference,
-    TO_DATE('2026-04-30 21:00:00', 'YYYY-MM-DD HH24:MI:SS')
-        - ((5 - t.seq_no) * 4)
-        - (MOD(t.rn, 180) / 1440) AS collect_time,
-    '{"scene":"ft-ledger-alarm-raw","seq":' || TO_CHAR(t.seq_no) || ',"partitionId":' || TO_CHAR(t.partition_id) || '}' AS payload_json,
-    0 AS deleted,
-    TO_DATE('2026-04-30 21:10:00', 'YYYY-MM-DD HH24:MI:SS') AS created_on
+  9970000 + t.rn,
+  t.device_token,
+  t.data_reference || '/Alarm',
+  t.partition_id,
+  CASE WHEN MOD(t.rn,4)=0 THEN 1 ELSE 0 END,
+  CASE WHEN MOD(t.rn,9)=0 THEN 1 ELSE 0 END,
+  '/IED/' || t.device_token,
+  t.data_reference,
+  TO_DATE('2026-05-13 21:00:00','YYYY-MM-DD HH24:MI:SS') - ((5 - t.seq_no) * 4) - (MOD(t.rn,180) / 1440),
+  '{"scene":"ft-ledger-alarm-raw","seq":' || TO_CHAR(t.seq_no) || ',"partitionId":' || TO_CHAR(t.partition_id) || '}',
+  0,
+  TO_DATE('2026-05-13 21:10:00','YYYY-MM-DD HH24:MI:SS')
 FROM (
-    SELECT
-        ROW_NUMBER() OVER (ORDER BY b.id, s.seq_no) rn,
-        s.seq_no,
-        b.partition_id, b.data_reference, b.device_token
-    FROM ECMS_D_ST_MONITOR_PARTITION_BIND b
-    CROSS JOIN (SELECT LEVEL AS seq_no FROM dual CONNECT BY LEVEL <= 5) s
-    WHERE (b.deleted IS NULL OR b.deleted = 0)
-      AND b.bind_status = 1
-      AND b.device_token LIKE 'ft-shaft-dev-%'
+  SELECT ROW_NUMBER() OVER (ORDER BY b.id,s.seq_no) rn,s.seq_no,b.partition_id,b.data_reference,b.device_token
+  FROM ECMS_D_ST_MONITOR_PARTITION_BIND b
+  CROSS JOIN (SELECT LEVEL seq_no FROM dual CONNECT BY LEVEL <= 5) s
+  WHERE NVL(b.deleted,0)=0 AND b.bind_status=1 AND b.device_token LIKE 'ft-shaft-dev-%'
 ) t
 WHERE t.rn <= 1200;
 
--- =========================
--- 4) alarm（900）
--- =========================
+-- alarm: 240分区 * 3状态 = 720；每条 event_count=2, merge_count=2
 INSERT INTO ECMS_D_ST_ALARM (
-    id, alarm_code, alarm_type, source_type, monitor_id, device_id, shaft_floor_id,
-    partition_code, partition_name, data_reference, device_token, partition_no, source_format,
-    merge_key, status, first_alarm_time, last_alarm_time, merge_count, event_count,
-    alarm_level, title, content, handler, handle_time, handle_remark, push_status,
-    alarm_type_big, alarm_domain, area_name, monitor_name, device_name, handler_name, manufacturer, device_model, push_time,
-    deleted, created_on, updated_on
+  id,alarm_code,alarm_type,source_type,monitor_id,device_id,shaft_floor_id,partition_code,partition_name,data_reference,device_token,partition_no,source_format,
+  merge_key,status,first_alarm_time,last_alarm_time,merge_count,event_count,alarm_level,title,content,handler,handle_time,handle_remark,push_status,
+  alarm_type_big,alarm_domain,area_name,monitor_name,device_name,handler_name,manufacturer,device_model,push_time,deleted,created_on,updated_on
 )
 SELECT
-    TO_CHAR(9980000 + t.rn) AS id,
-    'FT-ALM-' || TO_CHAR(9980000 + t.rn) AS alarm_code,
-    t.alarm_type,
-    CASE WHEN t.alarm_type IN ('DEVICE_OFFLINE', 'PARTITION_FAULT') THEN 'DEVICE_REPORT' ELSE 'MEASURE_REPORT' END AS source_type,
-    TO_CHAR(t.monitor_id) AS monitor_id,
-    TO_CHAR(t.device_id) AS device_id,
-    t.shaft_floor_id,
-    t.partition_code,
-    t.partition_name,
-    t.data_reference,
-    t.device_token,
-    t.partition_id AS partition_no,
-    'PARTITION' AS source_format,
-    CASE WHEN t.rn <= 300 THEN 'M:' || TO_CHAR(t.monitor_id) || ':' || t.alarm_type ELSE NULL END AS merge_key,
-    CASE
-        WHEN t.rn <= 300 THEN 0
-        WHEN MOD(t.rn, 5) = 0 THEN 1
-        WHEN MOD(t.rn, 5) = 1 THEN 2
-        WHEN MOD(t.rn, 5) = 2 THEN 3
-        WHEN MOD(t.rn, 5) = 3 THEN 4
-        ELSE 5
-    END AS status,
-    TO_DATE('2026-04-30 20:00:00', 'YYYY-MM-DD HH24:MI:SS')
-        - ((MOD(t.rn, 28) + 1))
-        - (MOD(t.rn, 600) / 1440) AS first_alarm_time,
-    TO_DATE('2026-04-30 21:30:00', 'YYYY-MM-DD HH24:MI:SS')
-        - (MOD(t.rn, 20))
-        - (MOD(t.rn, 420) / 1440) AS last_alarm_time,
-    MOD(t.rn, 8) + 1 AS merge_count,
-    MOD(t.rn, 8) + 1 AS event_count,
-    CASE WHEN t.alarm_type IN ('DEVICE_OFFLINE', 'PARTITION_FAULT') THEN 1 ELSE 2 END AS alarm_level,
-    '福田区联调告警-' || TO_CHAR(t.rn) AS title,
-    t.partition_name || ' 触发 ' || t.alarm_type || '，样例#' || TO_CHAR(t.rn) AS content,
-    CASE WHEN t.rn <= 300 THEN NULL ELSE 'handler-001' END AS handler,
-    CASE WHEN t.rn <= 300 THEN NULL ELSE TO_DATE('2026-04-30 22:00:00', 'YYYY-MM-DD HH24:MI:SS') - (MOD(t.rn, 15) + MOD(t.rn, 360) / 1440) END AS handle_time,
-    CASE WHEN t.rn <= 300 THEN NULL ELSE '联调处警' END AS handle_remark,
-    CASE WHEN MOD(t.rn, 3) = 0 THEN 1 ELSE 0 END AS push_status,
-    0 AS alarm_type_big,
-    CASE WHEN t.alarm_type IN ('DEVICE_OFFLINE', 'PARTITION_FAULT') THEN 0 ELSE 1 END AS alarm_domain,
-    t.area_name,
-    t.monitor_name,
-    t.device_name,
-    CASE WHEN t.rn <= 300 THEN NULL ELSE '运维值班员A' END AS handler_name,
-    t.manufacturer,
-    t.device_model,
-    CASE WHEN MOD(t.rn, 3) = 0 THEN TO_DATE('2026-04-30 23:00:00', 'YYYY-MM-DD HH24:MI:SS') - (MOD(t.rn, 12) + MOD(t.rn, 120) / 1440) ELSE NULL END AS push_time,
-    0 AS deleted,
-    TO_DATE('2026-04-30 23:10:00', 'YYYY-MM-DD HH24:MI:SS') AS created_on,
-    TO_DATE('2026-04-30 23:10:00', 'YYYY-MM-DD HH24:MI:SS') AS updated_on
+  TO_CHAR(9980000 + t.rn),
+  SUBSTR('FT-ALM-' || TO_CHAR(9980000 + t.rn),1,64),
+  SUBSTR(t.alarm_type,1,32),
+  SUBSTR(CASE WHEN t.alarm_type IN ('DEVICE_OFFLINE','PARTITION_FAULT') THEN 'DEVICE_REPORT' ELSE 'MEASURE_REPORT' END,1,32),
+  TO_CHAR(t.monitor_id),
+  TO_CHAR(t.device_id),
+  t.shaft_floor_id,
+  SUBSTR(t.partition_code,1,128),
+  SUBSTR(t.partition_name,1,100),
+  SUBSTR(t.data_reference,1,255),
+  SUBSTR(t.device_token,1,64),
+  t.partition_id,
+  'PARTITION',
+  CASE WHEN t.status = 0 THEN SUBSTR('M:' || TO_CHAR(t.monitor_id) || ':' || t.alarm_type || ':' || TO_CHAR(t.rn),1,64) ELSE NULL END,
+  t.status,
+  TO_DATE('2026-05-13 20:00:00','YYYY-MM-DD HH24:MI:SS') - (MOD(t.rn,20)) - (MOD(t.rn,240) / 1440),
+  TO_DATE('2026-05-13 21:30:00','YYYY-MM-DD HH24:MI:SS') - (MOD(t.rn,10)) - (MOD(t.rn,180) / 1440),
+  2,
+  2,
+  CASE WHEN t.alarm_type IN ('DEVICE_OFFLINE','PARTITION_FAULT') THEN 1 ELSE 2 END,
+  SUBSTR('福田区联调告警-' || TO_CHAR(t.rn),1,120),
+  SUBSTR(t.partition_name || ' 触发 ' || t.alarm_type,1,500),
+  CASE WHEN t.status IN (1,4) THEN 'handler-001' ELSE NULL END,
+  CASE WHEN t.status IN (1,4) THEN TO_DATE('2026-05-13 22:00:00','YYYY-MM-DD HH24:MI:SS') - (MOD(t.rn,120) / 1440) ELSE NULL END,
+  CASE WHEN t.status IN (1,4) THEN '联调处警' ELSE NULL END,
+  CASE WHEN MOD(t.rn,3)=0 THEN 1 ELSE 0 END,
+  0,
+  CASE WHEN t.alarm_type IN ('DEVICE_OFFLINE','PARTITION_FAULT') THEN 0 ELSE 1 END,
+  SUBSTR(t.area_name,1,100),
+  SUBSTR(t.monitor_name,1,100),
+  SUBSTR(t.device_name,1,100),
+  CASE WHEN t.status IN (1,4) THEN '运维值班员A' ELSE NULL END,
+  SUBSTR(t.manufacturer,1,100),
+  SUBSTR(t.device_model,1,100),
+  CASE WHEN MOD(t.rn,3)=0 THEN TO_DATE('2026-05-13 23:00:00','YYYY-MM-DD HH24:MI:SS') - (MOD(t.rn,90) / 1440) ELSE NULL END,
+  0,
+  TO_DATE('2026-05-13 23:10:00','YYYY-MM-DD HH24:MI:SS'),
+  TO_DATE('2026-05-13 23:10:00','YYYY-MM-DD HH24:MI:SS')
 FROM (
-    SELECT
-        ROW_NUMBER() OVER (ORDER BY b.id, r.r) rn,
-        b.monitor_id, b.device_id, b.shaft_floor_id, b.partition_id,
-        b.partition_code, b.partition_name, b.data_reference, b.device_token,
-        m.area_name, m.name AS monitor_name, d.name AS device_name,
-        d.manufacturer, d.model AS device_model,
-        CASE MOD(ROW_NUMBER() OVER (ORDER BY b.id, r.r), 5)
-            WHEN 0 THEN 'TEMP_THRESHOLD'
-            WHEN 1 THEN 'TEMP_DIFFERENCE'
-            WHEN 2 THEN 'TEMP_RISE_RATE'
-            WHEN 3 THEN 'DEVICE_OFFLINE'
-            ELSE 'PARTITION_FAULT'
-        END AS alarm_type
-    FROM ECMS_D_ST_MONITOR_PARTITION_BIND b
-    JOIN ECMS_D_ST_MONITOR m ON m.id = b.monitor_id AND (m.deleted IS NULL OR m.deleted = 0)
-    JOIN ECMS_D_ST_SHAFT_DEVICE d ON d.id = b.device_id AND (d.deleted IS NULL OR d.deleted = 0)
-    CROSS JOIN (SELECT LEVEL AS r FROM dual CONNECT BY LEVEL <= 4) r
-    WHERE (b.deleted IS NULL OR b.deleted = 0)
-      AND b.bind_status = 1
-      AND b.device_token LIKE 'ft-shaft-dev-%'
+  SELECT
+    ROW_NUMBER() OVER (ORDER BY b.id,s.status_sort) rn,
+    b.monitor_id,b.device_id,b.shaft_floor_id,b.partition_id,b.partition_code,b.partition_name,b.data_reference,b.device_token,
+    m.area_name,m.name monitor_name,d.name device_name,d.manufacturer,d.model device_model,
+    CASE MOD(ROW_NUMBER() OVER (ORDER BY b.id,s.status_sort),5)
+      WHEN 0 THEN 'TEMP_THRESHOLD'
+      WHEN 1 THEN 'TEMP_DIFFERENCE'
+      WHEN 2 THEN 'TEMP_RISE_RATE'
+      WHEN 3 THEN 'DEVICE_OFFLINE'
+      ELSE 'PARTITION_FAULT'
+    END alarm_type,
+    s.status_code status
+  FROM ECMS_D_ST_MONITOR_PARTITION_BIND b
+  JOIN ECMS_D_ST_MONITOR m ON m.id=b.monitor_id AND NVL(m.deleted,0)=0
+  JOIN ECMS_D_ST_SHAFT_DEVICE d ON d.id=b.device_id AND NVL(d.deleted,0)=0
+  CROSS JOIN (
+    SELECT 1 status_sort, 0 status_code FROM dual
+    UNION ALL SELECT 2,1 FROM dual
+    UNION ALL SELECT 3,4 FROM dual
+  ) s
+  WHERE NVL(b.deleted,0)=0 AND b.bind_status=1 AND b.device_token LIKE 'ft-shaft-dev-%'
 ) t
-WHERE t.rn <= 900;
+WHERE t.rn <= 720;
 
--- =========================
--- 5) event（1800）
--- 每条告警两条事件
--- =========================
+-- event: 每条alarm生成2条 => 与 alarm.event_count 对齐
 INSERT INTO ECMS_D_ST_EVENT (
-    id, alarm_id, alarm_type, source_type, monitor_id, device_id, shaft_floor_id,
-    partition_code, partition_name, data_reference, device_token, partition_no, source_format,
-    event_type, event_time, event_no, event_level, point_list_json, detail_json, content,
-    merged_flag, deleted, created_on, updated_on
+  id,alarm_id,alarm_type,source_type,monitor_id,device_id,shaft_floor_id,partition_code,partition_name,data_reference,device_token,partition_no,source_format,
+  event_type,event_time,event_no,event_level,point_list_json,detail_json,content,merged_flag,deleted,created_on,updated_on
 )
 SELECT
-    9990000 + x.rn AS id,
-    x.alarm_id,
-    x.alarm_type,
-    x.source_type,
-    x.monitor_id,
-    x.device_id,
-    x.shaft_floor_id,
-    x.partition_code,
-    x.partition_name,
-    x.data_reference,
-    x.device_token,
-    x.partition_no,
-    x.source_format,
-    x.event_type,
-    x.event_time,
-    x.event_no,
-    x.event_level,
-    '[]' AS point_list_json,
-    '{"scene":"ft-ledger-event","eventNo":' || TO_CHAR(x.event_no) || '}' AS detail_json,
-    x.content || ' 事件' || TO_CHAR(x.event_no) AS content,
-    CASE WHEN x.event_type = 1 THEN 1 ELSE 0 END AS merged_flag,
-    0 AS deleted,
-    TO_DATE('2026-04-30 23:20:00', 'YYYY-MM-DD HH24:MI:SS') AS created_on,
-    TO_DATE('2026-04-30 23:20:00', 'YYYY-MM-DD HH24:MI:SS') AS updated_on
+  9990000 + x.rn,
+  x.alarm_id,
+  x.alarm_type,
+  x.source_type,
+  x.monitor_id,
+  x.device_id,
+  x.shaft_floor_id,
+  x.partition_code,
+  x.partition_name,
+  x.data_reference,
+  x.device_token,
+  x.partition_no,
+  x.source_format,
+  x.event_type,
+  x.event_time,
+  x.event_no,
+  x.event_level,
+  '[]',
+  '{"scene":"ft-ledger-event","eventNo":' || TO_CHAR(x.event_no) || '}',
+  SUBSTR(x.content || ' 事件' || TO_CHAR(x.event_no),1,500),
+  CASE WHEN x.event_no=2 THEN 1 ELSE 0 END,
+  0,
+  TO_DATE('2026-05-13 23:20:00','YYYY-MM-DD HH24:MI:SS'),
+  TO_DATE('2026-05-13 23:20:00','YYYY-MM-DD HH24:MI:SS')
 FROM (
-    SELECT
-        ROW_NUMBER() OVER (ORDER BY a.id, e.seq_no) rn,
-        TO_NUMBER(a.id) AS alarm_id,
-        a.alarm_type,
-        a.source_type,
-        TO_NUMBER(a.monitor_id) AS monitor_id,
-        TO_NUMBER(a.device_id) AS device_id,
-        a.shaft_floor_id,
-        a.partition_code,
-        a.partition_name,
-        a.data_reference,
-        a.device_token,
-        a.partition_no,
-        a.source_format,
-        CASE
-            WHEN e.seq_no = 1 THEN 0
-            WHEN a.status = 0 THEN 1
-            WHEN a.status = 1 THEN 2
-            WHEN a.status = 2 THEN 3
-            WHEN a.status = 3 THEN 4
-            ELSE 6
-        END AS event_type,
-        a.last_alarm_time + (e.seq_no / 1440) AS event_time,
-        e.seq_no AS event_no,
-        a.alarm_level AS event_level,
-        a.content
-    FROM ECMS_D_ST_ALARM a
-    CROSS JOIN (
-        SELECT 1 AS seq_no FROM dual
-        UNION ALL
-        SELECT 2 AS seq_no FROM dual
-    ) e
-    WHERE a.id BETWEEN '9980001' AND '9982000'
-      AND (a.deleted IS NULL OR a.deleted = 0)
+  SELECT
+    ROW_NUMBER() OVER (ORDER BY a.id,e.seq_no) rn,
+    TO_NUMBER(a.id) alarm_id,
+    a.alarm_type,
+    a.source_type,
+    TO_NUMBER(a.monitor_id) monitor_id,
+    TO_NUMBER(a.device_id) device_id,
+    a.shaft_floor_id,
+    a.partition_code,
+    a.partition_name,
+    a.data_reference,
+    a.device_token,
+    a.partition_no,
+    a.source_format,
+    CASE WHEN e.seq_no = 1 THEN 0 ELSE
+      CASE
+        WHEN a.status = 0 THEN 1
+        WHEN a.status = 1 THEN 3
+        WHEN a.status = 4 THEN 2
+        ELSE 3
+      END
+    END event_type,
+    a.last_alarm_time + (e.seq_no / 1440) event_time,
+    e.seq_no event_no,
+    a.alarm_level event_level,
+    a.content
+  FROM ECMS_D_ST_ALARM a
+  CROSS JOIN (SELECT 1 seq_no FROM dual UNION ALL SELECT 2 FROM dual) e
+  WHERE a.id BETWEEN '9980001' AND '9983000' AND NVL(a.deleted,0)=0
 ) x
-WHERE x.rn <= 1800;
+WHERE x.rn <= 1440;
 
--- =========================
--- 6) device_online_log（1800）
--- =========================
+-- 在线日志：12设备 * 120 = 1440
 INSERT INTO ECMS_D_ST_DEVICE_ONLINE_LOG (
-    id, device_id, status, change_time, reason, deleted, created_on
+  id,device_id,status,change_time,reason,deleted,created_on
 )
 SELECT
-    9940000 + t.rn AS id,
-    t.device_id,
-    CASE WHEN MOD(t.rn, 7) = 0 THEN 0 ELSE 1 END AS status,
-    TO_DATE('2026-04-30 23:30:00', 'YYYY-MM-DD HH24:MI:SS')
-        - (MOD(t.rn, 30))
-        - (MOD(t.rn, 1440) / 1440) AS change_time,
-    CASE WHEN MOD(t.rn, 7) = 0 THEN 'offline inspection' ELSE 'report heartbeat' END AS reason,
-    0 AS deleted,
-    TO_DATE('2026-04-30 23:35:00', 'YYYY-MM-DD HH24:MI:SS') AS created_on
+  9940000 + t.rn,
+  t.device_id,
+  CASE WHEN MOD(t.rn,7)=0 THEN 0 ELSE 1 END,
+  TO_DATE('2026-05-13 23:30:00','YYYY-MM-DD HH24:MI:SS') - (MOD(t.rn,30)) - (MOD(t.rn,1440) / 1440),
+  CASE WHEN MOD(t.rn,7)=0 THEN 'offline inspection' ELSE 'report heartbeat' END,
+  0,
+  TO_DATE('2026-05-13 23:35:00','YYYY-MM-DD HH24:MI:SS')
 FROM (
-    SELECT
-        ROW_NUMBER() OVER (ORDER BY d.id, x.n) rn,
-        d.id AS device_id
-    FROM ECMS_D_ST_SHAFT_DEVICE d
-    CROSS JOIN (SELECT LEVEL AS n FROM dual CONNECT BY LEVEL <= 150) x
-    WHERE (d.deleted IS NULL OR d.deleted = 0)
-      AND d.iot_code LIKE 'ft-shaft-dev-%'
+  SELECT ROW_NUMBER() OVER (ORDER BY d.id,x.n) rn,d.id device_id
+  FROM ECMS_D_ST_SHAFT_DEVICE d
+  CROSS JOIN (SELECT LEVEL n FROM dual CONNECT BY LEVEL <= 120) x
+  WHERE NVL(d.deleted,0)=0 AND d.iot_code LIKE 'ft-shaft-dev-%'
 ) t
-WHERE t.rn <= 1800;
+WHERE t.rn <= 1440;
 
 COMMIT;
 
--- =========================
--- 7) 数据量校验
--- =========================
-SELECT 'AREA' AS t, COUNT(*) AS c FROM ECMS_D_ST_AREA WHERE id BETWEEN 8800001 AND 8839999
-UNION ALL SELECT 'ORG', COUNT(*) FROM ECMS_D_ST_ORG WHERE id BETWEEN 8800001 AND 8839999
-UNION ALL SELECT 'SHAFT_DEVICE', COUNT(*) FROM ECMS_D_ST_SHAFT_DEVICE WHERE id BETWEEN 8850001 AND 8859999
-UNION ALL SELECT 'MONITOR', COUNT(*) FROM ECMS_D_ST_MONITOR WHERE id BETWEEN 8860001 AND 8869999
-UNION ALL SELECT 'SHAFT_FLOOR', COUNT(*) FROM ECMS_D_ST_SHAFT_FLOOR WHERE id BETWEEN 8880001 AND 8889999
-UNION ALL SELECT 'MONITOR_DEVICE_BIND', COUNT(*) FROM ECMS_D_ST_MONITOR_DEVICE_BIND WHERE id BETWEEN 8870001 AND 8879999
-UNION ALL SELECT 'MONITOR_PARTITION_BIND', COUNT(*) FROM ECMS_D_ST_MONITOR_PARTITION_BIND WHERE id BETWEEN 8890001 AND 8899999
-UNION ALL SELECT 'ALARM_RULE', COUNT(*) FROM ECMS_D_ST_ALARM_RULE WHERE id BETWEEN 9950001 AND 9950005
-UNION ALL SELECT 'RAW_DATA', COUNT(*) FROM ECMS_D_ST_RAW_DATA WHERE id BETWEEN 9960001 AND 9963000
+-- 数据量
+SELECT 'ALARM' t, COUNT(*) c FROM ECMS_D_ST_ALARM WHERE id BETWEEN '9980001' AND '9983000'
+UNION ALL SELECT 'EVENT', COUNT(*) FROM ECMS_D_ST_EVENT WHERE id BETWEEN 9990001 AND 9995000
+UNION ALL SELECT 'RAW_DATA', COUNT(*) FROM ECMS_D_ST_RAW_DATA WHERE id BETWEEN 9960001 AND 9964000
 UNION ALL SELECT 'ALARM_RAW', COUNT(*) FROM ECMS_D_ST_ALARM_RAW WHERE id BETWEEN 9970001 AND 9973000
-UNION ALL SELECT 'ALARM', COUNT(*) FROM ECMS_D_ST_ALARM WHERE id BETWEEN '9980001' AND '9982000'
-UNION ALL SELECT 'EVENT', COUNT(*) FROM ECMS_D_ST_EVENT WHERE id BETWEEN 9990001 AND 9993000
 UNION ALL SELECT 'DEVICE_ONLINE_LOG', COUNT(*) FROM ECMS_D_ST_DEVICE_ONLINE_LOG WHERE id BETWEEN 9940001 AND 9943000;
 
--- 告警类型覆盖检查（监测对象 + 终端）
-SELECT alarm_type, alarm_domain, COUNT(*) AS cnt
+-- 校验1：event_count / merge_count 与 event表一致
+SELECT COUNT(*) mismatch_cnt
+FROM (
+  SELECT a.id, a.event_count, a.merge_count, NVL(e.cnt,0) real_cnt
+  FROM ECMS_D_ST_ALARM a
+  LEFT JOIN (
+    SELECT alarm_id, COUNT(*) cnt
+    FROM ECMS_D_ST_EVENT
+    WHERE NVL(deleted,0)=0
+    GROUP BY alarm_id
+  ) e ON e.alarm_id = TO_NUMBER(a.id)
+  WHERE a.id BETWEEN '9980001' AND '9983000'
+    AND NVL(a.deleted,0)=0
+) t
+WHERE NVL(t.event_count,0) <> NVL(t.real_cnt,0)
+   OR NVL(t.merge_count,0) <> NVL(t.real_cnt,0);
+
+-- 校验2：alarm.device_name / monitor_name 与主表一致
+SELECT COUNT(*) mismatch_name_cnt
+FROM ECMS_D_ST_ALARM a
+JOIN ECMS_D_ST_SHAFT_DEVICE d ON d.id = TO_NUMBER(a.device_id)
+JOIN ECMS_D_ST_MONITOR m ON m.id = TO_NUMBER(a.monitor_id)
+WHERE a.id BETWEEN '9980001' AND '9983000'
+  AND NVL(a.deleted,0)=0
+  AND (NVL(a.device_name,'') <> NVL(d.name,'') OR NVL(a.monitor_name,'') <> NVL(m.name,''));
+
+-- 校验3：告警状态只有 0/1/4
+SELECT status, COUNT(*) cnt
 FROM ECMS_D_ST_ALARM
-WHERE id BETWEEN '9980001' AND '9982000'
-GROUP BY alarm_type, alarm_domain
-ORDER BY alarm_domain, alarm_type;
+WHERE id BETWEEN '9980001' AND '9983000'
+  AND NVL(deleted,0)=0
+GROUP BY status
+ORDER BY status;
