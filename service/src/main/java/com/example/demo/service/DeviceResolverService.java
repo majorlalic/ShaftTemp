@@ -13,11 +13,14 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import javax.annotation.PostConstruct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 @Service
 public class DeviceResolverService {
+    private static final Logger log = LoggerFactory.getLogger(DeviceResolverService.class);
 
     private final DeviceRepository deviceRepository;
     private final MonitorRepository monitorRepository;
@@ -115,8 +118,23 @@ public class DeviceResolverService {
         List<MonitorPartitionBindEntity> bindings = monitorPartitionBindRepository.findAllActive();
         ConcurrentHashMap<String, ResolvedTarget> nextByReference = new ConcurrentHashMap<String, ResolvedTarget>();
         ConcurrentHashMap<String, ResolvedTarget> nextByPartition = new ConcurrentHashMap<String, ResolvedTarget>();
+        int skipped = 0;
         for (MonitorPartitionBindEntity binding : bindings) {
-            ResolvedTarget resolved = buildResolvedTarget(binding);
+            ResolvedTarget resolved;
+            try {
+                resolved = buildResolvedTarget(binding);
+            } catch (RuntimeException ex) {
+                skipped++;
+                log.warn(
+                    "Skip invalid partition binding, bindingId={}, deviceId={}, monitorId={}, partitionCode={}, reason={}",
+                    binding.getId(),
+                    binding.getDeviceId(),
+                    binding.getMonitorId(),
+                    binding.getPartitionCode(),
+                    ex.getMessage()
+                );
+                continue;
+            }
             if (resolved.getDataReference() != null && !resolved.getDataReference().trim().isEmpty()) {
                 nextByReference.put(resolved.getDataReference(), resolved);
             }
@@ -128,6 +146,14 @@ public class DeviceResolverService {
         dataReferenceCache.putAll(nextByReference);
         partitionCodeCache.clear();
         partitionCodeCache.putAll(nextByPartition);
+        log.info(
+            "Partition binding cache refreshed: total={}, valid={}, skipped={}, dataReferenceCache={}, partitionCodeCache={}",
+            bindings.size(),
+            bindings.size() - skipped,
+            skipped,
+            dataReferenceCache.size(),
+            partitionCodeCache.size()
+        );
     }
 
     public static class ResolvedTarget {
