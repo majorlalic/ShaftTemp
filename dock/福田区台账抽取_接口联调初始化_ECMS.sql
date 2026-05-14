@@ -7,10 +7,10 @@
 -- 4) 设备接入状态不在本脚本改写（由主数据脚本保证 0/1）
 
 DELETE FROM ECMS_D_ST_DEVICE_ONLINE_LOG WHERE id BETWEEN 9940001 AND 9943000;
-DELETE FROM ECMS_D_ST_RAW_DATA WHERE id BETWEEN 9960001 AND 9964000;
+DELETE FROM ECMS_D_ST_RAW_DATA WHERE id BETWEEN 9960001 AND 9966000;
 DELETE FROM ECMS_D_ST_ALARM_RAW WHERE id BETWEEN 9970001 AND 9973000;
 DELETE FROM ECMS_D_ST_EVENT WHERE id BETWEEN 9990001 AND 9995000;
-DELETE FROM ECMS_D_ST_ALARM WHERE id BETWEEN '9980001' AND '9983000';
+DELETE FROM ECMS_D_ST_ALARM WHERE id BETWEEN '9980001' AND '9985000';
 DELETE FROM ECMS_D_ST_ALARM_RULE WHERE id BETWEEN 9950001 AND 9950005;
 
 COMMIT;
@@ -27,7 +27,7 @@ VALUES (9950004,'设备离线','DEVICE','DEVICE_OFFLINE','GLOBAL',NULL,1,30.00,N
 INSERT INTO ECMS_D_ST_ALARM_RULE (id,rule_name,biz_type,alarm_type,scope_type,scope_id,level,threshold_value,threshold_value2,duration_seconds,enabled,remark,deleted,created_on,updated_on)
 VALUES (9950005,'分区断纤','DEVICE','PARTITION_FAULT','GLOBAL',NULL,1,0.00,NULL,NULL,1,'福田区联调默认规则',0,TO_DATE('2026-04-01 09:00:00','YYYY-MM-DD HH24:MI:SS'),TO_DATE('2026-04-01 09:00:00','YYYY-MM-DD HH24:MI:SS'));
 
--- raw_data: 240分区 * 8 = 1920
+-- raw_data: 348分区 * 8 = 2784
 INSERT INTO ECMS_D_ST_RAW_DATA (
   id,device_id,iot_code,topic,partition_id,monitor_id,shaft_floor_id,data_reference,ied_full_path,collect_time,
   max_temp,min_temp,avg_temp,max_temp_position,min_temp_position,max_temp_channel,min_temp_channel,payload_json,deleted,created_on
@@ -59,9 +59,9 @@ FROM (
   CROSS JOIN (SELECT LEVEL seq_no FROM dual CONNECT BY LEVEL <= 8) s
   WHERE NVL(b.deleted,0)=0 AND b.bind_status=1 AND b.device_token LIKE 'ft-shaft-dev-%'
 ) t
-WHERE t.rn <= 1920;
+WHERE t.rn <= 2784;
 
--- alarm_raw: 240分区 * 5 = 1200
+-- alarm_raw: 348分区 * 5 = 1740
 INSERT INTO ECMS_D_ST_ALARM_RAW (
   id,iot_code,topic,partition_id,alarm_status,fault_status,ied_full_path,data_reference,collect_time,payload_json,deleted,created_on
 )
@@ -84,9 +84,9 @@ FROM (
   CROSS JOIN (SELECT LEVEL seq_no FROM dual CONNECT BY LEVEL <= 5) s
   WHERE NVL(b.deleted,0)=0 AND b.bind_status=1 AND b.device_token LIKE 'ft-shaft-dev-%'
 ) t
-WHERE t.rn <= 1200;
+WHERE t.rn <= 1740;
 
--- alarm: 240分区 * 3状态 = 720；每条 event_count=2, merge_count=2
+-- alarm: 348分区 * 3状态 = 1044；每条 event_count=2, merge_count=2
 INSERT INTO ECMS_D_ST_ALARM (
   id,alarm_code,alarm_type,source_type,monitor_id,device_id,shaft_floor_id,partition_code,partition_name,data_reference,device_token,partition_no,source_format,
   merge_key,status,first_alarm_time,last_alarm_time,merge_count,event_count,alarm_level,title,content,handler,handle_time,handle_remark,push_status,
@@ -135,7 +135,7 @@ SELECT
   SUBSTR(t.area_name,1,100),
   SUBSTR(t.monitor_name,1,100),
   SUBSTR(t.device_name,1,100),
-  CASE WHEN t.status IN (1,4) THEN '运维值班员A' ELSE NULL END,
+  CASE WHEN t.status IN (3,11) THEN '运维值班员A' ELSE NULL END,
   SUBSTR(t.manufacturer,1,100),
   SUBSTR(t.device_model,1,100),
   CASE WHEN MOD(t.rn,3)=0 THEN TO_DATE('2026-05-13 23:00:00','YYYY-MM-DD HH24:MI:SS') - (MOD(t.rn,90) / 1440) ELSE NULL END,
@@ -165,7 +165,7 @@ FROM (
   ) s
   WHERE NVL(b.deleted,0)=0 AND b.bind_status=1 AND b.device_token LIKE 'ft-shaft-dev-%'
 ) t
-WHERE t.rn <= 720;
+WHERE t.rn <= 1044;
 
 -- event: 每条alarm生成2条 => 与 alarm.event_count 对齐
 INSERT INTO ECMS_D_ST_EVENT (
@@ -226,11 +226,11 @@ FROM (
     a.content
   FROM ECMS_D_ST_ALARM a
   CROSS JOIN (SELECT 1 seq_no FROM dual UNION ALL SELECT 2 FROM dual) e
-  WHERE a.id BETWEEN '9980001' AND '9983000' AND NVL(a.deleted,0)=0
+WHERE a.id BETWEEN '9980001' AND '9985000' AND NVL(a.deleted,0)=0
 ) x
-WHERE x.rn <= 1440;
+WHERE x.rn <= 2088;
 
--- 在线日志：12设备 * 120 = 1440
+-- 在线日志：14设备 * 120 = 1680
 INSERT INTO ECMS_D_ST_DEVICE_ONLINE_LOG (
   id,device_id,status,change_time,reason,deleted,created_on
 )
@@ -248,14 +248,14 @@ FROM (
   CROSS JOIN (SELECT LEVEL n FROM dual CONNECT BY LEVEL <= 120) x
   WHERE NVL(d.deleted,0)=0 AND d.iot_code LIKE 'ft-shaft-dev-%'
 ) t
-WHERE t.rn <= 1440;
+WHERE t.rn <= 1680;
 
 COMMIT;
 
 -- 数据量
-SELECT 'ALARM' t, COUNT(*) c FROM ECMS_D_ST_ALARM WHERE id BETWEEN '9980001' AND '9983000'
+SELECT 'ALARM' t, COUNT(*) c FROM ECMS_D_ST_ALARM WHERE id BETWEEN '9980001' AND '9985000'
 UNION ALL SELECT 'EVENT', COUNT(*) FROM ECMS_D_ST_EVENT WHERE id BETWEEN 9990001 AND 9995000
-UNION ALL SELECT 'RAW_DATA', COUNT(*) FROM ECMS_D_ST_RAW_DATA WHERE id BETWEEN 9960001 AND 9964000
+UNION ALL SELECT 'RAW_DATA', COUNT(*) FROM ECMS_D_ST_RAW_DATA WHERE id BETWEEN 9960001 AND 9966000
 UNION ALL SELECT 'ALARM_RAW', COUNT(*) FROM ECMS_D_ST_ALARM_RAW WHERE id BETWEEN 9970001 AND 9973000
 UNION ALL SELECT 'DEVICE_ONLINE_LOG', COUNT(*) FROM ECMS_D_ST_DEVICE_ONLINE_LOG WHERE id BETWEEN 9940001 AND 9943000;
 
@@ -270,7 +270,7 @@ FROM (
     WHERE NVL(deleted,0)=0
     GROUP BY alarm_id
   ) e ON e.alarm_id = TO_NUMBER(a.id)
-  WHERE a.id BETWEEN '9980001' AND '9983000'
+  WHERE a.id BETWEEN '9980001' AND '9985000'
     AND NVL(a.deleted,0)=0
 ) t
 WHERE NVL(t.event_count,0) <> NVL(t.real_cnt,0)
@@ -281,14 +281,14 @@ SELECT COUNT(*) mismatch_name_cnt
 FROM ECMS_D_ST_ALARM a
 JOIN ECMS_D_ST_SHAFT_DEVICE d ON d.id = TO_NUMBER(a.device_id)
 JOIN ECMS_D_ST_MONITOR m ON m.id = TO_NUMBER(a.monitor_id)
-WHERE a.id BETWEEN '9980001' AND '9983000'
+WHERE a.id BETWEEN '9980001' AND '9985000'
   AND NVL(a.deleted,0)=0
   AND (NVL(a.device_name,'') <> NVL(d.name,'') OR NVL(a.monitor_name,'') <> NVL(m.name,''));
 
 -- 校验3：告警状态只有 1/3/11
 SELECT status, COUNT(*) cnt
 FROM ECMS_D_ST_ALARM
-WHERE id BETWEEN '9980001' AND '9983000'
+WHERE id BETWEEN '9980001' AND '9985000'
   AND NVL(deleted,0)=0
 GROUP BY status
 ORDER BY status;
