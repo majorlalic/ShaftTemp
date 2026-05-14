@@ -2,12 +2,14 @@ package com.example.demo.service;
 
 public final class AlarmStatus {
 
-    public static final int PENDING_CONFIRM = 0;
-    public static final int OBSERVING = 1;
-    public static final int PENDING_RECTIFICATION = 2;
-    public static final int PENDING_RETEST = 3;
-    public static final int CONFIRMED = 4;
-    public static final int CLOSED = 5;
+    public static final int PENDING_CONFIRM = 1;
+    public static final int OBSERVING = 11;
+    public static final int PENDING_RECTIFICATION = 12;
+    public static final int PENDING_RETEST = 13;
+    public static final int CONFIRMED = 3;
+    public static final int CLOSED = 14;
+    public static final String ACTIVE_MONITOR_STATUS_SQL = "(1,11,12,13,3)";
+    public static final String CLOSED_STATUS_SQL = "14";
     // 兼容旧逻辑：旧“误报”落到新“待复测”
     public static final int FALSE_POSITIVE = PENDING_RETEST;
     // 兼容旧逻辑：旧“自动恢复”落到新“闭环”

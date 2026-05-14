@@ -1,6 +1,7 @@
 package com.example.demo.dao;
 
 import com.example.demo.entity.AlarmEntity;
+import com.example.demo.service.AlarmStatus;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -86,7 +87,7 @@ public interface AlarmRepository {
         "select count(distinct monitor_id) from ODS_DWEQ_DM_ALARM_D",
         "where (deleted is null or deleted = 0)",
         "and alarm_type not in ('DEVICE_OFFLINE', 'PARTITION_FAULT')",
-        "and status in (0,1,2,3,4)"
+        "and status in " + AlarmStatus.ACTIVE_MONITOR_STATUS_SQL
     })
     Long countMonitorAlarmTotal();
 
@@ -99,7 +100,7 @@ public interface AlarmRepository {
         "and (m.deleted is null or m.deleted = 0)",
         "and (a.deleted is null or a.deleted = 0)",
         "and al.alarm_type not in ('DEVICE_OFFLINE', 'PARTITION_FAULT')",
-        "and al.status in (0,1,2,3,4)",
+        "and al.status in " + AlarmStatus.ACTIVE_MONITOR_STATUS_SQL,
         "and (a.id = #{areaTreeId} or instr('/' || nvl(a.path_ids, '') || '/', '/' || #{areaTreeId} || '/') > 0)"
     })
     Long countMonitorAlarmTotalByAreaTree(@Param("areaTreeId") Long areaTreeId);
@@ -139,7 +140,7 @@ public interface AlarmRepository {
         "select count(*) from ODS_DWEQ_DM_ALARM_D",
         "where (deleted is null or deleted = 0)",
         "and alarm_type not in ('DEVICE_OFFLINE', 'PARTITION_FAULT')",
-        "and status = 5",
+        "and status = " + AlarmStatus.CLOSED_STATUS_SQL,
         "and updated_on >= #{startTime}",
         "and updated_on < #{endTime}"
     })
@@ -157,7 +158,7 @@ public interface AlarmRepository {
         "and (m.deleted is null or m.deleted = 0)",
         "and (a.deleted is null or a.deleted = 0)",
         "and al.alarm_type not in ('DEVICE_OFFLINE', 'PARTITION_FAULT')",
-        "and al.status = 5",
+        "and al.status = " + AlarmStatus.CLOSED_STATUS_SQL,
         "and al.updated_on >= #{startTime}",
         "and al.updated_on < #{endTime}",
         "and (a.id = #{areaTreeId} or instr('/' || nvl(a.path_ids, '') || '/', '/' || #{areaTreeId} || '/') > 0)"
