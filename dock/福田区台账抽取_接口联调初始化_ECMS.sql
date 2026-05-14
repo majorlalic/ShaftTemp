@@ -1,7 +1,7 @@
 -- 福田区台账抽取接口联调初始化（达梦）
 -- 前置：先执行 dock/福田区台账抽取_主数据初始化_ECMS.sql
 -- 口径：
--- 1) alarm 状态仅生成 3 种：0(待确认)、1(持续观察)、4(已确认)
+-- 1) alarm 状态仅生成 3 种：1(待确认)、3(已确认)、11(持续观察)
 -- 2) alarm.merge_count、alarm.event_count 与 event 实际条数一致
 -- 3) alarm 冗余字段 device_name / monitor_name 直接取主表 name（不使用路径）
 -- 4) 设备接入状态不在本脚本改写（由主数据脚本保证 0/1）
@@ -106,7 +106,7 @@ SELECT
   SUBSTR(t.device_token,1,64),
   t.partition_id,
   'PARTITION',
-  CASE WHEN t.status = 0 THEN SUBSTR('M:' || TO_CHAR(t.monitor_id) || ':' || t.alarm_type || ':' || TO_CHAR(t.rn),1,64) ELSE NULL END,
+  CASE WHEN t.status = 1 THEN SUBSTR('M:' || TO_CHAR(t.monitor_id) || ':' || t.alarm_type || ':' || TO_CHAR(t.rn),1,64) ELSE NULL END,
   t.status,
   TO_DATE('2026-05-13 20:00:00','YYYY-MM-DD HH24:MI:SS') - (MOD(t.rn,20)) - (MOD(t.rn,240) / 1440),
   TO_DATE('2026-05-13 21:30:00','YYYY-MM-DD HH24:MI:SS') - (MOD(t.rn,10)) - (MOD(t.rn,180) / 1440),
@@ -126,9 +126,9 @@ SELECT
     END,
     1,500
   ),
-  CASE WHEN t.status IN (1,4) THEN 'handler-001' ELSE NULL END,
-  CASE WHEN t.status IN (1,4) THEN TO_DATE('2026-05-13 22:00:00','YYYY-MM-DD HH24:MI:SS') - (MOD(t.rn,120) / 1440) ELSE NULL END,
-  CASE WHEN t.status IN (1,4) THEN '联调处警' ELSE NULL END,
+  CASE WHEN t.status IN (3,11) THEN 'handler-001' ELSE NULL END,
+  CASE WHEN t.status IN (3,11) THEN TO_DATE('2026-05-13 22:00:00','YYYY-MM-DD HH24:MI:SS') - (MOD(t.rn,120) / 1440) ELSE NULL END,
+  CASE WHEN t.status IN (3,11) THEN '联调处警' ELSE NULL END,
   CASE WHEN MOD(t.rn,3)=0 THEN 1 ELSE 0 END,
   0,
   CASE WHEN t.alarm_type IN ('DEVICE_OFFLINE','PARTITION_FAULT') THEN 0 ELSE 1 END,
@@ -159,9 +159,9 @@ FROM (
   JOIN ECMS_D_ST_MONITOR m ON m.id=b.monitor_id AND NVL(m.deleted,0)=0
   JOIN ECMS_D_ST_SHAFT_DEVICE d ON d.id=b.device_id AND NVL(d.deleted,0)=0
   CROSS JOIN (
-    SELECT 1 status_sort, 0 status_code FROM dual
-    UNION ALL SELECT 2,1 FROM dual
-    UNION ALL SELECT 3,4 FROM dual
+    SELECT 1 status_sort, 1 status_code FROM dual
+    UNION ALL SELECT 2,3 FROM dual
+    UNION ALL SELECT 3,11 FROM dual
   ) s
   WHERE NVL(b.deleted,0)=0 AND b.bind_status=1 AND b.device_token LIKE 'ft-shaft-dev-%'
 ) t
@@ -214,9 +214,9 @@ FROM (
     a.source_format,
     CASE WHEN e.seq_no = 1 THEN 0 ELSE
       CASE
-        WHEN a.status = 0 THEN 1
-        WHEN a.status = 1 THEN 3
-        WHEN a.status = 4 THEN 2
+        WHEN a.status = 1 THEN 1
+        WHEN a.status = 11 THEN 3
+        WHEN a.status = 3 THEN 2
         ELSE 3
       END
     END event_type,
@@ -285,7 +285,7 @@ WHERE a.id BETWEEN '9980001' AND '9983000'
   AND NVL(a.deleted,0)=0
   AND (NVL(a.device_name,'') <> NVL(d.name,'') OR NVL(a.monitor_name,'') <> NVL(m.name,''));
 
--- 校验3：告警状态只有 0/1/4
+-- 校验3：告警状态只有 1/3/11
 SELECT status, COUNT(*) cnt
 FROM ECMS_D_ST_ALARM
 WHERE id BETWEEN '9980001' AND '9983000'
